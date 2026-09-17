@@ -88,6 +88,10 @@ import {
   IncidentResilienceEvidence,
 } from "@/components/incident-resilience-evidence";
 
+import {
+  IncidentResilienceAuditLedger,
+} from "@/components/incident-resilience-audit-ledger";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1209,6 +1213,40 @@ export function SituationRoomPanel({
                                   instanceof Error
                                   ? caughtError.message
                                   : "Unable to refresh evidence timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
+
+                    <IncidentResilienceAuditLedger
+                      key={
+                        `audit-ledger-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh audit-ledger timeline.",
                               );
                             },
                           );

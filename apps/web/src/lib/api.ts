@@ -132,6 +132,13 @@ import type {
   ResilienceEvidencePackagePreview,
 } from "@/types/resilience-evidence";
 
+import type {
+  ResilienceAuditLedgerHistoryResponse,
+  ResilienceAuditLedgerPreview,
+  ResilienceAuditLedgerVerificationResponse,
+  ResilienceAuditReceipt,
+} from "@/types/resilience-audit-ledger";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2708,4 +2715,99 @@ export async function verifyResilienceEvidencePackage(
   }
 
   return response.json() as Promise<EvidencePackageVerificationResponse>;
+}
+
+export async function fetchResilienceAuditLedgerPreview(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ResilienceAuditLedgerPreview> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-audit-ledger/preview`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Audit ledger preview returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceAuditLedgerPreview>;
+}
+
+export async function fetchResilienceAuditLedgerHistory(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ResilienceAuditLedgerHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-audit-ledger/receipts`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Audit ledger history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceAuditLedgerHistoryResponse>;
+}
+
+export async function createResilienceAuditReceipt(
+  incidentId: string,
+): Promise<ResilienceAuditReceipt> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-audit-ledger/receipts`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create audit receipt. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceAuditReceipt>;
+}
+
+export async function verifyResilienceAuditLedger(
+  incidentId: string,
+): Promise<ResilienceAuditLedgerVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-audit-ledger/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Audit ledger verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceAuditLedgerVerificationResponse>;
 }

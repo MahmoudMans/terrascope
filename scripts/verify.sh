@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step21-backend.log"
+BACKEND_LOG="/tmp/terrascope-step22-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -22,10 +22,11 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 21 VERIFICATION"
+echo " TERRASCOPE — STEP 22 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
+
 echo "[PASS] COMPOSE_CONFIGURATION"
 
 docker compose up -d postgres
@@ -111,19 +112,19 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step21-status.json
+  >/tmp/terrascope-step22-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-status.json",
+    "/tmp/terrascope-step22-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.21.0"
+assert payload["version"] == "0.22.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
@@ -132,7 +133,7 @@ PY
 
 for VERSION in \
   1 2 3 4 5 6 7 8 9 10 \
-  11 12 13 14 15 16 17 18 19 20 21
+  11 12 13 14 15 16 17 18 19 20 21 22
 do
   COUNT="$(
     docker compose exec -T postgres \
@@ -154,10 +155,10 @@ do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V21_RUNTIME"
+echo "[PASS] FLYWAY_V22_RUNTIME"
 
 echo
-echo "===== CLEAN STEP 21 FIXTURE ====="
+echo "===== CLEAN STEP 22 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -167,24 +168,24 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step21-incident';
+            'verification-step22-incident';
     " \
   >/dev/null
 
-echo "[PASS] STEP21_PRE_CLEAN"
+echo "[PASS] STEP22_PRE_CLEAN"
 
 echo
-echo "===== CREATE EVIDENCE INCIDENT ====="
+echo "===== CREATE AUDIT INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step21-incident.json \
+  /tmp/terrascope-step22-incident.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step21-incident",
+  "sourceEventId": "verification-step22-incident",
   "hazardType": "earthquakes",
-  "title": "Verification Evidence Incident",
-  "description": "Step 21 resilience evidence manifest fixture.",
+  "title": "Verification Audit Ledger Incident",
+  "description": "Step 22 tamper-evident ledger fixture.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
@@ -197,16 +198,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step21-incident.json \
+  --data @/tmp/terrascope-step22-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step21-incident-response.json
+  >/tmp/terrascope-step22-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-incident-response.json",
+    "/tmp/terrascope-step22-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -219,30 +220,30 @@ PY
 
 echo "INCIDENT_ID=${INCIDENT_ID}"
 
-echo "[PASS] EVIDENCE_INCIDENT_CREATE"
+echo "[PASS] AUDIT_LEDGER_INCIDENT_CREATE"
 
 echo
-echo "===== UNCERTIFIED EVIDENCE GUARD ====="
+echo "===== PRE-PACKAGE LEDGER GUARD ====="
 
-UNCERTIFIED_HTTP="$(
+PREPACKAGE_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step21-uncertified.json \
+    --output /tmp/terrascope-step22-prepackage.json \
     --write-out '%{http_code}' \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/preview"
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/preview"
 )"
 
-echo "UNCERTIFIED_EVIDENCE_HTTP=${UNCERTIFIED_HTTP}"
+echo "PREPACKAGE_LEDGER_HTTP=${PREPACKAGE_HTTP}"
 
-[[ "${UNCERTIFIED_HTTP}" == "409" ]]
+[[ "${PREPACKAGE_HTTP}" == "409" ]]
 
-echo "[PASS] UNCERTIFIED_EVIDENCE_GUARD"
+echo "[PASS] AUDIT_LEDGER_PACKAGE_GUARD"
 
 echo
 echo "===== CLOSE INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step21-close.json \
+  /tmp/terrascope-step22-close.json \
 <<'JSON'
 {
   "status": "CLOSED"
@@ -254,11 +255,11 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step21-close.json \
+  --data @/tmp/terrascope-step22-close.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/status" \
   >/dev/null
 
-echo "[PASS] EVIDENCE_INCIDENT_CLOSED"
+echo "[PASS] AUDIT_LEDGER_INCIDENT_CLOSED"
 
 echo
 echo "===== CREATE AAR ====="
@@ -268,14 +269,14 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/after-action-reviews" \
-  >/tmp/terrascope-step21-aar.json
+  >/tmp/terrascope-step22-aar.json
 
 AAR_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-aar.json",
+    "/tmp/terrascope-step22-aar.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -288,7 +289,7 @@ PY
 
 echo "AAR_ID=${AAR_ID}"
 
-echo "[PASS] EVIDENCE_AAR_SOURCE"
+echo "[PASS] AUDIT_LEDGER_AAR"
 
 echo
 echo "===== CREATE SITREP ====="
@@ -298,35 +299,21 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/sitrep/reports" \
-  >/tmp/terrascope-step21-sitrep.json
+  >/dev/null
 
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step21-sitrep.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["reportNumber"] == 1
-
-print(
-    "[PASS] EVIDENCE_SITREP_SOURCE"
-)
-PY
+echo "[PASS] AUDIT_LEDGER_SITREP"
 
 echo
 echo "===== CREATE COMPLETED IMPROVEMENT ====="
 
 cat > \
-  /tmp/terrascope-step21-improvement.json \
+  /tmp/terrascope-step22-improvement.json \
 <<JSON
 {
   "afterActionReviewId": "${AAR_ID}",
   "category": "PROCESS",
-  "title": "Formalize evidence-ready handoff checklist",
-  "description": "Validation source for evidence packaging.",
+  "title": "Formalize tamper-evident assurance workflow",
+  "description": "Improvement fixture for audit-ledger verification.",
   "priority": "HIGH",
   "owner": "Resilience Office",
   "dueAt": "2030-01-01T00:00:00Z"
@@ -338,16 +325,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step21-improvement.json \
+  --data @/tmp/terrascope-step22-improvement.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step21-improvement-response.json
+  >/tmp/terrascope-step22-improvement-response.json
 
 IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-improvement-response.json",
+    "/tmp/terrascope-step22-improvement-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -359,7 +346,7 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step21-improvement-complete.json \
+  /tmp/terrascope-step22-improvement-completed.json \
 <<'JSON'
 {
   "status": "COMPLETED"
@@ -371,23 +358,23 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step21-improvement-complete.json \
+  --data @/tmp/terrascope-step22-improvement-completed.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/status" \
   >/dev/null
 
-echo "[PASS] EVIDENCE_IMPROVEMENT_SOURCE"
+echo "[PASS] AUDIT_LEDGER_IMPROVEMENT"
 
 echo
-echo "===== CREATE PASSED PREPAREDNESS EXERCISE ====="
+echo "===== CREATE PASSED EXERCISE ====="
 
 cat > \
-  /tmp/terrascope-step21-exercise.json \
+  /tmp/terrascope-step22-exercise.json \
 <<JSON
 {
   "improvementActionId": "${IMPROVEMENT_ID}",
   "exerciseType": "FUNCTIONAL",
-  "title": "Evidence package validation exercise",
-  "description": "Validate the completed improvement.",
+  "title": "Audit assurance validation exercise",
+  "description": "Validate the audit assurance workflow.",
   "owner": "Preparedness Office",
   "scheduledAt": "2030-02-01T10:00:00Z"
 }
@@ -398,16 +385,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step21-exercise.json \
+  --data @/tmp/terrascope-step22-exercise.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises" \
-  >/tmp/terrascope-step21-exercise-response.json
+  >/tmp/terrascope-step22-exercise-response.json
 
 EXERCISE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-exercise-response.json",
+    "/tmp/terrascope-step22-exercise-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -419,14 +406,14 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step21-assessment.json \
+  /tmp/terrascope-step22-assessment.json \
 <<'JSON'
 {
   "result": "PASSED",
-  "readinessScore": 94,
+  "readinessScore": 96,
   "performedAt": "2030-02-01T12:00:00Z",
-  "evidenceSummary": "All evidence controls executed successfully.",
-  "findings": "No material resilience gaps remained.",
+  "evidenceSummary": "All assurance controls executed successfully.",
+  "findings": "No material validation gaps remained.",
   "correctiveAction": ""
 }
 JSON
@@ -436,41 +423,61 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step21-assessment.json \
+  --data @/tmp/terrascope-step22-assessment.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/assess" \
   >/dev/null
 
-echo "[PASS] EVIDENCE_EXERCISE_SOURCE"
+echo "[PASS] AUDIT_LEDGER_EXERCISE"
 
 echo
-echo "===== CREATE RESILIENCE CERTIFICATION ====="
+echo "===== CERTIFY INCIDENT ====="
 
-CERT_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step21-certification.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification"
-)"
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification" \
+  >/tmp/terrascope-step22-certification.json
 
-echo "RESILIENCE_CERTIFICATION_HTTP=${CERT_HTTP}"
-
-[[ "${CERT_HTTP}" == "200" ]]
-
-CERTIFICATION_ID="$(
-  python3 - <<'PY'
+python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-certification.json",
+    "/tmp/terrascope-step22-certification.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["certificationNumber"] == 1
 assert payload["status"] == "CERTIFIED"
-assert payload["averageLatestReadinessScore"] == 94.0
+assert payload["certificationNumber"] == 1
+assert payload["averageLatestReadinessScore"] == 96.0
+
+print(
+    "[PASS] AUDIT_LEDGER_CERTIFICATION"
+)
+PY
+
+echo
+echo "===== CREATE EVIDENCE PACKAGE #1 ====="
+
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages" \
+  >/tmp/terrascope-step22-package-one.json
+
+PACKAGE_ONE_ID="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step22-package-one.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["packageNumber"] == 1
 
 print(
     payload["id"]
@@ -478,71 +485,12 @@ print(
 PY
 )"
 
-echo "CERTIFICATION_ID=${CERTIFICATION_ID}"
-
-echo "[PASS] EVIDENCE_CERTIFICATION_SOURCE"
-
-echo
-echo "===== EVIDENCE PREVIEW ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/preview" \
-  >/tmp/terrascope-step21-preview.json
-
-python3 - <<'PY'
-import json
-import re
-
-with open(
-    "/tmp/terrascope-step21-preview.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["certificationNumber"] == 1
-assert payload["certificationReadinessScore"] == 94.0
-assert payload["certificationCount"] == 1
-
-assert payload["afterActionReviewCount"] == 1
-assert payload["sitrepCount"] == 1
-assert payload["improvementCount"] == 1
-assert payload["exerciseCount"] == 1
-assert payload["correctiveActionCount"] == 0
-
-assert payload["timelineEventCount"] > 0
-
-assert (
-    payload["manifestVersion"]
-    == "TS-RESILIENCE-EVIDENCE-V1"
-)
-
-assert re.fullmatch(
-    r"[0-9a-f]{64}",
-    payload["manifestHash"],
-)
-
-assert (
-    "generated locally with SHA-256"
-    in payload["executiveSummary"]
-)
-
-print(
-    "[PASS] EVIDENCE_PREVIEW"
-)
-
-print(
-    "[PASS] EVIDENCE_CANONICAL_HASH"
-)
-PY
-
-PREVIEW_HASH="$(
+PACKAGE_ONE_HASH="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-preview.json",
+    "/tmp/terrascope-step22-package-one.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -553,55 +501,109 @@ print(
 PY
 )"
 
-echo "PREVIEW_HASH=${PREVIEW_HASH}"
+echo "PACKAGE_ONE_ID=${PACKAGE_ONE_ID}"
+echo "PACKAGE_ONE_HASH=${PACKAGE_ONE_HASH}"
+
+echo "[PASS] AUDIT_LEDGER_EVIDENCE_PACKAGE_ONE"
 
 echo
-echo "===== CREATE EVIDENCE PACKAGE #1 ====="
+echo "===== GENESIS RECEIPT PREVIEW ====="
 
-PACKAGE_ONE_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step21-package-one.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages"
-)"
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/preview" \
+  >/tmp/terrascope-step22-preview-one.json
 
-echo "EVIDENCE_PACKAGE_ONE_HTTP=${PACKAGE_ONE_HTTP}"
-
-[[ "${PACKAGE_ONE_HTTP}" == "200" ]]
-
-PACKAGE_ONE_ID="$(
-  python3 - "${PREVIEW_HASH}" <<'PY'
+python3 - "${PACKAGE_ONE_ID}" "${PACKAGE_ONE_HASH}" <<'PY'
 import json
+import re
 import sys
 
-expected_hash = sys.argv[1]
+package_id = sys.argv[1]
+package_hash = sys.argv[2]
 
 with open(
-    "/tmp/terrascope-step21-package-one.json",
+    "/tmp/terrascope-step22-preview-one.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["packageNumber"] == 1
+assert payload["nextReceiptNumber"] == 1
 
-assert payload["certificationNumber"] == 1
-assert payload["certificationReadinessScore"] == 94.0
+assert payload["evidencePackageId"] == package_id
+assert payload["evidencePackageNumber"] == 1
 
-assert payload["certificationCount"] == 1
-assert payload["afterActionReviewCount"] == 1
-assert payload["sitrepCount"] == 1
-assert payload["improvementCount"] == 1
-assert payload["exerciseCount"] == 1
-assert payload["correctiveActionCount"] == 0
+assert payload["packageManifestHash"] == package_hash
+
+assert payload["latestPackageReceipted"] is False
+
+assert payload["previousReceiptHash"] is None
 
 assert (
-    payload["manifestVersion"]
-    == "TS-RESILIENCE-EVIDENCE-V1"
+    payload["ledgerVersion"]
+    == "TS-RESILIENCE-AUDIT-LEDGER-V1"
 )
 
-assert payload["manifestHash"] == expected_hash
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["ledgerHash"],
+)
+
+print(
+    "[PASS] AUDIT_LEDGER_GENESIS_PREVIEW"
+)
+PY
+
+echo
+echo "===== CREATE AUDIT RECEIPT #1 ====="
+
+RECEIPT_ONE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step22-receipt-one.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/receipts"
+)"
+
+echo "AUDIT_RECEIPT_ONE_HTTP=${RECEIPT_ONE_HTTP}"
+
+[[ "${RECEIPT_ONE_HTTP}" == "200" ]]
+
+RECEIPT_ONE_ID="$(
+  python3 - "${PACKAGE_ONE_ID}" "${PACKAGE_ONE_HASH}" <<'PY'
+import json
+import re
+import sys
+
+package_id = sys.argv[1]
+package_hash = sys.argv[2]
+
+with open(
+    "/tmp/terrascope-step22-receipt-one.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["receiptNumber"] == 1
+
+assert payload["evidencePackageId"] == package_id
+assert payload["evidencePackageNumber"] == 1
+
+assert payload["packageManifestHash"] == package_hash
+
+assert payload["previousReceiptHash"] is None
+
+assert (
+    payload["ledgerVersion"]
+    == "TS-RESILIENCE-AUDIT-LEDGER-V1"
+)
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["ledgerHash"],
+)
 
 print(
     payload["id"]
@@ -609,44 +611,73 @@ print(
 PY
 )"
 
-echo "PACKAGE_ONE_ID=${PACKAGE_ONE_ID}"
+RECEIPT_ONE_HASH="$(
+  python3 - <<'PY'
+import json
 
-echo "[PASS] EVIDENCE_PACKAGE_ONE_CREATE"
+with open(
+    "/tmp/terrascope-step22-receipt-one.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+print(
+    payload["ledgerHash"]
+)
+PY
+)"
+
+echo "RECEIPT_ONE_ID=${RECEIPT_ONE_ID}"
+echo "RECEIPT_ONE_HASH=${RECEIPT_ONE_HASH}"
+
+echo "[PASS] AUDIT_LEDGER_GENESIS_RECEIPT"
 
 echo
-echo "===== VERIFY EVIDENCE PACKAGE #1 ====="
+echo "===== VERIFY SINGLE-RECEIPT LEDGER ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages/${PACKAGE_ONE_ID}/verify" \
-  >/tmp/terrascope-step21-verify-one.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/verify" \
+  >/tmp/terrascope-step22-verify-one.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-verify-one.json",
+    "/tmp/terrascope-step22-verify-one.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["valid"] is True
-
-assert (
-    payload["storedHash"]
-    == payload["recomputedHash"]
-)
-
-assert (
-    payload["manifestVersion"]
-    == "TS-RESILIENCE-EVIDENCE-V1"
-)
+assert payload["receiptCount"] == 1
+assert payload["verifiedReceiptCount"] == 1
+assert payload["brokenReceiptId"] is None
+assert payload["brokenReceiptNumber"] is None
 
 print(
-    "[PASS] EVIDENCE_PACKAGE_INTEGRITY"
+    "[PASS] AUDIT_LEDGER_SINGLE_RECEIPT_INTEGRITY"
 )
 PY
+
+echo
+echo "===== DUPLICATE PACKAGE RECEIPT GUARD ====="
+
+DUPLICATE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step22-duplicate.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/receipts"
+)"
+
+echo "DUPLICATE_PACKAGE_RECEIPT_HTTP=${DUPLICATE_HTTP}"
+
+[[ "${DUPLICATE_HTTP}" == "409" ]]
+
+echo "[PASS] AUDIT_LEDGER_DUPLICATE_PACKAGE_GUARD"
 
 echo
 echo "===== CREATE EVIDENCE PACKAGE #2 ====="
@@ -656,20 +687,19 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages" \
-  >/tmp/terrascope-step21-package-two.json
+  >/tmp/terrascope-step22-package-two.json
 
 PACKAGE_TWO_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-package-two.json",
+    "/tmp/terrascope-step22-package-two.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["packageNumber"] == 2
-assert payload["certificationNumber"] == 1
 
 print(
     payload["id"]
@@ -682,7 +712,7 @@ PACKAGE_TWO_HASH="$(
 import json
 
 with open(
-    "/tmp/terrascope-step21-package-two.json",
+    "/tmp/terrascope-step22-package-two.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -696,57 +726,306 @@ PY
 echo "PACKAGE_TWO_ID=${PACKAGE_TWO_ID}"
 echo "PACKAGE_TWO_HASH=${PACKAGE_TWO_HASH}"
 
-[[ "${PACKAGE_TWO_HASH}" != "${PREVIEW_HASH}" ]]
+[[ "${PACKAGE_TWO_HASH}" != "${PACKAGE_ONE_HASH}" ]]
 
-echo "[PASS] EVIDENCE_PACKAGE_SEQUENCE"
-echo "[PASS] EVIDENCE_TIMELINE_SENSITIVE_MANIFEST"
+echo "[PASS] AUDIT_LEDGER_EVIDENCE_PACKAGE_TWO"
 
 echo
-echo "===== EVIDENCE PACKAGE HISTORY ====="
+echo "===== CHAINED RECEIPT PREVIEW ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages" \
-  >/tmp/terrascope-step21-history.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/preview" \
+  >/tmp/terrascope-step22-preview-two.json
+
+python3 \
+  - "${PACKAGE_TWO_ID}" \
+  "${PACKAGE_TWO_HASH}" \
+  "${RECEIPT_ONE_HASH}" \
+<<'PY'
+import json
+import re
+import sys
+
+package_id = sys.argv[1]
+package_hash = sys.argv[2]
+previous_hash = sys.argv[3]
+
+with open(
+    "/tmp/terrascope-step22-preview-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["nextReceiptNumber"] == 2
+
+assert payload["evidencePackageId"] == package_id
+assert payload["evidencePackageNumber"] == 2
+
+assert payload["packageManifestHash"] == package_hash
+
+assert payload["latestPackageReceipted"] is False
+
+assert payload["previousReceiptHash"] == previous_hash
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["ledgerHash"],
+)
+
+print(
+    "[PASS] AUDIT_LEDGER_CHAINED_PREVIEW"
+)
+PY
+
+echo
+echo "===== CREATE AUDIT RECEIPT #2 ====="
+
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/receipts" \
+  >/tmp/terrascope-step22-receipt-two.json
+
+RECEIPT_TWO_ID="$(
+  python3 \
+    - "${PACKAGE_TWO_ID}" \
+    "${PACKAGE_TWO_HASH}" \
+    "${RECEIPT_ONE_HASH}" \
+  <<'PY'
+import json
+import re
+import sys
+
+package_id = sys.argv[1]
+package_hash = sys.argv[2]
+previous_hash = sys.argv[3]
+
+with open(
+    "/tmp/terrascope-step22-receipt-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["receiptNumber"] == 2
+
+assert payload["evidencePackageId"] == package_id
+assert payload["evidencePackageNumber"] == 2
+
+assert payload["packageManifestHash"] == package_hash
+
+assert payload["previousReceiptHash"] == previous_hash
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["ledgerHash"],
+)
+
+print(
+    payload["id"]
+)
+PY
+)"
+
+RECEIPT_TWO_HASH="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step22-receipt-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+print(
+    payload["ledgerHash"]
+)
+PY
+)"
+
+echo "RECEIPT_TWO_ID=${RECEIPT_TWO_ID}"
+echo "RECEIPT_TWO_HASH=${RECEIPT_TWO_HASH}"
+
+[[ "${RECEIPT_TWO_HASH}" != "${RECEIPT_ONE_HASH}" ]]
+
+echo "[PASS] AUDIT_LEDGER_CHAINED_RECEIPT"
+
+echo
+echo "===== VERIFY TWO-RECEIPT CHAIN ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/verify" \
+  >/tmp/terrascope-step22-verify-two.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-history.json",
+    "/tmp/terrascope-step22-verify-two.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-packages = payload["packages"]
+assert payload["valid"] is True
+assert payload["receiptCount"] == 2
+assert payload["verifiedReceiptCount"] == 2
 
-assert len(packages) == 2
-
-assert packages[0]["packageNumber"] == 2
-assert packages[1]["packageNumber"] == 1
-
-assert packages[0]["manifestHash"] != packages[1]["manifestHash"]
+assert payload["brokenReceiptId"] is None
+assert payload["brokenReceiptNumber"] is None
 
 print(
-    "[PASS] EVIDENCE_PACKAGE_HISTORY"
+    "[PASS] AUDIT_LEDGER_CHAIN_INTEGRITY"
 )
 PY
 
 echo
-echo "===== EVIDENCE TIMELINE ====="
+echo "===== LEDGER HISTORY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/receipts" \
+  >/tmp/terrascope-step22-history.json
+
+python3 \
+  - "${RECEIPT_ONE_HASH}" \
+  "${RECEIPT_TWO_HASH}" \
+<<'PY'
+import json
+import sys
+
+first_hash = sys.argv[1]
+second_hash = sys.argv[2]
+
+with open(
+    "/tmp/terrascope-step22-history.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+receipts = payload["receipts"]
+
+assert len(receipts) == 2
+
+assert receipts[0]["receiptNumber"] == 2
+assert receipts[1]["receiptNumber"] == 1
+
+assert receipts[0]["previousReceiptHash"] == first_hash
+assert receipts[0]["ledgerHash"] == second_hash
+
+assert receipts[1]["previousReceiptHash"] is None
+assert receipts[1]["ledgerHash"] == first_hash
+
+print(
+    "[PASS] AUDIT_LEDGER_HISTORY"
+)
+PY
+
+echo
+echo "===== TAMPER DETECTION ====="
+
+docker compose exec -T postgres \
+  psql \
+    -U terrascope \
+    -d terrascope \
+    -c "
+      UPDATE incident_resilience_audit_receipts
+      SET previous_receipt_hash =
+          '0000000000000000000000000000000000000000000000000000000000000000'
+      WHERE id =
+            '${RECEIPT_TWO_ID}'::uuid;
+    " \
+  >/dev/null
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/verify" \
+  >/tmp/terrascope-step22-tampered.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step22-tampered.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is False
+
+assert payload["receiptCount"] == 2
+assert payload["verifiedReceiptCount"] == 1
+
+assert payload["brokenReceiptNumber"] == 2
+
+assert (
+    "Previous receipt hash"
+    in payload["message"]
+)
+
+print(
+    "[PASS] AUDIT_LEDGER_TAMPER_DETECTION"
+)
+PY
+
+echo
+echo "===== RESTORE CHAIN ====="
+
+docker compose exec -T postgres \
+  psql \
+    -U terrascope \
+    -d terrascope \
+    -c "
+      UPDATE incident_resilience_audit_receipts
+      SET previous_receipt_hash =
+          '${RECEIPT_ONE_HASH}'
+      WHERE id =
+            '${RECEIPT_TWO_ID}'::uuid;
+    " \
+  >/dev/null
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-audit-ledger/verify" \
+  >/tmp/terrascope-step22-restored.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step22-restored.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is True
+assert payload["verifiedReceiptCount"] == 2
+
+print(
+    "[PASS] AUDIT_LEDGER_RESTORATION_VERIFIED"
+)
+PY
+
+echo
+echo "===== TIMELINE EVIDENCE ====="
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step21-detail.json
+  >/tmp/terrascope-step22-detail.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step21-detail.json",
+    "/tmp/terrascope-step22-detail.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -758,26 +1037,29 @@ types = [
 
 assert (
     types.count(
+        "RESILIENCE_AUDIT_RECEIPT_CREATED"
+    )
+    == 2
+)
+
+assert (
+    types.count(
         "RESILIENCE_EVIDENCE_PACKAGE_CREATED"
     )
     == 2
 )
 
 assert "RESILIENCE_CERTIFICATION_CREATED" in types
-assert "AFTER_ACTION_REVIEW_CREATED" in types
-assert "SITREP_CREATED" in types
-assert "IMPROVEMENT_STATUS_CHANGED" in types
-assert "PREPAREDNESS_EXERCISE_ASSESSED" in types
 
 print(
-    "[PASS] EVIDENCE_TIMELINE_CONTRACT"
+    "[PASS] AUDIT_LEDGER_TIMELINE_CONTRACT"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-EVIDENCE_COLUMNS="$(
+LEDGER_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -788,12 +1070,12 @@ EVIDENCE_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name =
-            'incident_resilience_evidence_packages';
+            'incident_resilience_audit_receipts';
       " \
     | tr -d '[:space:]'
 )"
 
-EVIDENCE_ROWS="$(
+LEDGER_ROWS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -801,14 +1083,14 @@ EVIDENCE_ROWS="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_resilience_evidence_packages
+      FROM incident_resilience_audit_receipts
       WHERE incident_id =
             '${INCIDENT_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
 
-CERT_FK="$(
+PACKAGE_FK="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -818,15 +1100,15 @@ CERT_FK="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conrelid =
-            'incident_resilience_evidence_packages'::regclass
+            'incident_resilience_audit_receipts'::regclass
         AND contype = 'f'
         AND pg_get_constraintdef(oid)
-            LIKE '%incident_resilience_certifications%';
+            LIKE '%incident_resilience_evidence_packages%';
       " \
     | tr -d '[:space:]'
 )"
 
-UNIQUE_COUNT="$(
+RECEIPT_UNIQUE="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -836,7 +1118,22 @@ UNIQUE_COUNT="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conname =
-            'uq_resilience_evidence_package_number';
+            'uq_resilience_audit_receipt_number';
+      " \
+    | tr -d '[:space:]'
+)"
+
+PACKAGE_UNIQUE="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conname =
+            'uq_resilience_audit_evidence_package';
       " \
     | tr -d '[:space:]'
 )"
@@ -855,27 +1152,29 @@ TIMELINE_CONSTRAINT="$(
         AND conname =
             'ck_incident_timeline_type'
         AND pg_get_constraintdef(oid)
-            LIKE '%RESILIENCE_EVIDENCE_PACKAGE_CREATED%';
+            LIKE '%RESILIENCE_AUDIT_RECEIPT_CREATED%';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "EVIDENCE_PACKAGE_COLUMN_COUNT=${EVIDENCE_COLUMNS}"
-echo "EVIDENCE_PACKAGE_ROW_COUNT=${EVIDENCE_ROWS}"
-echo "EVIDENCE_CERTIFICATION_FK_COUNT=${CERT_FK}"
-echo "EVIDENCE_PACKAGE_UNIQUE_COUNT=${UNIQUE_COUNT}"
-echo "EVIDENCE_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT}"
+echo "AUDIT_LEDGER_COLUMN_COUNT=${LEDGER_COLUMNS}"
+echo "AUDIT_LEDGER_ROW_COUNT=${LEDGER_ROWS}"
+echo "AUDIT_LEDGER_PACKAGE_FK_COUNT=${PACKAGE_FK}"
+echo "AUDIT_LEDGER_RECEIPT_UNIQUE_COUNT=${RECEIPT_UNIQUE}"
+echo "AUDIT_LEDGER_PACKAGE_UNIQUE_COUNT=${PACKAGE_UNIQUE}"
+echo "AUDIT_LEDGER_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT}"
 
-[[ "${EVIDENCE_COLUMNS}" == "17" ]]
-[[ "${EVIDENCE_ROWS}" == "2" ]]
-[[ "${CERT_FK}" == "1" ]]
-[[ "${UNIQUE_COUNT}" == "1" ]]
+[[ "${LEDGER_COLUMNS}" == "11" ]]
+[[ "${LEDGER_ROWS}" == "2" ]]
+[[ "${PACKAGE_FK}" == "1" ]]
+[[ "${RECEIPT_UNIQUE}" == "1" ]]
+[[ "${PACKAGE_UNIQUE}" == "1" ]]
 [[ "${TIMELINE_CONSTRAINT}" == "1" ]]
 
-echo "[PASS] EVIDENCE_DATABASE_CONTRACT"
+echo "[PASS] AUDIT_LEDGER_DATABASE_CONTRACT"
 
 echo
-echo "===== CLEAN STEP 21 FIXTURE ====="
+echo "===== CLEAN STEP 22 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -885,7 +1184,7 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step21-incident';
+            'verification-step22-incident';
     " \
   >/dev/null
 
@@ -899,12 +1198,12 @@ VERIFY_INCIDENT_COUNT="$(
       SELECT COUNT(*)
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step21-incident';
+            'verification-step22-incident';
       " \
     | tr -d '[:space:]'
 )"
 
-ORPHAN_EVIDENCE_COUNT="$(
+ORPHAN_LEDGER_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -912,26 +1211,26 @@ ORPHAN_EVIDENCE_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_resilience_evidence_packages evidence
+      FROM incident_resilience_audit_receipts receipt
       WHERE NOT EXISTS (
           SELECT 1
           FROM incident_cases incident
           WHERE incident.id =
-                evidence.incident_id
+                receipt.incident_id
       );
       " \
     | tr -d '[:space:]'
 )"
 
 echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
-echo "ORPHAN_EVIDENCE_PACKAGE_COUNT=${ORPHAN_EVIDENCE_COUNT}"
+echo "ORPHAN_AUDIT_LEDGER_COUNT=${ORPHAN_LEDGER_COUNT}"
 
 [[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
-[[ "${ORPHAN_EVIDENCE_COUNT}" == "0" ]]
+[[ "${ORPHAN_LEDGER_COUNT}" == "0" ]]
 
-echo "[PASS] EVIDENCE_CLEANUP"
+echo "[PASS] AUDIT_LEDGER_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 21 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 22 VERIFICATION PASSED"
 echo "========================================================================"
