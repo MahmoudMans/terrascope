@@ -64,7 +64,13 @@ export type IncidentTimelineEvent = {
     | "SHELTER_OCCUPANCY_CHANGED"
     | "SHELTER_STATUS_CHANGED"
     | "SHELTER_OWNER_CHANGED"
-    | "SHELTER_DELETED";
+    | "SHELTER_DELETED"
+    | "LIFELINE_ASSET_CREATED"
+    | "LIFELINE_STATUS_CHANGED"
+    | "LIFELINE_IMPACT_CHANGED"
+    | "LIFELINE_OWNER_CHANGED"
+    | "LIFELINE_ETA_CHANGED"
+    | "LIFELINE_ASSET_DELETED";
   message: string;
   createdAt: string;
 };

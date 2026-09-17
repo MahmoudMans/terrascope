@@ -48,6 +48,10 @@ import {
   IncidentEvacuationBoard,
 } from "@/components/incident-evacuation-board";
 
+import {
+  IncidentLifelineBoard,
+} from "@/components/incident-lifeline-board";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -921,6 +925,43 @@ export function SituationRoomPanel({
                         Add note
                       </button>
                     </form>
+
+                    <IncidentLifelineBoard
+                      key={
+                        `lifelines-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      incidentStatus={
+                        detail.incident.status
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh lifeline timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
 
                     <IncidentEvacuationBoard
                       key={

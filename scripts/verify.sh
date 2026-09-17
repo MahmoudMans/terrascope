@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step11-backend.log"
+BACKEND_LOG="/tmp/terrascope-step12-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -19,6 +19,11 @@ cleanup() {
 }
 
 trap cleanup EXIT
+
+echo
+echo "========================================================================"
+echo " TERRASCOPE — STEP 12 VERIFICATION"
+echo "========================================================================"
 
 docker compose config >/dev/null
 echo "[PASS] COMPOSE_CONFIGURATION"
@@ -106,26 +111,26 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step11-status.json
+  >/tmp/terrascope-step12-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-status.json",
+    "/tmp/terrascope-step12-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.11.0"
+assert payload["version"] == "0.12.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in 1 2 3 4 5 6 7 8 9 10 11; do
+for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12; do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -146,7 +151,7 @@ for VERSION in 1 2 3 4 5 6 7 8 9 10 11; do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V11_RUNTIME"
+echo "[PASS] FLYWAY_V12_RUNTIME"
 
 docker compose exec -T postgres \
   psql \
@@ -156,19 +161,19 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step11-incident';
+            'verification-step12-incident';
     " \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step11-incident.json \
+  /tmp/terrascope-step12-incident.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step11-incident",
-  "hazardType": "wildfires",
-  "title": "Verification evacuation incident",
-  "description": "Step 11 evacuation and shelter verification.",
+  "sourceEventId": "verification-step12-incident",
+  "hazardType": "severe-storms",
+  "title": "Verification lifeline incident",
+  "description": "Step 12 critical infrastructure verification.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
@@ -181,16 +186,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step11-incident.json \
+  --data @/tmp/terrascope-step12-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step11-incident-response.json
+  >/tmp/terrascope-step12-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-incident-response.json",
+    "/tmp/terrascope-step12-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -202,88 +207,104 @@ PY
 )"
 
 echo "INCIDENT_ID=${INCIDENT_ID}"
-echo "[PASS] EVACUATION_INCIDENT_CREATE"
+echo "[PASS] LIFELINE_INCIDENT_CREATE"
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation" \
-  >/tmp/terrascope-step11-empty.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines" \
+  >/tmp/terrascope-step12-empty.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-empty.json",
+    "/tmp/terrascope-step12-empty.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["zoneCount"] == 0
-assert payload["shelterCount"] == 0
-assert payload["populationAtRisk"] == 0
-assert payload["remainingShelterCapacity"] == 0
+assert payload["totalCount"] == 0
+assert payload["disruptedCount"] == 0
+assert payload["affectedPopulation"] == 0
+assert payload["assets"] == []
 
 print(
-    "[PASS] EVACUATION_BOARD_EMPTY_CONTRACT"
+    "[PASS] LIFELINE_BOARD_EMPTY_CONTRACT"
 )
 PY
 
 cat > \
-  /tmp/terrascope-step11-zone.json \
+  /tmp/terrascope-step12-asset.json \
 <<'JSON'
 {
-  "name": "Verification Zone Alpha",
-  "description": "High-priority evacuation area.",
+  "category": "POWER",
+  "name": "Verification Grid Alpha",
+  "description": "Primary electrical distribution grid.",
   "priority": "CRITICAL",
-  "populationAtRisk": 1000,
-  "evacuatedPopulation": 100,
-  "owner": "Evac Alpha"
+  "status": "OUTAGE",
+  "affectedPopulation": 5000,
+  "owner": "Utility Alpha",
+  "restorationEta": "2030-01-01T00:00:00Z"
 }
 JSON
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step11-zone.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/zones" \
-  >/tmp/terrascope-step11-zone-response.json
+CREATE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step12-asset-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step12-asset.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines"
+)"
 
-ZONE_ID="$(
+echo "LIFELINE_CREATE_HTTP=${CREATE_HTTP}"
+
+[[ "${CREATE_HTTP}" == "200" ]]
+
+ASSET_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-zone-response.json",
+    "/tmp/terrascope-step12-asset-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["zoneCount"] == 1
-assert payload["activeZoneCount"] == 1
-assert payload["populationAtRisk"] == 1000
-assert payload["evacuatedPopulation"] == 100
-assert payload["remainingToEvacuate"] == 900
+assert payload["totalCount"] == 1
+assert payload["outageCount"] == 1
+assert payload["degradedCount"] == 0
+assert payload["disruptedCount"] == 1
+assert payload["criticalDisruptionCount"] == 1
+assert payload["affectedPopulation"] == 5000
+assert payload["etaTrackedCount"] == 1
 
-zone = payload["zones"][0]
+asset = payload["assets"][0]
 
-assert zone["status"] == "EVACUATING"
-assert zone["priority"] == "CRITICAL"
+assert asset["category"] == "POWER"
+assert asset["status"] == "OUTAGE"
+assert asset["priority"] == "CRITICAL"
+assert asset["affectedPopulation"] == 5000
+assert asset["owner"] == "Utility Alpha"
+assert asset["restorationEta"] == "2030-01-01T00:00:00Z"
 
-print(zone["id"])
+print(asset["id"])
 PY
 )"
 
-echo "ZONE_ID=${ZONE_ID}"
-echo "[PASS] EVACUATION_ZONE_CREATE"
+echo "ASSET_ID=${ASSET_ID}"
+
+echo "[PASS] LIFELINE_ASSET_CREATE"
+echo "[PASS] LIFELINE_DISRUPTION_INTELLIGENCE"
 
 cat > \
-  /tmp/terrascope-step11-progress.json \
+  /tmp/terrascope-step12-owner.json \
 <<'JSON'
 {
-  "evacuatedPopulation": 1000
+  "owner": "Grid Response Team"
 }
 JSON
 
@@ -292,115 +313,34 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step11-progress.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/zones/${ZONE_ID}/progress" \
-  >/tmp/terrascope-step11-progress-response.json
+  --data @/tmp/terrascope-step12-owner.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines/${ASSET_ID}/owner" \
+  >/tmp/terrascope-step12-owner-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-progress-response.json",
+    "/tmp/terrascope-step12-owner-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["activeZoneCount"] == 0
-assert payload["clearedZoneCount"] == 1
-assert payload["evacuatedPopulation"] == 1000
-assert payload["remainingToEvacuate"] == 0
-
-zone = payload["zones"][0]
-
-assert zone["status"] == "CLEARED"
-assert zone["completedAt"] is not None
+assert (
+    payload["assets"][0]["owner"]
+    == "Grid Response Team"
+)
 
 print(
-    "[PASS] EVACUATION_AUTO_CLEAR"
+    "[PASS] LIFELINE_OWNER_UPDATE"
 )
 PY
 
 cat > \
-  /tmp/terrascope-step11-invalid-progress.json \
+  /tmp/terrascope-step12-eta.json \
 <<'JSON'
 {
-  "evacuatedPopulation": 1001
-}
-JSON
-
-INVALID_EVAC_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step11-invalid-progress-response.json \
-    --write-out '%{http_code}' \
-    --request PATCH \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step11-invalid-progress.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/zones/${ZONE_ID}/progress"
-)"
-
-echo "INVALID_EVACUATION_HTTP=${INVALID_EVAC_HTTP}"
-
-[[ "${INVALID_EVAC_HTTP}" == "400" ]]
-
-echo "[PASS] EVACUATION_POPULATION_BOUNDARY"
-
-cat > \
-  /tmp/terrascope-step11-shelter.json \
-<<'JSON'
-{
-  "name": "Verification Shelter Alpha",
-  "address": "Verification address",
-  "capacity": 100,
-  "occupancy": 20,
-  "owner": "Shelter Alpha"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step11-shelter.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/shelters" \
-  >/tmp/terrascope-step11-shelter-response.json
-
-SHELTER_ID="$(
-  python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step11-shelter-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["shelterCount"] == 1
-assert payload["openShelterCount"] == 1
-assert payload["fullShelterCount"] == 0
-
-assert payload["shelterCapacity"] == 100
-assert payload["shelterOccupancy"] == 20
-assert payload["remainingShelterCapacity"] == 80
-
-shelter = payload["shelters"][0]
-
-assert shelter["status"] == "OPEN"
-
-print(shelter["id"])
-PY
-)"
-
-echo "SHELTER_ID=${SHELTER_ID}"
-echo "[PASS] SHELTER_CREATE"
-echo "[PASS] SHELTER_CAPACITY_INTELLIGENCE"
-
-cat > \
-  /tmp/terrascope-step11-occupancy.json \
-<<'JSON'
-{
-  "occupancy": 100
+  "restorationEta": "2031-01-01T00:00:00Z"
 }
 JSON
 
@@ -409,64 +349,36 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step11-occupancy.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/shelters/${SHELTER_ID}/occupancy" \
-  >/tmp/terrascope-step11-occupancy-response.json
+  --data @/tmp/terrascope-step12-eta.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines/${ASSET_ID}/restoration-eta" \
+  >/tmp/terrascope-step12-eta-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-occupancy-response.json",
+    "/tmp/terrascope-step12-eta-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["openShelterCount"] == 0
-assert payload["fullShelterCount"] == 1
+assert (
+    payload["assets"][0]["restorationEta"]
+    == "2031-01-01T00:00:00Z"
+)
 
-assert payload["shelterOccupancy"] == 100
-assert payload["remainingShelterCapacity"] == 0
-
-shelter = payload["shelters"][0]
-
-assert shelter["status"] == "FULL"
+assert payload["etaTrackedCount"] == 1
 
 print(
-    "[PASS] SHELTER_AUTO_FULL"
+    "[PASS] LIFELINE_ETA_UPDATE"
 )
 PY
 
 cat > \
-  /tmp/terrascope-step11-invalid-occupancy.json \
+  /tmp/terrascope-step12-impact.json \
 <<'JSON'
 {
-  "occupancy": 101
-}
-JSON
-
-INVALID_SHELTER_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step11-invalid-shelter-response.json \
-    --write-out '%{http_code}' \
-    --request PATCH \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step11-invalid-occupancy.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/shelters/${SHELTER_ID}/occupancy"
-)"
-
-echo "INVALID_SHELTER_HTTP=${INVALID_SHELTER_HTTP}"
-
-[[ "${INVALID_SHELTER_HTTP}" == "400" ]]
-
-echo "[PASS] SHELTER_OCCUPANCY_BOUNDARY"
-
-cat > \
-  /tmp/terrascope-step11-shelter-close.json \
-<<'JSON'
-{
-  "status": "CLOSED"
+  "affectedPopulation": 3000
 }
 JSON
 
@@ -475,61 +387,135 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step11-shelter-close.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/shelters/${SHELTER_ID}/status" \
-  >/tmp/terrascope-step11-shelter-close-response.json
+  --data @/tmp/terrascope-step12-impact.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines/${ASSET_ID}/impact" \
+  >/tmp/terrascope-step12-impact-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-shelter-close-response.json",
+    "/tmp/terrascope-step12-impact-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["closedShelterCount"] == 1
-assert payload["shelterCapacity"] == 0
-assert payload["shelterOccupancy"] == 0
+assert payload["affectedPopulation"] == 3000
 
-shelter = payload["shelters"][0]
-
-assert shelter["status"] == "CLOSED"
-assert shelter["closedAt"] is not None
+assert (
+    payload["assets"][0]["affectedPopulation"]
+    == 3000
+)
 
 print(
-    "[PASS] SHELTER_CLOSE"
+    "[PASS] LIFELINE_IMPACT_UPDATE"
 )
 PY
 
-CLOSED_OCCUPANCY_HTTP="$(
+cat > \
+  /tmp/terrascope-step12-restored.json \
+<<'JSON'
+{
+  "status": "RESTORED"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step12-restored.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines/${ASSET_ID}/status" \
+  >/tmp/terrascope-step12-restored-response.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step12-restored-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["outageCount"] == 0
+assert payload["restoredCount"] == 1
+assert payload["disruptedCount"] == 0
+assert payload["affectedPopulation"] == 0
+assert payload["etaTrackedCount"] == 0
+
+asset = payload["assets"][0]
+
+assert asset["status"] == "RESTORED"
+assert asset["affectedPopulation"] == 0
+assert asset["restorationEta"] is None
+assert asset["restoredAt"] is not None
+
+print(
+    "[PASS] LIFELINE_RESTORATION"
+)
+PY
+
+RESTORED_IMPACT_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step11-closed-occupancy-response.json \
+    --output /tmp/terrascope-step12-restored-impact-response.json \
     --write-out '%{http_code}' \
     --request PATCH \
     --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step11-occupancy.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/shelters/${SHELTER_ID}/occupancy"
+    --data @/tmp/terrascope-step12-impact.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines/${ASSET_ID}/impact"
 )"
 
-echo "CLOSED_SHELTER_MUTATION_HTTP=${CLOSED_OCCUPANCY_HTTP}"
+echo "RESTORED_IMPACT_HTTP=${RESTORED_IMPACT_HTTP}"
 
-[[ "${CLOSED_OCCUPANCY_HTTP}" == "409" ]]
+[[ "${RESTORED_IMPACT_HTTP}" == "409" ]]
 
-echo "[PASS] CLOSED_SHELTER_MUTATION_GUARD"
+echo "[PASS] RESTORED_LIFELINE_MUTATION_GUARD"
+
+cat > \
+  /tmp/terrascope-step12-invalid-operational.json \
+<<'JSON'
+{
+  "category": "WATER",
+  "name": "Invalid operational asset",
+  "description": "",
+  "priority": "HIGH",
+  "status": "OPERATIONAL",
+  "affectedPopulation": 100,
+  "owner": "Water Ops",
+  "restorationEta": null
+}
+JSON
+
+INVALID_CREATE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step12-invalid-create-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step12-invalid-operational.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines"
+)"
+
+echo "INVALID_OPERATIONAL_CREATE_HTTP=${INVALID_CREATE_HTTP}"
+
+[[ "${INVALID_CREATE_HTTP}" == "400" ]]
+
+echo "[PASS] LIFELINE_STATUS_IMPACT_BOUNDARY"
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step11-detail.json
+  >/tmp/terrascope-step12-detail.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-detail.json",
+    "/tmp/terrascope-step12-detail.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -540,20 +526,20 @@ types = [
 ]
 
 for expected in (
-    "EVACUATION_ZONE_CREATED",
-    "EVACUATION_PROGRESS_CHANGED",
-    "SHELTER_CREATED",
-    "SHELTER_OCCUPANCY_CHANGED",
-    "SHELTER_STATUS_CHANGED",
+    "LIFELINE_ASSET_CREATED",
+    "LIFELINE_OWNER_CHANGED",
+    "LIFELINE_ETA_CHANGED",
+    "LIFELINE_IMPACT_CHANGED",
+    "LIFELINE_STATUS_CHANGED",
 ):
     assert expected in types
 
 print(
-    "[PASS] EVACUATION_TIMELINE_CONTRACT"
+    "[PASS] LIFELINE_TIMELINE_CONTRACT"
 )
 PY
 
-ZONE_COLUMNS="$(
+LIFELINE_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -564,23 +550,7 @@ ZONE_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name =
-            'incident_evacuation_zones';
-      " \
-    | tr -d '[:space:]'
-)"
-
-SHELTER_COLUMNS="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name =
-            'incident_shelters';
+            'incident_lifeline_assets';
       " \
     | tr -d '[:space:]'
 )"
@@ -599,59 +569,69 @@ TIMELINE_CONSTRAINT_COUNT="$(
         AND conname =
             'ck_incident_timeline_type'
         AND pg_get_constraintdef(oid)
-            LIKE '%EVACUATION_ZONE_CREATED%'
+            LIKE '%LIFELINE_ASSET_CREATED%'
         AND pg_get_constraintdef(oid)
-            LIKE '%SHELTER_CREATED%';
+            LIKE '%LIFELINE_ASSET_DELETED%';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "EVACUATION_ZONE_COLUMN_COUNT=${ZONE_COLUMNS}"
-echo "SHELTER_COLUMN_COUNT=${SHELTER_COLUMNS}"
-echo "EVACUATION_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT_COUNT}"
+echo "LIFELINE_COLUMN_COUNT=${LIFELINE_COLUMNS}"
+echo "LIFELINE_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT_COUNT}"
 
-[[ "${ZONE_COLUMNS}" == "13" ]]
-[[ "${SHELTER_COLUMNS}" == "11" ]]
+[[ "${LIFELINE_COLUMNS}" == "13" ]]
 [[ "${TIMELINE_CONSTRAINT_COUNT}" == "1" ]]
 
-echo "[PASS] EVACUATION_DATABASE_CONTRACT"
+echo "[PASS] LIFELINE_DATABASE_CONTRACT"
 
 curl \
   --fail \
   --silent \
   --request DELETE \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/zones/${ZONE_ID}" \
-  >/tmp/terrascope-step11-zone-delete.json
-
-curl \
-  --fail \
-  --silent \
-  --request DELETE \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/shelters/${SHELTER_ID}" \
-  >/tmp/terrascope-step11-shelter-delete.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines/${ASSET_ID}" \
+  >/tmp/terrascope-step12-delete-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step11-zone-delete.json",
+    "/tmp/terrascope-step12-delete-response.json",
     encoding="utf-8",
 ) as handle:
-    zone_payload = json.load(handle)
+    payload = json.load(handle)
 
-with open(
-    "/tmp/terrascope-step11-shelter-delete.json",
-    encoding="utf-8",
-) as handle:
-    shelter_payload = json.load(handle)
-
-assert zone_payload["zoneCount"] == 0
-
-assert shelter_payload["zoneCount"] == 0
-assert shelter_payload["shelterCount"] == 0
+assert payload["totalCount"] == 0
+assert payload["assets"] == []
 
 print(
-    "[PASS] EVACUATION_ENTITY_DELETE"
+    "[PASS] LIFELINE_ASSET_DELETE"
+)
+PY
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
+  >/tmp/terrascope-step12-detail-after-delete.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step12-detail-after-delete.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+types = [
+    event["eventType"]
+    for event in payload["timeline"]
+]
+
+assert "LIFELINE_ASSET_DELETED" in types
+
+print(
+    "[PASS] LIFELINE_DELETE_TIMELINE"
 )
 PY
 
@@ -663,7 +643,7 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step11-incident';
+            'verification-step12-incident';
     " \
   >/dev/null
 
@@ -677,12 +657,12 @@ VERIFY_INCIDENT_COUNT="$(
       SELECT COUNT(*)
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step11-incident';
+            'verification-step12-incident';
       " \
     | tr -d '[:space:]'
 )"
 
-ORPHAN_ZONE_COUNT="$(
+ORPHAN_LIFELINE_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -690,47 +670,26 @@ ORPHAN_ZONE_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_evacuation_zones zone
+      FROM incident_lifeline_assets asset
       WHERE NOT EXISTS (
           SELECT 1
           FROM incident_cases incident
           WHERE incident.id =
-                zone.incident_id
-      );
-      " \
-    | tr -d '[:space:]'
-)"
-
-ORPHAN_SHELTER_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM incident_shelters shelter
-      WHERE NOT EXISTS (
-          SELECT 1
-          FROM incident_cases incident
-          WHERE incident.id =
-                shelter.incident_id
+                asset.incident_id
       );
       " \
     | tr -d '[:space:]'
 )"
 
 echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
-echo "ORPHAN_EVACUATION_ZONE_COUNT=${ORPHAN_ZONE_COUNT}"
-echo "ORPHAN_SHELTER_COUNT=${ORPHAN_SHELTER_COUNT}"
+echo "ORPHAN_LIFELINE_COUNT=${ORPHAN_LIFELINE_COUNT}"
 
 [[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
-[[ "${ORPHAN_ZONE_COUNT}" == "0" ]]
-[[ "${ORPHAN_SHELTER_COUNT}" == "0" ]]
+[[ "${ORPHAN_LIFELINE_COUNT}" == "0" ]]
 
-echo "[PASS] EVACUATION_CLEANUP"
+echo "[PASS] LIFELINE_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 11 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 12 VERIFICATION PASSED"
 echo "========================================================================"

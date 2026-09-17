@@ -70,6 +70,12 @@ import type {
   ShelterStatus,
 } from "@/types/evacuation-operations";
 
+import type {
+  CreateLifelineAssetRequest,
+  LifelineAssetStatus,
+  LifelineOperationsBoardResponse,
+} from "@/types/lifeline-operations";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -1343,4 +1349,189 @@ export async function deleteIncidentShelter(
   }
 
   return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function fetchLifelineOperationsBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<LifelineOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/lifelines`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Lifeline operations returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<LifelineOperationsBoardResponse>;
+}
+
+export async function createLifelineAsset(
+  incidentId: string,
+  request: CreateLifelineAssetRequest,
+): Promise<LifelineOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/lifelines`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create lifeline asset. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<LifelineOperationsBoardResponse>;
+}
+
+export async function updateLifelineStatus(
+  incidentId: string,
+  assetId: string,
+  status: LifelineAssetStatus,
+): Promise<LifelineOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/lifelines/${assetId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update lifeline status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<LifelineOperationsBoardResponse>;
+}
+
+export async function updateLifelineImpact(
+  incidentId: string,
+  assetId: string,
+  affectedPopulation: number,
+): Promise<LifelineOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/lifelines/${assetId}/impact`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        affectedPopulation,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update lifeline impact. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<LifelineOperationsBoardResponse>;
+}
+
+export async function updateLifelineOwner(
+  incidentId: string,
+  assetId: string,
+  owner: string,
+): Promise<LifelineOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/lifelines/${assetId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update lifeline owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<LifelineOperationsBoardResponse>;
+}
+
+export async function updateLifelineRestorationEta(
+  incidentId: string,
+  assetId: string,
+  restorationEta: string | null,
+): Promise<LifelineOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/lifelines/${assetId}/restoration-eta`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        restorationEta,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update restoration ETA. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<LifelineOperationsBoardResponse>;
+}
+
+export async function deleteLifelineAsset(
+  incidentId: string,
+  assetId: string,
+): Promise<LifelineOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/lifelines/${assetId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete lifeline asset. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<LifelineOperationsBoardResponse>;
 }
