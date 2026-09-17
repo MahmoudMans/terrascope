@@ -5410,3 +5410,328 @@ a:focus-visible {
     grid-column: 1;
   }
 }
+
+.evacuation-board {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(93, 159, 164, 0.09);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.005);
+}
+
+.evacuation-heading,
+.evacuation-section-heading,
+.evacuation-card-top,
+.shelter-capacity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.evacuation-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.evacuation-heading strong,
+.evacuation-section-heading strong {
+  color: #a3b8ba;
+  font-size: 10px;
+}
+
+.evacuation-heading button,
+.evacuation-card-top button {
+  display: flex;
+  height: 27px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #749093;
+  border: 1px solid rgba(106, 153, 158, 0.1);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.evacuation-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.evacuation-summary > div {
+  display: flex;
+  min-height: 47px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 8px;
+  border: 1px solid rgba(105, 152, 157, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.009);
+}
+
+.evacuation-summary span {
+  color: #567074;
+  font-size: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.evacuation-summary strong {
+  color: #adbec0;
+  font-size: 13px;
+}
+
+.evacuation-error {
+  padding: 8px 9px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.evacuation-create-grid,
+.evacuation-zone-list,
+.shelter-list {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.evacuation-form,
+.evacuation-zone-card,
+.shelter-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(108, 154, 159, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.007);
+}
+
+.evacuation-form-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #9fb5b6;
+}
+
+.evacuation-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.evacuation-form label > span {
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.evacuation-form input,
+.evacuation-form select,
+.evacuation-form textarea,
+.evacuation-inline input,
+.evacuation-status-select {
+  width: 100%;
+  color: #8fa5a7;
+  border: 1px solid rgba(106, 150, 155, 0.09);
+  border-radius: 5px;
+  outline: none;
+  background: rgba(3, 9, 11, 0.65);
+  font-size: 7px;
+}
+
+.evacuation-form input,
+.evacuation-form select,
+.evacuation-inline input,
+.evacuation-status-select {
+  height: 29px;
+  padding: 0 7px;
+}
+
+.evacuation-form textarea {
+  min-height: 55px;
+  padding: 7px;
+  resize: vertical;
+}
+
+.evacuation-form > button,
+.evacuation-inline button {
+  display: flex;
+  height: 29px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #8fbdb6;
+  border: 1px solid rgba(86, 172, 160, 0.12);
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.evacuation-section-heading {
+  justify-content: flex-start;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.evacuation-section-heading > span {
+  margin-left: auto;
+  color: #587174;
+  font-size: 7px;
+}
+
+.evac-status,
+.shelter-status,
+.evacuation-priority {
+  padding: 4px 6px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.evac-status--monitoring,
+.shelter-status--open {
+  color: #89b7b4;
+  border-color: rgba(91, 177, 170, 0.17);
+}
+
+.evac-status--evacuating {
+  color: #e0bd76;
+  border-color: rgba(222, 177, 72, 0.19);
+}
+
+.evac-status--cleared {
+  color: #89c99d;
+  border-color: rgba(78, 184, 111, 0.18);
+}
+
+.evac-status--cancelled,
+.shelter-status--closed {
+  color: #74868a;
+  border-color: rgba(112, 139, 143, 0.14);
+}
+
+.shelter-status--full {
+  color: #ff9279;
+  border-color: rgba(255, 113, 77, 0.2);
+}
+
+.evacuation-priority {
+  color: #d7bd7e;
+  border-color: rgba(216, 180, 82, 0.16);
+}
+
+.evacuation-card-top > div {
+  display: flex;
+  gap: 5px;
+}
+
+.evacuation-zone-card > strong,
+.shelter-card > strong {
+  color: #a7bbbd;
+  font-size: 9px;
+}
+
+.evacuation-zone-card p,
+.shelter-card p {
+  margin: 0;
+  color: #60777a;
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.evacuation-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.evacuation-progress > span {
+  color: #789194;
+  font-size: 7px;
+}
+
+.evacuation-progress > div {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(111, 150, 155, 0.08);
+}
+
+.evacuation-progress i {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: rgba(89, 187, 171, 0.55);
+}
+
+.evacuation-meta,
+.shelter-capacity > div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #607a7d;
+  font-size: 7px;
+}
+
+.evacuation-inline {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) auto;
+  gap: 5px;
+}
+
+.shelter-capacity {
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 5px;
+}
+
+.shelter-capacity strong {
+  color: #96adaf;
+  font-size: 7px;
+}
+
+.evacuation-readonly {
+  padding: 8px;
+  color: #71878a;
+  border: 1px solid rgba(108, 149, 154, 0.08);
+  border-radius: 6px;
+  font-size: 8px;
+  text-align: center;
+}
+
+.evacuation-empty {
+  grid-column: 1 / -1;
+  padding: 24px;
+  color: #526b6f;
+  text-align: center;
+  font-size: 8px;
+}
+
+@media (max-width: 700px) {
+  .evacuation-summary {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+
+  .evacuation-create-grid,
+  .evacuation-zone-list,
+  .shelter-list {
+    grid-template-columns: 1fr;
+  }
+}

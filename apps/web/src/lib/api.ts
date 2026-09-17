@@ -62,6 +62,14 @@ import type {
   IncidentResourceBoardResponse,
 } from "@/types/incident-resources";
 
+import type {
+  CreateEvacuationZoneRequest,
+  CreateShelterRequest,
+  EvacuationOperationsBoardResponse,
+  EvacuationZoneStatus,
+  ShelterStatus,
+} from "@/types/evacuation-operations";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -1046,4 +1054,293 @@ export async function deleteIncidentResource(
   }
 
   return response.json() as Promise<IncidentResourceBoardResponse>;
+}
+
+export async function fetchEvacuationOperationsBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Evacuation operations returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function createEvacuationZone(
+  incidentId: string,
+  request: CreateEvacuationZoneRequest,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/zones`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create evacuation zone. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function updateEvacuationProgress(
+  incidentId: string,
+  zoneId: string,
+  evacuatedPopulation: number,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/zones/${zoneId}/progress`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        evacuatedPopulation,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update evacuation progress. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function updateEvacuationZoneStatus(
+  incidentId: string,
+  zoneId: string,
+  status: EvacuationZoneStatus,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/zones/${zoneId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update evacuation zone status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function updateEvacuationZoneOwner(
+  incidentId: string,
+  zoneId: string,
+  owner: string,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/zones/${zoneId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update evacuation owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function deleteEvacuationZone(
+  incidentId: string,
+  zoneId: string,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/zones/${zoneId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete evacuation zone. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function createIncidentShelter(
+  incidentId: string,
+  request: CreateShelterRequest,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/shelters`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create shelter. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function updateShelterOccupancy(
+  incidentId: string,
+  shelterId: string,
+  occupancy: number,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/shelters/${shelterId}/occupancy`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        occupancy,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update shelter occupancy. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function updateShelterStatus(
+  incidentId: string,
+  shelterId: string,
+  status: ShelterStatus,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/shelters/${shelterId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update shelter status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function updateShelterOwner(
+  incidentId: string,
+  shelterId: string,
+  owner: string,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/shelters/${shelterId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update shelter owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
+}
+
+export async function deleteIncidentShelter(
+  incidentId: string,
+  shelterId: string,
+): Promise<EvacuationOperationsBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/evacuation/shelters/${shelterId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete shelter. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvacuationOperationsBoardResponse>;
 }
