@@ -26,6 +26,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Radar,
+  BellRing,
   Waves,
 } from "lucide-react";
 
@@ -59,6 +60,10 @@ import {
 import {
   RegionalIntelligencePanel,
 } from "@/components/regional-intelligence-panel";
+
+import {
+  AlertCenterPanel,
+} from "@/components/alert-center-panel";
 
 import {
   VolcanoList,
@@ -150,6 +155,11 @@ const navItems = [
   {
     label: "Regional",
     icon: Radar,
+    active: true,
+  },
+  {
+    label: "Alerts",
+    icon: BellRing,
     active: true,
   },
   {
@@ -335,6 +345,12 @@ export function DisasterDashboard() {
   const [
     regionalOpen,
     setRegionalOpen,
+  ] =
+    useState(false);
+
+  const [
+    alertCenterOpen,
+    setAlertCenterOpen,
   ] =
     useState(false);
 
@@ -936,6 +952,15 @@ export function DisasterDashboard() {
                     === "Regional"
                   ) {
                     setRegionalOpen(
+                      true,
+                    );
+                  }
+
+                  if (
+                    label
+                    === "Alerts"
+                  ) {
+                    setAlertCenterOpen(
                       true,
                     );
                   }
@@ -2300,6 +2325,13 @@ export function DisasterDashboard() {
           open={regionalOpen}
           onClose={() =>
             setRegionalOpen(false)
+          }
+        />
+
+        <AlertCenterPanel
+          open={alertCenterOpen}
+          onClose={() =>
+            setAlertCenterOpen(false)
           }
         />
 

@@ -32,6 +32,16 @@ import type {
   RegionalAnalysisResult,
 } from "@/types/regional-intelligence";
 
+import type {
+  AlertDashboardResponse,
+  AlertEvaluationResponse,
+  AlertEvent,
+  AlertEventStatus,
+  AlertRule,
+  CreateAlertRuleRequest,
+  EvaluateAlertRulesRequest,
+} from "@/types/alerts";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -331,4 +341,143 @@ export async function fetchRegionalAnalysisHistory(
   }
 
   return response.json() as Promise<RegionalAnalysisHistoryResponse>;
+}
+
+export async function fetchAlertDashboard(
+  signal?: AbortSignal,
+): Promise<AlertDashboardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/alerts`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Alert dashboard returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<AlertDashboardResponse>;
+}
+
+export async function createAlertRule(
+  request: CreateAlertRuleRequest,
+): Promise<AlertRule> {
+  const response = await fetch(
+    `${API_BASE_URL}/alerts/rules`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create alert rule. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<AlertRule>;
+}
+
+export async function setAlertRuleEnabled(
+  id: string,
+  enabled: boolean,
+): Promise<AlertRule> {
+  const response = await fetch(
+    `${API_BASE_URL}/alerts/rules/${id}/enabled?enabled=${enabled}`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update alert rule. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<AlertRule>;
+}
+
+export async function deleteAlertRule(
+  id: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/alerts/rules/${id}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete alert rule. HTTP ${response.status}`,
+    );
+  }
+}
+
+export async function evaluateAlertRules(
+  request: EvaluateAlertRulesRequest,
+): Promise<AlertEvaluationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/alerts/evaluate`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to evaluate alert rules. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<AlertEvaluationResponse>;
+}
+
+export async function updateAlertEventStatus(
+  id: string,
+  status: AlertEventStatus,
+): Promise<AlertEvent> {
+  const response = await fetch(
+    `${API_BASE_URL}/alerts/events/${id}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update alert event. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<AlertEvent>;
 }
