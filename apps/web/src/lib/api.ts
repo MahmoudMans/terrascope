@@ -88,6 +88,12 @@ import type {
   IncidentCommandPulseResponse,
 } from "@/types/command-pulse";
 
+import type {
+  IncidentSitrepHistoryResponse,
+  IncidentSitrepPreview,
+  IncidentSituationReport,
+} from "@/types/sitrep";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -1826,4 +1832,76 @@ export async function createCommandPulseSnapshot(
   }
 
   return response.json() as Promise<CommandPulseSnapshot>;
+}
+
+export async function fetchIncidentSitrepPreview(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<IncidentSitrepPreview> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/sitrep/preview`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `SITREP preview returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentSitrepPreview>;
+}
+
+export async function fetchIncidentSitrepHistory(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<IncidentSitrepHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/sitrep/reports`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `SITREP history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentSitrepHistoryResponse>;
+}
+
+export async function createIncidentSituationReport(
+  incidentId: string,
+): Promise<IncidentSituationReport> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/sitrep/reports`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create situation report. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentSituationReport>;
 }

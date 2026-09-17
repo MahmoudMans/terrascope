@@ -60,6 +60,10 @@ import {
   IncidentCommandPulse,
 } from "@/components/incident-command-pulse";
 
+import {
+  IncidentSitrepCenter,
+} from "@/components/incident-sitrep-center";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -965,6 +969,40 @@ export function SituationRoomPanel({
                                   instanceof Error
                                   ? caughtError.message
                                   : "Unable to refresh command timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
+
+                    <IncidentSitrepCenter
+                      key={
+                        `sitrep-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh SITREP timeline.",
                               );
                             },
                           );
