@@ -56,6 +56,10 @@ import {
   IncidentDamageRecoveryBoard,
 } from "@/components/incident-damage-recovery-board";
 
+import {
+  IncidentCommandPulse,
+} from "@/components/incident-command-pulse";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -929,6 +933,43 @@ export function SituationRoomPanel({
                         Add note
                       </button>
                     </form>
+
+                    <IncidentCommandPulse
+                      key={
+                        `command-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      incidentStatus={
+                        detail.incident.status
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh command timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
 
                     <IncidentDamageRecoveryBoard
                       key={

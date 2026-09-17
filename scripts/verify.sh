@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step13-backend.log"
+BACKEND_LOG="/tmp/terrascope-step14-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -22,7 +22,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 13 VERIFICATION"
+echo " TERRASCOPE — STEP 14 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -111,26 +111,26 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step13-status.json
+  >/tmp/terrascope-step14-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step13-status.json",
+    "/tmp/terrascope-step14-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.13.0"
+assert payload["version"] == "0.14.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
+for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -151,7 +151,10 @@ for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V13_RUNTIME"
+echo "[PASS] FLYWAY_V14_RUNTIME"
+
+echo
+echo "===== CLEAN VERIFICATION FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -161,23 +164,28 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step13-incident';
+            'verification-step14-incident';
     " \
   >/dev/null
 
+echo "[PASS] STEP14_PRE_CLEAN"
+
+echo
+echo "===== CREATE COMMAND INCIDENT ====="
+
 cat > \
-  /tmp/terrascope-step13-incident.json \
+  /tmp/terrascope-step14-incident.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step13-incident",
+  "sourceEventId": "verification-step14-incident",
   "hazardType": "earthquakes",
-  "title": "Verification damage recovery incident",
-  "description": "Step 13 damage assessment and recovery verification.",
+  "title": "Verification command pulse incident",
+  "description": "Cross-functional command pressure verification fixture.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
-  "owner": "Command"
+  "owner": "Incident Command"
 }
 JSON
 
@@ -186,16 +194,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step13-incident.json \
+  --data @/tmp/terrascope-step14-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step13-incident-response.json
+  >/tmp/terrascope-step14-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step13-incident-response.json",
+    "/tmp/terrascope-step14-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -207,178 +215,96 @@ PY
 )"
 
 echo "INCIDENT_ID=${INCIDENT_ID}"
-echo "[PASS] DAMAGE_INCIDENT_CREATE"
+
+echo "[PASS] COMMAND_PULSE_INCIDENT_CREATE"
+
+echo
+echo "===== EMPTY COMMAND PULSE ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage" \
-  >/tmp/terrascope-step13-empty.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/command-pulse" \
+  >/tmp/terrascope-step14-pulse-empty.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step13-empty.json",
+    "/tmp/terrascope-step14-pulse-empty.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["totalCount"] == 0
-assert payload["reportedCount"] == 0
-assert payload["repairingCount"] == 0
-assert payload["restoredCount"] == 0
+assert payload["score"] == 0
+assert payload["band"] == "STABLE"
+
+assert payload["openActionCount"] == 0
+assert payload["overdueActionCount"] == 0
+assert payload["blockedActionCount"] == 0
+assert payload["resourceShortageCount"] == 0
+
+assert payload["evacuationRemaining"] == 0
+assert payload["shelterRemainingCapacity"] == 0
+
+assert payload["lifelineDisruptedCount"] == 0
+assert payload["lifelineAffectedPopulation"] == 0
+
+assert payload["unresolvedDamageLossMusd"] == 0
 assert payload["criticalDamageCount"] == 0
-assert payload["affectedUnits"] == 0
-assert payload["totalEstimatedLossMusd"] == 0
-assert payload["unresolvedEstimatedLossMusd"] == 0
-assert payload["assessments"] == []
+
+assert payload["blockers"] == []
 
 print(
-    "[PASS] DAMAGE_BOARD_EMPTY_CONTRACT"
+    "[PASS] COMMAND_PULSE_EMPTY_CONTRACT"
 )
 PY
 
+echo
+echo "===== CREATE OVERDUE BLOCKED ACTION ====="
+
 cat > \
-  /tmp/terrascope-step13-damage.json \
+  /tmp/terrascope-step14-action.json \
 <<'JSON'
 {
-  "category": "BRIDGE",
-  "assetName": "Verification Bridge Alpha",
-  "description": "Major structural cracking and deck deformation.",
-  "severity": "MAJOR",
-  "affectedUnits": 12,
-  "estimatedLossMusd": 25.5,
-  "owner": "Recovery Alpha",
-  "recoveryEta": "2030-01-01T00:00:00Z"
+  "title": "Open emergency access corridor",
+  "description": "Verification command pulse action.",
+  "priority": "CRITICAL",
+  "owner": "Operations",
+  "dueAt": "2020-01-01T00:00:00Z"
 }
 JSON
 
-CREATE_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step13-damage-response.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step13-damage.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage"
-)"
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step14-action.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions" \
+  >/tmp/terrascope-step14-action-response.json
 
-echo "DAMAGE_CREATE_HTTP=${CREATE_HTTP}"
-
-[[ "${CREATE_HTTP}" == "200" ]]
-
-ASSESSMENT_ID="$(
+ACTION_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step13-damage-response.json",
+    "/tmp/terrascope-step14-action-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["totalCount"] == 1
-assert payload["reportedCount"] == 1
-assert payload["verifiedCount"] == 0
-assert payload["repairingCount"] == 0
-assert payload["restoredCount"] == 0
-
-assert payload["criticalDamageCount"] == 1
-assert payload["affectedUnits"] == 12
-
-assert payload["totalEstimatedLossMusd"] == 25.5
-assert payload["unresolvedEstimatedLossMusd"] == 25.5
-assert payload["averageRepairProgressPct"] == 0
-
-assessment = payload["assessments"][0]
-
-assert assessment["category"] == "BRIDGE"
-assert assessment["severity"] == "MAJOR"
-assert assessment["status"] == "REPORTED"
-assert assessment["affectedUnits"] == 12
-assert assessment["estimatedLossMusd"] == 25.5
-assert assessment["repairProgressPct"] == 0
-assert assessment["verifiedAt"] is None
-assert assessment["restoredAt"] is None
-
 print(
-    assessment["id"]
+    payload["actions"][0]["id"]
 )
 PY
 )"
 
-echo "ASSESSMENT_ID=${ASSESSMENT_ID}"
-
-echo "[PASS] DAMAGE_ASSESSMENT_CREATE"
-echo "[PASS] DAMAGE_BACKLOG_INTELLIGENCE"
-
 cat > \
-  /tmp/terrascope-step13-progress-unverified.json \
+  /tmp/terrascope-step14-action-blocked.json \
 <<'JSON'
 {
-  "repairProgressPct": 25
-}
-JSON
-
-UNVERIFIED_PROGRESS_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step13-unverified-progress-response.json \
-    --write-out '%{http_code}' \
-    --request PATCH \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step13-progress-unverified.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/progress"
-)"
-
-echo "UNVERIFIED_PROGRESS_HTTP=${UNVERIFIED_PROGRESS_HTTP}"
-
-[[ "${UNVERIFIED_PROGRESS_HTTP}" == "409" ]]
-
-echo "[PASS] DAMAGE_VERIFICATION_GUARD"
-
-VERIFY_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step13-verify-response.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/verify"
-)"
-
-echo "DAMAGE_VERIFY_HTTP=${VERIFY_HTTP}"
-
-[[ "${VERIFY_HTTP}" == "200" ]]
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step13-verify-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["reportedCount"] == 0
-assert payload["verifiedCount"] == 1
-
-assessment = payload["assessments"][0]
-
-assert assessment["status"] == "VERIFIED"
-assert assessment["verifiedAt"] is not None
-
-print(
-    "[PASS] DAMAGE_VERIFICATION"
-)
-PY
-
-cat > \
-  /tmp/terrascope-step13-owner.json \
-<<'JSON'
-{
-  "owner": "Reconstruction Team"
+  "status": "BLOCKED"
 }
 JSON
 
@@ -387,33 +313,136 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step13-owner.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/owner" \
-  >/tmp/terrascope-step13-owner-response.json
+  --data @/tmp/terrascope-step14-action-blocked.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions/${ACTION_ID}/status" \
+  >/dev/null
 
-python3 - <<'PY'
-import json
+echo "[PASS] COMMAND_ACTION_PRESSURE_FIXTURE"
 
-with open(
-    "/tmp/terrascope-step13-owner-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert (
-    payload["assessments"][0]["owner"]
-    == "Reconstruction Team"
-)
-
-print(
-    "[PASS] DAMAGE_OWNER_UPDATE"
-)
-PY
+echo
+echo "===== CREATE RESOURCE SHORTAGE ====="
 
 cat > \
-  /tmp/terrascope-step13-eta.json \
+  /tmp/terrascope-step14-resource.json \
 <<'JSON'
 {
+  "category": "MEDICAL",
+  "name": "Emergency medical kits",
+  "description": "Verification resource shortage.",
+  "priority": "CRITICAL",
+  "requestedQuantity": 10,
+  "unit": "kits",
+  "owner": "Logistics"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step14-resource.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resources" \
+  >/dev/null
+
+echo "[PASS] COMMAND_RESOURCE_PRESSURE_FIXTURE"
+
+echo
+echo "===== CREATE EVACUATION BACKLOG ====="
+
+cat > \
+  /tmp/terrascope-step14-zone.json \
+<<'JSON'
+{
+  "name": "Command Verification Zone",
+  "description": "High population evacuation backlog.",
+  "priority": "CRITICAL",
+  "populationAtRisk": 10000,
+  "evacuatedPopulation": 0,
+  "owner": "Evacuation Command"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step14-zone.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/zones" \
+  >/dev/null
+
+echo "[PASS] COMMAND_EVACUATION_PRESSURE_FIXTURE"
+
+echo
+echo "===== CREATE SHELTER CAPACITY ====="
+
+cat > \
+  /tmp/terrascope-step14-shelter.json \
+<<'JSON'
+{
+  "name": "Command Verification Shelter",
+  "address": "Verification address",
+  "capacity": 100,
+  "occupancy": 10,
+  "owner": "Shelter Command"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step14-shelter.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/evacuation/shelters" \
+  >/dev/null
+
+echo "[PASS] COMMAND_SHELTER_PRESSURE_FIXTURE"
+
+echo
+echo "===== CREATE LIFELINE OUTAGE ====="
+
+cat > \
+  /tmp/terrascope-step14-lifeline.json \
+<<'JSON'
+{
+  "category": "POWER",
+  "name": "Command Verification Grid",
+  "description": "Critical grid outage.",
+  "priority": "CRITICAL",
+  "status": "OUTAGE",
+  "affectedPopulation": 5000,
+  "owner": "Grid Operations",
+  "restorationEta": "2030-01-01T00:00:00Z"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step14-lifeline.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/lifelines" \
+  >/dev/null
+
+echo "[PASS] COMMAND_LIFELINE_PRESSURE_FIXTURE"
+
+echo
+echo "===== CREATE DAMAGE BACKLOG ====="
+
+cat > \
+  /tmp/terrascope-step14-damage.json \
+<<'JSON'
+{
+  "category": "BRIDGE",
+  "assetName": "Command Verification Bridge",
+  "description": "Major structural damage.",
+  "severity": "MAJOR",
+  "affectedUnits": 1,
+  "estimatedLossMusd": 25.5,
+  "owner": "Recovery Command",
   "recoveryEta": "2031-01-01T00:00:00Z"
 }
 JSON
@@ -421,194 +450,198 @@ JSON
 curl \
   --fail \
   --silent \
-  --request PATCH \
+  --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step13-eta.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/recovery-eta" \
-  >/tmp/terrascope-step13-eta-response.json
+  --data @/tmp/terrascope-step14-damage.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage" \
+  >/dev/null
 
-python3 - <<'PY'
-import json
+echo "[PASS] COMMAND_DAMAGE_PRESSURE_FIXTURE"
 
-with open(
-    "/tmp/terrascope-step13-eta-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert (
-    payload["assessments"][0]["recoveryEta"]
-    == "2031-01-01T00:00:00Z"
-)
-
-print(
-    "[PASS] DAMAGE_ETA_UPDATE"
-)
-PY
-
-cat > \
-  /tmp/terrascope-step13-severity.json \
-<<'JSON'
-{
-  "severity": "DESTROYED"
-}
-JSON
+echo
+echo "===== VERIFY UNIFIED COMMAND PULSE ====="
 
 curl \
   --fail \
   --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step13-severity.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/severity" \
-  >/tmp/terrascope-step13-severity-response.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/command-pulse" \
+  >/tmp/terrascope-step14-pulse.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step13-severity-response.json",
+    "/tmp/terrascope-step14-pulse.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert (
-    payload["assessments"][0]["severity"]
-    == "DESTROYED"
+assert payload["openActionCount"] == 1
+assert payload["overdueActionCount"] == 1
+assert payload["blockedActionCount"] == 1
+
+assert payload["resourceShortageCount"] == 1
+
+assert payload["evacuationRemaining"] == 10000
+assert payload["shelterRemainingCapacity"] == 90
+
+assert payload["lifelineDisruptedCount"] == 1
+assert payload["criticalLifelineDisruptionCount"] == 1
+assert payload["lifelineAffectedPopulation"] == 5000
+
+assert payload["unresolvedDamageLossMusd"] == 25.5
+assert payload["criticalDamageCount"] == 1
+assert payload["averageRepairProgressPct"] == 0
+
+# Deterministic model:
+# overdue 4
+# blocked 5
+# shortage 3
+# evacuation 15
+# shelter gap 10
+# lifeline 7
+# damage 5
+# total 49
+assert payload["score"] == 49
+assert payload["band"] == "ELEVATED"
+
+assert len(payload["blockers"]) == 7
+
+codes = {
+    blocker["code"]
+    for blocker
+    in payload["blockers"]
+}
+
+for expected in (
+    "OVERDUE_ACTIONS",
+    "BLOCKED_ACTIONS",
+    "RESOURCE_SHORTAGES",
+    "EVACUATION_BACKLOG",
+    "SHELTER_CAPACITY_GAP",
+    "LIFELINE_DISRUPTION",
+    "RECOVERY_BACKLOG",
+):
+    assert expected in codes
+
+assert payload["blockers"][0]["weight"] == 15
+
+print(
+    "[PASS] UNIFIED_COMMAND_PULSE"
 )
 
+print(
+    "[PASS] COMMAND_PRESSURE_SCORE"
+)
+
+print(
+    "[PASS] COMMAND_BLOCKER_PRIORITIZATION"
+)
+PY
+
+echo
+echo "===== CREATE COMMAND SNAPSHOT ====="
+
+SNAPSHOT_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step14-snapshot.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/command-pulse/snapshots"
+)"
+
+echo "COMMAND_SNAPSHOT_HTTP=${SNAPSHOT_HTTP}"
+
+[[ "${SNAPSHOT_HTTP}" == "200" ]]
+
+SNAPSHOT_ID="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step14-snapshot.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["score"] == 49
+assert payload["band"] == "ELEVATED"
+assert payload["blockerCount"] == 7
+
+assert payload["openActionCount"] == 1
+assert payload["overdueActionCount"] == 1
+assert payload["blockedActionCount"] == 1
+
+assert payload["resourceShortageCount"] == 1
+
+assert payload["evacuationRemaining"] == 10000
+assert payload["shelterRemainingCapacity"] == 90
+
+assert payload["lifelineDisruptedCount"] == 1
+assert payload["criticalLifelineDisruptionCount"] == 1
+assert payload["lifelineAffectedPopulation"] == 5000
+
+assert payload["unresolvedDamageLossMusd"] == 25.5
 assert payload["criticalDamageCount"] == 1
 
 print(
-    "[PASS] DAMAGE_SEVERITY_UPDATE"
+    payload["id"]
 )
 PY
-
-cat > \
-  /tmp/terrascope-step13-progress-45.json \
-<<'JSON'
-{
-  "repairProgressPct": 45
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step13-progress-45.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/progress" \
-  >/tmp/terrascope-step13-progress-45-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step13-progress-45-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["verifiedCount"] == 0
-assert payload["repairingCount"] == 1
-assert payload["restoredCount"] == 0
-
-assert payload["averageRepairProgressPct"] == 45
-
-assessment = payload["assessments"][0]
-
-assert assessment["status"] == "REPAIRING"
-assert assessment["repairProgressPct"] == 45
-
-print(
-    "[PASS] DAMAGE_REPAIR_PROGRESS"
-)
-PY
-
-cat > \
-  /tmp/terrascope-step13-progress-100.json \
-<<'JSON'
-{
-  "repairProgressPct": 100
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step13-progress-100.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/progress" \
-  >/tmp/terrascope-step13-progress-100-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step13-progress-100-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["repairingCount"] == 0
-assert payload["restoredCount"] == 1
-
-assert payload["criticalDamageCount"] == 0
-
-assert payload["totalEstimatedLossMusd"] == 25.5
-assert payload["unresolvedEstimatedLossMusd"] == 0
-assert payload["averageRepairProgressPct"] == 100
-
-assessment = payload["assessments"][0]
-
-assert assessment["status"] == "RESTORED"
-assert assessment["repairProgressPct"] == 100
-assert assessment["restoredAt"] is not None
-assert assessment["recoveryEta"] is None
-
-print(
-    "[PASS] DAMAGE_AUTO_RESTORATION"
-)
-PY
-
-cat > \
-  /tmp/terrascope-step13-progress-regression.json \
-<<'JSON'
-{
-  "repairProgressPct": 50
-}
-JSON
-
-RESTORED_MUTATION_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step13-restored-mutation-response.json \
-    --write-out '%{http_code}' \
-    --request PATCH \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step13-progress-regression.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}/progress"
 )"
 
-echo "RESTORED_DAMAGE_MUTATION_HTTP=${RESTORED_MUTATION_HTTP}"
+echo "SNAPSHOT_ID=${SNAPSHOT_ID}"
 
-[[ "${RESTORED_MUTATION_HTTP}" == "409" ]]
+echo "[PASS] COMMAND_SNAPSHOT_CREATE"
 
-echo "[PASS] RESTORED_DAMAGE_MUTATION_GUARD"
+echo
+echo "===== COMMAND SNAPSHOT HISTORY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/command-pulse/history" \
+  >/tmp/terrascope-step14-history.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step14-history.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert len(
+    payload["snapshots"]
+) == 1
+
+snapshot = payload["snapshots"][0]
+
+assert snapshot["score"] == 49
+assert snapshot["band"] == "ELEVATED"
+assert snapshot["blockerCount"] == 7
+
+print(
+    "[PASS] COMMAND_SNAPSHOT_HISTORY"
+)
+PY
+
+echo
+echo "===== COMMAND TIMELINE EVIDENCE ====="
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step13-detail.json
+  >/tmp/terrascope-step14-detail.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step13-detail.json",
+    "/tmp/terrascope-step14-detail.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -618,28 +651,29 @@ types = [
     for event in payload["timeline"]
 ]
 
-for expected in (
-    "DAMAGE_ASSESSMENT_CREATED",
-    "DAMAGE_VERIFIED",
-    "DAMAGE_OWNER_CHANGED",
-    "DAMAGE_ETA_CHANGED",
-    "DAMAGE_SEVERITY_CHANGED",
-):
-    assert expected in types
+assert "COMMAND_SNAPSHOT_CREATED" in types
 
-assert (
-    types.count(
-        "DAMAGE_PROGRESS_CHANGED"
-    )
-    == 2
-)
+assert "ACTION_CREATED" in types
+assert "ACTION_STATUS_CHANGED" in types
+
+assert "RESOURCE_REQUESTED" in types
+
+assert "EVACUATION_ZONE_CREATED" in types
+assert "SHELTER_CREATED" in types
+
+assert "LIFELINE_ASSET_CREATED" in types
+
+assert "DAMAGE_ASSESSMENT_CREATED" in types
 
 print(
-    "[PASS] DAMAGE_TIMELINE_CONTRACT"
+    "[PASS] COMMAND_TIMELINE_CONTRACT"
 )
 PY
 
-DAMAGE_COLUMNS="$(
+echo
+echo "===== DATABASE CONTRACT ====="
+
+SNAPSHOT_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -650,7 +684,22 @@ DAMAGE_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name =
-            'incident_damage_assessments';
+            'incident_command_snapshots';
+      " \
+    | tr -d '[:space:]'
+)"
+
+SNAPSHOT_ROW_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM incident_command_snapshots
+      WHERE incident_id =
+            '${INCIDENT_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
@@ -669,77 +718,23 @@ TIMELINE_CONSTRAINT_COUNT="$(
         AND conname =
             'ck_incident_timeline_type'
         AND pg_get_constraintdef(oid)
-            LIKE '%DAMAGE_ASSESSMENT_CREATED%'
-        AND pg_get_constraintdef(oid)
-            LIKE '%DAMAGE_ASSESSMENT_DELETED%';
+            LIKE '%COMMAND_SNAPSHOT_CREATED%';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "DAMAGE_COLUMN_COUNT=${DAMAGE_COLUMNS}"
-echo "DAMAGE_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT_COUNT}"
+echo "COMMAND_SNAPSHOT_COLUMN_COUNT=${SNAPSHOT_COLUMNS}"
+echo "COMMAND_SNAPSHOT_ROW_COUNT=${SNAPSHOT_ROW_COUNT}"
+echo "COMMAND_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT_COUNT}"
 
-[[ "${DAMAGE_COLUMNS}" == "16" ]]
+[[ "${SNAPSHOT_COLUMNS}" == "18" ]]
+[[ "${SNAPSHOT_ROW_COUNT}" == "1" ]]
 [[ "${TIMELINE_CONSTRAINT_COUNT}" == "1" ]]
 
-echo "[PASS] DAMAGE_DATABASE_CONTRACT"
+echo "[PASS] COMMAND_DATABASE_CONTRACT"
 
-DELETE_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step13-delete-response.json \
-    --write-out '%{http_code}' \
-    --request DELETE \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/damage/${ASSESSMENT_ID}"
-)"
-
-echo "DAMAGE_DELETE_HTTP=${DELETE_HTTP}"
-
-[[ "${DELETE_HTTP}" == "200" ]]
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step13-delete-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["totalCount"] == 0
-assert payload["assessments"] == []
-
-print(
-    "[PASS] DAMAGE_ASSESSMENT_DELETE"
-)
-PY
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step13-detail-after-delete.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step13-detail-after-delete.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-types = [
-    event["eventType"]
-    for event in payload["timeline"]
-]
-
-assert "DAMAGE_ASSESSMENT_DELETED" in types
-
-print(
-    "[PASS] DAMAGE_DELETE_TIMELINE"
-)
-PY
+echo
+echo "===== CLEAN STEP 14 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -749,7 +744,7 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step13-incident';
+            'verification-step14-incident';
     " \
   >/dev/null
 
@@ -763,12 +758,12 @@ VERIFY_INCIDENT_COUNT="$(
       SELECT COUNT(*)
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step13-incident';
+            'verification-step14-incident';
       " \
     | tr -d '[:space:]'
 )"
 
-ORPHAN_DAMAGE_COUNT="$(
+ORPHAN_SNAPSHOT_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -776,26 +771,26 @@ ORPHAN_DAMAGE_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_damage_assessments damage
+      FROM incident_command_snapshots snapshot
       WHERE NOT EXISTS (
           SELECT 1
           FROM incident_cases incident
           WHERE incident.id =
-                damage.incident_id
+                snapshot.incident_id
       );
       " \
     | tr -d '[:space:]'
 )"
 
 echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
-echo "ORPHAN_DAMAGE_COUNT=${ORPHAN_DAMAGE_COUNT}"
+echo "ORPHAN_COMMAND_SNAPSHOT_COUNT=${ORPHAN_SNAPSHOT_COUNT}"
 
 [[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
-[[ "${ORPHAN_DAMAGE_COUNT}" == "0" ]]
+[[ "${ORPHAN_SNAPSHOT_COUNT}" == "0" ]]
 
-echo "[PASS] DAMAGE_CLEANUP"
+echo "[PASS] COMMAND_PULSE_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 13 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 14 VERIFICATION PASSED"
 echo "========================================================================"

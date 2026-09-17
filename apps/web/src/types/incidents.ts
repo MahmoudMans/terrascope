@@ -77,7 +77,8 @@ export type IncidentTimelineEvent = {
     | "DAMAGE_PROGRESS_CHANGED"
     | "DAMAGE_OWNER_CHANGED"
     | "DAMAGE_ETA_CHANGED"
-    | "DAMAGE_ASSESSMENT_DELETED";
+    | "DAMAGE_ASSESSMENT_DELETED"
+    | "COMMAND_SNAPSHOT_CREATED";
   message: string;
   createdAt: string;
 };

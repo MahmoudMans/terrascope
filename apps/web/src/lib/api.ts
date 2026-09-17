@@ -82,6 +82,12 @@ import type {
   DamageSeverity,
 } from "@/types/damage-recovery";
 
+import type {
+  CommandPulseHistoryResponse,
+  CommandPulseSnapshot,
+  IncidentCommandPulseResponse,
+} from "@/types/command-pulse";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -1748,4 +1754,76 @@ export async function deleteDamageAssessment(
   }
 
   return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function fetchIncidentCommandPulse(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<IncidentCommandPulseResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/command-pulse`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Command pulse returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentCommandPulseResponse>;
+}
+
+export async function fetchCommandPulseHistory(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<CommandPulseHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/command-pulse/history`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Command pulse history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<CommandPulseHistoryResponse>;
+}
+
+export async function createCommandPulseSnapshot(
+  incidentId: string,
+): Promise<CommandPulseSnapshot> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/command-pulse/snapshots`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create command snapshot. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<CommandPulseSnapshot>;
 }
