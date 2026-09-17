@@ -36,6 +36,10 @@ import type {
   IncidentStatus,
 } from "@/types/incidents";
 
+import {
+  IncidentActionBoard,
+} from "@/components/incident-action-board";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -909,6 +913,40 @@ export function SituationRoomPanel({
                         Add note
                       </button>
                     </form>
+
+                    <IncidentActionBoard
+                      incidentId={
+                        detail.incident.id
+                      }
+                      incidentStatus={
+                        detail.incident.status
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh incident timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
 
                     <div className="situation-timeline-heading">
                       <BadgeAlert

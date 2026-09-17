@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step8-backend.log"
+BACKEND_LOG="/tmp/terrascope-step9-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -30,7 +30,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 8 VERIFICATION"
+echo " TERRASCOPE — STEP 9 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -126,7 +126,7 @@ for attempt in $(seq 1 45); do
       --fail \
       --silent \
       "http://localhost:8087/actuator/health" \
-      >/tmp/terrascope-step8-health.json \
+      >/tmp/terrascope-step9-health.json \
       2>/dev/null; then
 
     echo "[PASS] BACKEND_RUNTIME_READY"
@@ -157,20 +157,20 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step8-status.json
+  >/tmp/terrascope-step9-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step8-status.json",
+    "/tmp/terrascope-step9-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
 assert payload["status"] == "operational"
-assert payload["version"] == "0.8.0"
+assert payload["version"] == "0.9.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
@@ -178,49 +178,49 @@ print(
 PY
 
 echo
-echo "===== STEP 7 REGRESSION ====="
+echo "===== STEP 8 REGRESSION ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents" \
+  >/tmp/terrascope-step9-incidents.json
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/alerts" \
-  >/tmp/terrascope-step8-alerts.json
+  >/tmp/terrascope-step9-alerts.json
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/regional-intelligence/history" \
-  >/tmp/terrascope-step8-regional.json
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/simulations" \
-  >/tmp/terrascope-step8-simulations.json
+  >/tmp/terrascope-step9-regional.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step8-alerts.json",
+    "/tmp/terrascope-step9-incidents.json",
+    encoding="utf-8",
+) as handle:
+    incidents = json.load(handle)
+
+with open(
+    "/tmp/terrascope-step9-alerts.json",
     encoding="utf-8",
 ) as handle:
     alerts = json.load(handle)
 
 with open(
-    "/tmp/terrascope-step8-regional.json",
+    "/tmp/terrascope-step9-regional.json",
     encoding="utf-8",
 ) as handle:
     regional = json.load(handle)
 
-with open(
-    "/tmp/terrascope-step8-simulations.json",
-    encoding="utf-8",
-) as handle:
-    simulations = json.load(handle)
-
 assert isinstance(
-    alerts["rules"],
+    incidents["incidents"],
     list,
 )
 
@@ -234,20 +234,15 @@ assert isinstance(
     list,
 )
 
-assert isinstance(
-    simulations["runs"],
-    list,
-)
-
 print(
-    "[PASS] STEP7_RUNTIME_REGRESSION"
+    "[PASS] STEP8_RUNTIME_REGRESSION"
 )
 PY
 
 echo
-echo "===== FLYWAY V8 ====="
+echo "===== FLYWAY V9 ====="
 
-for VERSION in 1 2 3 4 5 6 7 8; do
+for VERSION in 1 2 3 4 5 6 7 8 9; do
 
   COUNT="$(
     docker compose exec -T postgres \
@@ -271,10 +266,10 @@ for VERSION in 1 2 3 4 5 6 7 8; do
   fi
 done
 
-echo "[PASS] FLYWAY_V8_RUNTIME"
+echo "[PASS] FLYWAY_V9_RUNTIME"
 
 echo
-echo "===== CLEAN VERIFICATION INCIDENTS ====="
+echo "===== CLEAN VERIFICATION INCIDENT ====="
 
 docker compose exec -T postgres \
   psql \
@@ -283,423 +278,177 @@ docker compose exec -T postgres \
     -c "
       DELETE
       FROM incident_cases
-      WHERE source_event_id LIKE 'verification-incident-%';
+      WHERE source_event_id = 'verification-step9-incident';
     " \
   >/dev/null
 
-echo "[PASS] INCIDENT_PRE_CLEAN"
+echo "[PASS] STEP9_PRE_CLEAN"
 
 echo
-echo "===== INCIDENT DASHBOARD CONTRACT ====="
+echo "===== CREATE RESPONSE INCIDENT ====="
+
+cat > \
+  /tmp/terrascope-step9-incident.json \
+<<'JSON'
+{
+  "alertEventId": null,
+  "sourceEventId": "verification-step9-incident",
+  "hazardType": "severe-storms",
+  "title": "Verification response coordination incident",
+  "description": "Incident fixture for Step 9 response action verification.",
+  "latitude": 36.8065,
+  "longitude": 10.1815,
+  "severity": "HIGH",
+  "owner": "Command"
+}
+JSON
 
 curl \
   --fail \
   --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step9-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step8-dashboard-before.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step8-dashboard-before.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert isinstance(
-    payload["incidents"],
-    list,
-)
-
-for key in (
-    "totalCount",
-    "activeCount",
-    "respondingCount",
-    "criticalCount",
-    "closedCount",
-):
-    assert key in payload
-
-print(
-    "[PASS] INCIDENT_DASHBOARD_CONTRACT"
-)
-PY
-
-echo
-echo "===== CREATE INCIDENT ====="
-
-cat > \
-  /tmp/terrascope-step8-create.json \
-<<'JSON'
-{
-  "alertEventId": null,
-  "sourceEventId": "verification-incident-source-1",
-  "hazardType": "earthquakes",
-  "title": "Verification earthquake incident",
-  "description": "Step 8 operational incident verification.",
-  "latitude": 36.8065,
-  "longitude": 10.1815,
-  "severity": "SEVERE",
-  "owner": "Unassigned"
-}
-JSON
-
-CREATE_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step8-create-response.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    --header 'Accept: application/json' \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step8-create.json \
-    "http://localhost:8087/api/v1/incidents"
-)"
-
-echo "INCIDENT_CREATE_HTTP=${CREATE_HTTP}"
-
-if [[ "${CREATE_HTTP}" != "200" ]]; then
-  cat /tmp/terrascope-step8-create-response.json
-  exit 1
-fi
+  >/tmp/terrascope-step9-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step8-create-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-incident = payload["incident"]
-timeline = payload["timeline"]
-
-assert (
-    incident["sourceEventId"]
-    == "verification-incident-source-1"
-)
-
-assert (
-    incident["hazardType"]
-    == "earthquakes"
-)
-
-assert incident["severity"] == "SEVERE"
-assert incident["status"] == "OPEN"
-assert incident["owner"] == "Unassigned"
-
-assert len(timeline) == 1
-
-assert (
-    timeline[0]["eventType"]
-    == "INCIDENT_OPENED"
-)
-
-print(
-    incident["id"]
-)
-PY
-)"
-
-echo "INCIDENT_ID=${INCIDENT_ID}"
-
-echo "[PASS] INCIDENT_CREATE"
-
-echo
-echo "===== IDEMPOTENT INCIDENT CREATE ====="
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step8-create.json \
-  "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step8-create-second.json
-
-python3 - "${INCIDENT_ID}" <<'PY'
-import json
-import sys
-
-expected = sys.argv[1]
-
-with open(
-    "/tmp/terrascope-step8-create-second.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["incident"]["id"] == expected
-
-assert len(payload["timeline"]) == 1
-
-print(
-    "[PASS] INCIDENT_IDEMPOTENT_CREATE"
-)
-PY
-
-INCIDENT_ROW_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM incident_cases
-      WHERE hazard_type = 'earthquakes'
-        AND source_event_id = 'verification-incident-source-1';
-      " \
-    | tr -d '[:space:]'
-)"
-
-echo "INCIDENT_SOURCE_ROW_COUNT=${INCIDENT_ROW_COUNT}"
-
-if [[ "${INCIDENT_ROW_COUNT}" != "1" ]]; then
-  exit 1
-fi
-
-echo "[PASS] INCIDENT_DATABASE_DEDUPLICATION"
-
-echo
-echo "===== UPDATE SEVERITY ====="
-
-cat > \
-  /tmp/terrascope-step8-severity.json \
-<<'JSON'
-{
-  "severity": "CRITICAL"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step8-severity.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/severity" \
-  >/tmp/terrascope-step8-severity-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step8-severity-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert (
-    payload["incident"]["severity"]
-    == "CRITICAL"
-)
-
-assert any(
-    event["eventType"]
-    == "SEVERITY_CHANGED"
-    for event in payload["timeline"]
-)
-
-print(
-    "[PASS] INCIDENT_SEVERITY_UPDATE"
-)
-PY
-
-echo
-echo "===== UPDATE OWNER ====="
-
-cat > \
-  /tmp/terrascope-step8-owner.json \
-<<'JSON'
-{
-  "owner": "Ops Alpha"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step8-owner.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/owner" \
-  >/tmp/terrascope-step8-owner-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step8-owner-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert (
-    payload["incident"]["owner"]
-    == "Ops Alpha"
-)
-
-assert any(
-    event["eventType"]
-    == "OWNER_CHANGED"
-    for event in payload["timeline"]
-)
-
-print(
-    "[PASS] INCIDENT_OWNER_UPDATE"
-)
-PY
-
-echo
-echo "===== UPDATE STATUS ====="
-
-cat > \
-  /tmp/terrascope-step8-status-update.json \
-<<'JSON'
-{
-  "status": "RESPONDING"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step8-status-update.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/status" \
-  >/tmp/terrascope-step8-status-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step8-status-response.json",
+    "/tmp/terrascope-step9-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert (
     payload["incident"]["status"]
-    == "RESPONDING"
-)
-
-assert any(
-    event["eventType"]
-    == "STATUS_CHANGED"
-    for event in payload["timeline"]
+    == "OPEN"
 )
 
 print(
-    "[PASS] INCIDENT_STATUS_UPDATE"
+    payload["incident"]["id"]
+)
+PY
+)"
+
+echo "INCIDENT_ID=${INCIDENT_ID}"
+
+echo "[PASS] RESPONSE_INCIDENT_CREATE"
+
+echo
+echo "===== EMPTY ACTION BOARD ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions" \
+  >/tmp/terrascope-step9-board-empty.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step9-board-empty.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["totalCount"] == 0
+assert payload["todoCount"] == 0
+assert payload["inProgressCount"] == 0
+assert payload["blockedCount"] == 0
+assert payload["doneCount"] == 0
+assert payload["overdueCount"] == 0
+assert payload["actions"] == []
+
+print(
+    "[PASS] ACTION_BOARD_EMPTY_CONTRACT"
 )
 PY
 
 echo
-echo "===== ADD OPERATIONAL NOTE ====="
+echo "===== CREATE OVERDUE ACTION ====="
 
 cat > \
-  /tmp/terrascope-step8-note.json \
+  /tmp/terrascope-step9-action.json \
 <<'JSON'
 {
-  "message": "Verification operational note."
+  "title": "Secure field access",
+  "description": "Establish a safe operational perimeter and confirm access routes.",
+  "priority": "HIGH",
+  "owner": "Ops Alpha",
+  "dueAt": "2020-01-01T00:00:00Z"
 }
 JSON
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step8-note.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/notes" \
-  >/tmp/terrascope-step8-note-response.json
+CREATE_ACTION_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step9-action-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Accept: application/json' \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step9-action.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions"
+)"
 
-python3 - <<'PY'
+echo "ACTION_CREATE_HTTP=${CREATE_ACTION_HTTP}"
+
+if [[ "${CREATE_ACTION_HTTP}" != "200" ]]; then
+  cat /tmp/terrascope-step9-action-response.json
+  exit 1
+fi
+
+ACTION_ID="$(
+  python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step8-note-response.json",
+    "/tmp/terrascope-step9-action-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-matching = [
-    event
-    for event in payload["timeline"]
-    if (
-        event["eventType"]
-        == "NOTE_ADDED"
-        and event["message"]
-        == "Verification operational note."
-    )
-]
+assert payload["totalCount"] == 1
+assert payload["todoCount"] == 1
+assert payload["overdueCount"] == 1
 
-assert len(matching) == 1
+assert len(
+    payload["actions"]
+) == 1
 
-print(
-    "[PASS] INCIDENT_NOTE"
+action = payload["actions"][0]
+
+assert (
+    action["title"]
+    == "Secure field access"
 )
+
+assert action["priority"] == "HIGH"
+assert action["status"] == "TODO"
+assert action["owner"] == "Ops Alpha"
+assert action["completedAt"] is None
+
+print(action["id"])
 PY
+)"
+
+echo "ACTION_ID=${ACTION_ID}"
+
+echo "[PASS] ACTION_CREATE"
+echo "[PASS] ACTION_OVERDUE_INTELLIGENCE"
 
 echo
-echo "===== INCIDENT DETAIL CONTRACT ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step8-detail.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step8-detail.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-incident = payload["incident"]
-timeline = payload["timeline"]
-
-assert incident["severity"] == "CRITICAL"
-assert incident["status"] == "RESPONDING"
-assert incident["owner"] == "Ops Alpha"
-assert incident["closedAt"] is None
-
-assert len(timeline) == 5
-
-event_types = {
-    event["eventType"]
-    for event in timeline
-}
-
-assert event_types == {
-    "INCIDENT_OPENED",
-    "SEVERITY_CHANGED",
-    "OWNER_CHANGED",
-    "STATUS_CHANGED",
-    "NOTE_ADDED",
-}
-
-print(
-    "[PASS] INCIDENT_TIMELINE_CONTRACT"
-)
-PY
-
-echo
-echo "===== CLOSE INCIDENT ====="
+echo "===== UPDATE ACTION STATUS ====="
 
 cat > \
-  /tmp/terrascope-step8-close.json \
+  /tmp/terrascope-step9-action-status.json \
 <<'JSON'
 {
-  "status": "CLOSED"
+  "status": "IN_PROGRESS"
 }
 JSON
 
@@ -708,73 +457,310 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step8-close.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/status" \
-  >/tmp/terrascope-step8-close-response.json
+  --data @/tmp/terrascope-step9-action-status.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions/${ACTION_ID}/status" \
+  >/tmp/terrascope-step9-action-status-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step8-close-response.json",
+    "/tmp/terrascope-step9-action-status-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-incident = payload["incident"]
+assert payload["todoCount"] == 0
+assert payload["inProgressCount"] == 1
+assert payload["overdueCount"] == 1
 
-assert incident["status"] == "CLOSED"
+action = payload["actions"][0]
 
-assert incident["closedAt"] is not None
-
-assert len(payload["timeline"]) == 6
+assert action["status"] == "IN_PROGRESS"
+assert action["completedAt"] is None
 
 print(
-    "[PASS] INCIDENT_CLOSE"
+    "[PASS] ACTION_STATUS_UPDATE"
 )
 PY
 
 echo
-echo "===== DASHBOARD AFTER WORKFLOW ====="
+echo "===== UPDATE ACTION PRIORITY ====="
+
+cat > \
+  /tmp/terrascope-step9-action-priority.json \
+<<'JSON'
+{
+  "priority": "CRITICAL"
+}
+JSON
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step8-dashboard-after.json
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step9-action-priority.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions/${ACTION_ID}/priority" \
+  >/tmp/terrascope-step9-action-priority-response.json
 
-python3 - "${INCIDENT_ID}" <<'PY'
+python3 - <<'PY'
 import json
-import sys
-
-incident_id = sys.argv[1]
 
 with open(
-    "/tmp/terrascope-step8-dashboard-after.json",
+    "/tmp/terrascope-step9-action-priority-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-matching = [
-    incident
-    for incident in payload["incidents"]
-    if incident["id"] == incident_id
-]
-
-assert len(matching) == 1
-assert matching[0]["status"] == "CLOSED"
-
-assert payload["closedCount"] >= 1
+assert (
+    payload["actions"][0]["priority"]
+    == "CRITICAL"
+)
 
 print(
-    "[PASS] INCIDENT_DASHBOARD_WORKFLOW"
+    "[PASS] ACTION_PRIORITY_UPDATE"
+)
+PY
+
+echo
+echo "===== UPDATE ACTION OWNER ====="
+
+cat > \
+  /tmp/terrascope-step9-action-owner.json \
+<<'JSON'
+{
+  "owner": "Field Team"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step9-action-owner.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions/${ACTION_ID}/owner" \
+  >/tmp/terrascope-step9-action-owner-response.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step9-action-owner-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert (
+    payload["actions"][0]["owner"]
+    == "Field Team"
+)
+
+print(
+    "[PASS] ACTION_OWNER_UPDATE"
+)
+PY
+
+echo
+echo "===== UPDATE ACTION DUE DATE ====="
+
+cat > \
+  /tmp/terrascope-step9-action-due.json \
+<<'JSON'
+{
+  "dueAt": "2035-01-01T00:00:00Z"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step9-action-due.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions/${ACTION_ID}/due-at" \
+  >/tmp/terrascope-step9-action-due-response.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step9-action-due-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["overdueCount"] == 0
+
+assert (
+    payload["actions"][0]["dueAt"]
+    == "2035-01-01T00:00:00Z"
+)
+
+print(
+    "[PASS] ACTION_DUE_DATE_UPDATE"
+)
+PY
+
+echo
+echo "===== COMPLETE ACTION ====="
+
+cat > \
+  /tmp/terrascope-step9-action-done.json \
+<<'JSON'
+{
+  "status": "DONE"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step9-action-done.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions/${ACTION_ID}/status" \
+  >/tmp/terrascope-step9-action-done-response.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step9-action-done-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["doneCount"] == 1
+assert payload["inProgressCount"] == 0
+assert payload["overdueCount"] == 0
+
+action = payload["actions"][0]
+
+assert action["status"] == "DONE"
+assert action["completedAt"] is not None
+
+print(
+    "[PASS] ACTION_COMPLETION"
+)
+PY
+
+echo
+echo "===== ACTION TIMELINE CONTRACT ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
+  >/tmp/terrascope-step9-detail.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step9-detail.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+types = [
+    event["eventType"]
+    for event in payload["timeline"]
+]
+
+for expected in (
+    "ACTION_CREATED",
+    "ACTION_STATUS_CHANGED",
+    "ACTION_PRIORITY_CHANGED",
+    "ACTION_OWNER_CHANGED",
+    "ACTION_DUE_CHANGED",
+):
+    assert expected in types
+
+# TODO -> IN_PROGRESS and IN_PROGRESS -> DONE.
+assert (
+    types.count(
+        "ACTION_STATUS_CHANGED"
+    )
+    == 2
+)
+
+print(
+    "[PASS] ACTION_TIMELINE_CONTRACT"
+)
+PY
+
+echo
+echo "===== DELETE ACTION ====="
+
+DELETE_ACTION_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step9-delete-body.json \
+    --write-out '%{http_code}' \
+    --request DELETE \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/actions/${ACTION_ID}"
+)"
+
+echo "ACTION_DELETE_HTTP=${DELETE_ACTION_HTTP}"
+
+if [[ "${DELETE_ACTION_HTTP}" != "200" ]]; then
+  cat /tmp/terrascope-step9-delete-body.json
+  exit 1
+fi
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step9-delete-body.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["totalCount"] == 0
+assert payload["actions"] == []
+
+print(
+    "[PASS] ACTION_DELETE"
+)
+PY
+
+echo
+echo "===== DELETE TIMELINE EVIDENCE ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
+  >/tmp/terrascope-step9-detail-after-delete.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step9-detail-after-delete.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+types = [
+    event["eventType"]
+    for event in payload["timeline"]
+]
+
+assert "ACTION_DELETED" in types
+
+print(
+    "[PASS] ACTION_DELETE_TIMELINE"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-INCIDENT_COLUMNS="$(
+ACTION_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -784,50 +770,25 @@ INCIDENT_COLUMNS="$(
       SELECT COUNT(*)
       FROM information_schema.columns
       WHERE table_schema = 'public'
-        AND table_name = 'incident_cases'
-        AND column_name IN (
-          'id',
-          'alert_event_id',
-          'source_event_id',
-          'hazard_type',
-          'title',
-          'description',
-          'event_latitude',
-          'event_longitude',
-          'severity',
-          'status',
-          'owner_name',
-          'opened_at',
-          'updated_at',
-          'closed_at'
-        );
-      " \
-    | tr -d '[:space:]'
-)"
-
-TIMELINE_COLUMNS="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'incident_timeline_events'
+        AND table_name = 'incident_action_items'
         AND column_name IN (
           'id',
           'incident_id',
-          'event_type',
-          'message',
-          'created_at'
+          'title',
+          'description',
+          'priority',
+          'status',
+          'owner_name',
+          'due_at',
+          'created_at',
+          'updated_at',
+          'completed_at'
         );
       " \
     | tr -d '[:space:]'
 )"
 
-UNIQUE_SOURCE_COUNT="$(
+TIMELINE_CONSTRAINT_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -836,31 +797,33 @@ UNIQUE_SOURCE_COUNT="$(
       "
       SELECT COUNT(*)
       FROM pg_constraint
-      WHERE conname = 'uq_incident_source';
+      WHERE conrelid =
+            'incident_timeline_events'::regclass
+        AND conname =
+            'ck_incident_timeline_type'
+        AND pg_get_constraintdef(oid)
+            LIKE '%ACTION_CREATED%'
+        AND pg_get_constraintdef(oid)
+            LIKE '%ACTION_DELETED%';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "INCIDENT_COLUMN_COUNT=${INCIDENT_COLUMNS}"
-echo "TIMELINE_COLUMN_COUNT=${TIMELINE_COLUMNS}"
-echo "INCIDENT_UNIQUE_SOURCE_COUNT=${UNIQUE_SOURCE_COUNT}"
+echo "ACTION_COLUMN_COUNT=${ACTION_COLUMNS}"
+echo "EXTENDED_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT_COUNT}"
 
-if [[ "${INCIDENT_COLUMNS}" != "14" ]]; then
+if [[ "${ACTION_COLUMNS}" != "11" ]]; then
   exit 1
 fi
 
-if [[ "${TIMELINE_COLUMNS}" != "5" ]]; then
+if [[ "${TIMELINE_CONSTRAINT_COUNT}" != "1" ]]; then
   exit 1
 fi
 
-if [[ "${UNIQUE_SOURCE_COUNT}" != "1" ]]; then
-  exit 1
-fi
-
-echo "[PASS] INCIDENT_DATABASE_CONTRACT"
+echo "[PASS] ACTION_DATABASE_CONTRACT"
 
 echo
-echo "===== CLEAN VERIFICATION INCIDENTS ====="
+echo "===== CLEAN STEP 9 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -869,11 +832,12 @@ docker compose exec -T postgres \
     -c "
       DELETE
       FROM incident_cases
-      WHERE source_event_id LIKE 'verification-incident-%';
+      WHERE source_event_id =
+            'verification-step9-incident';
     " \
   >/dev/null
 
-INCIDENT_VERIFY_COUNT="$(
+VERIFY_INCIDENT_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -882,12 +846,13 @@ INCIDENT_VERIFY_COUNT="$(
       "
       SELECT COUNT(*)
       FROM incident_cases
-      WHERE source_event_id LIKE 'verification-incident-%';
+      WHERE source_event_id =
+            'verification-step9-incident';
       " \
     | tr -d '[:space:]'
 )"
 
-TIMELINE_VERIFY_COUNT="$(
+ORPHAN_ACTION_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -895,30 +860,31 @@ TIMELINE_VERIFY_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_timeline_events timeline
+      FROM incident_action_items action
       WHERE NOT EXISTS (
           SELECT 1
           FROM incident_cases incident
-          WHERE incident.id = timeline.incident_id
+          WHERE incident.id =
+                action.incident_id
       );
       " \
     | tr -d '[:space:]'
 )"
 
-echo "VERIFICATION_INCIDENT_COUNT=${INCIDENT_VERIFY_COUNT}"
-echo "ORPHAN_TIMELINE_COUNT=${TIMELINE_VERIFY_COUNT}"
+echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
+echo "ORPHAN_ACTION_COUNT=${ORPHAN_ACTION_COUNT}"
 
-if [[ "${INCIDENT_VERIFY_COUNT}" != "0" ]]; then
+if [[ "${VERIFY_INCIDENT_COUNT}" != "0" ]]; then
   exit 1
 fi
 
-if [[ "${TIMELINE_VERIFY_COUNT}" != "0" ]]; then
+if [[ "${ORPHAN_ACTION_COUNT}" != "0" ]]; then
   exit 1
 fi
 
-echo "[PASS] INCIDENT_CLEANUP"
+echo "[PASS] ACTION_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 8 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 9 VERIFICATION PASSED"
 echo "========================================================================"

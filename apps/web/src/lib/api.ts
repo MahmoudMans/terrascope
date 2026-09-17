@@ -50,6 +50,13 @@ import type {
   IncidentStatus,
 } from "@/types/incidents";
 
+import type {
+  CreateIncidentActionRequest,
+  IncidentActionBoardResponse,
+  IncidentActionPriority,
+  IncidentActionStatus,
+} from "@/types/incident-actions";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -669,4 +676,189 @@ export async function addIncidentNote(
   }
 
   return response.json() as Promise<IncidentDetail>;
+}
+
+export async function fetchIncidentActionBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<IncidentActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/actions`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Incident action board returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentActionBoardResponse>;
+}
+
+export async function createIncidentAction(
+  incidentId: string,
+  request: CreateIncidentActionRequest,
+): Promise<IncidentActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/actions`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create response action. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentActionBoardResponse>;
+}
+
+export async function updateIncidentActionStatus(
+  incidentId: string,
+  actionId: string,
+  status: IncidentActionStatus,
+): Promise<IncidentActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/actions/${actionId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update action status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentActionBoardResponse>;
+}
+
+export async function updateIncidentActionPriority(
+  incidentId: string,
+  actionId: string,
+  priority: IncidentActionPriority,
+): Promise<IncidentActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/actions/${actionId}/priority`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        priority,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update action priority. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentActionBoardResponse>;
+}
+
+export async function updateIncidentActionOwner(
+  incidentId: string,
+  actionId: string,
+  owner: string,
+): Promise<IncidentActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/actions/${actionId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update action owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentActionBoardResponse>;
+}
+
+export async function updateIncidentActionDueAt(
+  incidentId: string,
+  actionId: string,
+  dueAt: string | null,
+): Promise<IncidentActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/actions/${actionId}/due-at`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dueAt,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update action due date. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentActionBoardResponse>;
+}
+
+export async function deleteIncidentAction(
+  incidentId: string,
+  actionId: string,
+): Promise<IncidentActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/actions/${actionId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete response action. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentActionBoardResponse>;
 }
