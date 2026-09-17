@@ -42,7 +42,19 @@ export type IncidentTimelineEvent = {
     | "STATUS_CHANGED"
     | "SEVERITY_CHANGED"
     | "OWNER_CHANGED"
-    | "NOTE_ADDED";
+    | "NOTE_ADDED"
+    | "ACTION_CREATED"
+    | "ACTION_STATUS_CHANGED"
+    | "ACTION_PRIORITY_CHANGED"
+    | "ACTION_OWNER_CHANGED"
+    | "ACTION_DUE_CHANGED"
+    | "ACTION_DELETED"
+    | "RESOURCE_REQUESTED"
+    | "RESOURCE_ALLOCATION_CHANGED"
+    | "RESOURCE_PRIORITY_CHANGED"
+    | "RESOURCE_OWNER_CHANGED"
+    | "RESOURCE_CANCELLED"
+    | "RESOURCE_DELETED";
   message: string;
   createdAt: string;
 };

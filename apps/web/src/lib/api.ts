@@ -57,6 +57,11 @@ import type {
   IncidentActionStatus,
 } from "@/types/incident-actions";
 
+import type {
+  CreateIncidentResourceRequest,
+  IncidentResourceBoardResponse,
+} from "@/types/incident-resources";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -861,4 +866,184 @@ export async function deleteIncidentAction(
   }
 
   return response.json() as Promise<IncidentActionBoardResponse>;
+}
+
+export async function fetchIncidentResourceBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<IncidentResourceBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resources`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Incident resource board returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResourceBoardResponse>;
+}
+
+export async function createIncidentResource(
+  incidentId: string,
+  request: CreateIncidentResourceRequest,
+): Promise<IncidentResourceBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resources`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create resource request. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResourceBoardResponse>;
+}
+
+export async function updateIncidentResourceAllocation(
+  incidentId: string,
+  resourceId: string,
+  allocatedQuantity: number,
+): Promise<IncidentResourceBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resources/${resourceId}/allocation`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        allocatedQuantity,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update resource allocation. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResourceBoardResponse>;
+}
+
+export async function updateIncidentResourcePriority(
+  incidentId: string,
+  resourceId: string,
+  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+): Promise<IncidentResourceBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resources/${resourceId}/priority`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        priority,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update resource priority. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResourceBoardResponse>;
+}
+
+export async function updateIncidentResourceOwner(
+  incidentId: string,
+  resourceId: string,
+  owner: string,
+): Promise<IncidentResourceBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resources/${resourceId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update resource owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResourceBoardResponse>;
+}
+
+export async function cancelIncidentResource(
+  incidentId: string,
+  resourceId: string,
+): Promise<IncidentResourceBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resources/${resourceId}/cancel`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to cancel resource request. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResourceBoardResponse>;
+}
+
+export async function deleteIncidentResource(
+  incidentId: string,
+  resourceId: string,
+): Promise<IncidentResourceBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resources/${resourceId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete resource request. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResourceBoardResponse>;
 }

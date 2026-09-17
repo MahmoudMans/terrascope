@@ -40,6 +40,10 @@ import {
   IncidentActionBoard,
 } from "@/components/incident-action-board";
 
+import {
+  IncidentResourceBoard,
+} from "@/components/incident-resource-board";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -913,6 +917,43 @@ export function SituationRoomPanel({
                         Add note
                       </button>
                     </form>
+
+                    <IncidentResourceBoard
+                      key={
+                        `resources-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      incidentStatus={
+                        detail.incident.status
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh resource timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
 
                     <IncidentActionBoard
                       incidentId={
