@@ -68,6 +68,10 @@ import {
   IncidentClosureReview,
 } from "@/components/incident-closure-review";
 
+import {
+  IncidentImprovementBoard,
+} from "@/components/incident-improvement-board";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1010,6 +1014,43 @@ export function SituationRoomPanel({
                                   instanceof Error
                                   ? caughtError.message
                                   : "Unable to refresh after-action timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
+
+                    <IncidentImprovementBoard
+                      key={
+                        `improvements-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      incidentStatus={
+                        detail.incident.status
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh improvement timeline.",
                               );
                             },
                           );

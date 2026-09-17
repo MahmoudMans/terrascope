@@ -100,6 +100,12 @@ import type {
   IncidentClosureReadinessResponse,
 } from "@/types/closure-review";
 
+import type {
+  CreateImprovementActionRequest,
+  ImprovementActionBoardResponse,
+  ImprovementActionStatus,
+} from "@/types/improvement-actions";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -1982,4 +1988,189 @@ export async function createAfterActionReview(
   }
 
   return response.json() as Promise<IncidentAfterActionReview>;
+}
+
+export async function fetchIncidentImprovementBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ImprovementActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/improvements`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Improvement register returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImprovementActionBoardResponse>;
+}
+
+export async function createIncidentImprovementAction(
+  incidentId: string,
+  request: CreateImprovementActionRequest,
+): Promise<ImprovementActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/improvements`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create improvement action. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImprovementActionBoardResponse>;
+}
+
+export async function updateImprovementActionStatus(
+  incidentId: string,
+  actionId: string,
+  status: ImprovementActionStatus,
+): Promise<ImprovementActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/improvements/${actionId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update improvement status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImprovementActionBoardResponse>;
+}
+
+export async function updateImprovementActionPriority(
+  incidentId: string,
+  actionId: string,
+  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+): Promise<ImprovementActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/improvements/${actionId}/priority`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        priority,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update improvement priority. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImprovementActionBoardResponse>;
+}
+
+export async function updateImprovementActionOwner(
+  incidentId: string,
+  actionId: string,
+  owner: string,
+): Promise<ImprovementActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/improvements/${actionId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update improvement owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImprovementActionBoardResponse>;
+}
+
+export async function updateImprovementActionDueAt(
+  incidentId: string,
+  actionId: string,
+  dueAt: string | null,
+): Promise<ImprovementActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/improvements/${actionId}/due-at`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dueAt,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update improvement due date. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImprovementActionBoardResponse>;
+}
+
+export async function deleteIncidentImprovementAction(
+  incidentId: string,
+  actionId: string,
+): Promise<ImprovementActionBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/improvements/${actionId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete improvement action. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImprovementActionBoardResponse>;
 }
