@@ -113,6 +113,12 @@ import type {
   PreparednessExerciseStatus,
 } from "@/types/preparedness-exercises";
 
+import type {
+  CorrectiveActionStatus,
+  CreatePreparednessCorrectiveActionRequest,
+  ResilienceValidationBoardResponse,
+} from "@/types/resilience-validation";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2363,4 +2369,162 @@ export async function deletePreparednessExercise(
   }
 
   return response.json() as Promise<PreparednessExerciseBoardResponse>;
+}
+
+export async function fetchResilienceValidationBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ResilienceValidationBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-validation`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Resilience validation returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceValidationBoardResponse>;
+}
+
+export async function createPreparednessCorrectiveAction(
+  incidentId: string,
+  exerciseId: string,
+  request: CreatePreparednessCorrectiveActionRequest,
+): Promise<ResilienceValidationBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-validation/exercises/${exerciseId}/corrective-actions`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create corrective action. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceValidationBoardResponse>;
+}
+
+export async function updatePreparednessCorrectiveStatus(
+  incidentId: string,
+  correctiveActionId: string,
+  status: CorrectiveActionStatus,
+): Promise<ResilienceValidationBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-validation/corrective-actions/${correctiveActionId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update corrective status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceValidationBoardResponse>;
+}
+
+export async function updatePreparednessCorrectiveOwner(
+  incidentId: string,
+  correctiveActionId: string,
+  owner: string,
+): Promise<ResilienceValidationBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-validation/corrective-actions/${correctiveActionId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update corrective owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceValidationBoardResponse>;
+}
+
+export async function updatePreparednessCorrectiveDueAt(
+  incidentId: string,
+  correctiveActionId: string,
+  dueAt: string | null,
+): Promise<ResilienceValidationBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-validation/corrective-actions/${correctiveActionId}/due-at`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dueAt,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update corrective due date. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceValidationBoardResponse>;
+}
+
+export async function deletePreparednessCorrectiveAction(
+  incidentId: string,
+  correctiveActionId: string,
+): Promise<ResilienceValidationBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-validation/corrective-actions/${correctiveActionId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete corrective action. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceValidationBoardResponse>;
 }
