@@ -1,0 +1,40 @@
+server:
+  port: ${SERVER_PORT:8087}
+  shutdown: graceful
+
+spring:
+  application:
+    name: terrascope-backend
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:55433}/${DB_NAME:terrascope}
+    username: ${DB_USER:terrascope}
+    password: ${DB_PASSWORD:terrascope_demo}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  mvc:
+    problemdetails:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+  endpoint:
+    health:
+      show-details: when-authorized
+
+terrascope:
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:3000}
+
+  usgs:
+    feed-base-url: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary

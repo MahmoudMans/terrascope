@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.vscode/
+*.iml
+*.log
+.env
+.env.local
+.env.*.local
+apps/backend/target/
+apps/web/.next/
+apps/web/node_modules/
+apps/web/out/
+coverage/
+dist/
+tmp/

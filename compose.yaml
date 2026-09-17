@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: terrascope-postgres
+    environment:
+      POSTGRES_DB: terrascope
+      POSTGRES_USER: terrascope
+      POSTGRES_PASSWORD: terrascope_demo
+    ports:
+      - "55433:5432"
+    volumes:
+      - terrascope_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U terrascope -d terrascope
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  terrascope_postgres_data:
