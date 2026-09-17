@@ -42,6 +42,14 @@ import type {
   EvaluateAlertRulesRequest,
 } from "@/types/alerts";
 
+import type {
+  CreateIncidentRequest,
+  IncidentDashboardResponse,
+  IncidentDetail,
+  IncidentSeverity,
+  IncidentStatus,
+} from "@/types/incidents";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -480,4 +488,185 @@ export async function updateAlertEventStatus(
   }
 
   return response.json() as Promise<AlertEvent>;
+}
+
+export async function fetchIncidentDashboard(
+  signal?: AbortSignal,
+): Promise<IncidentDashboardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Incident dashboard returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentDashboardResponse>;
+}
+
+export async function fetchIncidentDetail(
+  id: string,
+  signal?: AbortSignal,
+): Promise<IncidentDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${id}`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Incident detail returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentDetail>;
+}
+
+export async function createIncident(
+  request: CreateIncidentRequest,
+): Promise<IncidentDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create incident. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentDetail>;
+}
+
+export async function updateIncidentStatus(
+  id: string,
+  status: IncidentStatus,
+): Promise<IncidentDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${id}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update incident status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentDetail>;
+}
+
+export async function updateIncidentSeverity(
+  id: string,
+  severity: IncidentSeverity,
+): Promise<IncidentDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${id}/severity`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        severity,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update incident severity. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentDetail>;
+}
+
+export async function updateIncidentOwner(
+  id: string,
+  owner: string,
+): Promise<IncidentDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${id}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update incident owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentDetail>;
+}
+
+export async function addIncidentNote(
+  id: string,
+  message: string,
+): Promise<IncidentDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${id}/notes`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to add incident note. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentDetail>;
 }

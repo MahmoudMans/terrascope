@@ -10,6 +10,7 @@ import {
   Mountain,
   RefreshCw,
   ShieldAlert,
+  Siren,
   Trash2,
   X,
   XCircle,
@@ -23,6 +24,7 @@ import {
 
 import {
   createAlertRule,
+  createIncident,
   deleteAlertRule,
   evaluateAlertRules,
   fetchAlertDashboard,
@@ -43,6 +45,10 @@ import type {
 import type {
   RegionalHazardPoint,
 } from "@/types/regional-intelligence";
+
+import type {
+  IncidentSeverity,
+} from "@/types/incidents";
 
 type AlertCenterPanelProps = {
   open: boolean;
@@ -80,6 +86,52 @@ function hazardLabel(
     case "severe-storms":
       return "Severe storm";
   }
+}
+
+function incidentSeverity(
+  alert: AlertEvent,
+): IncidentSeverity {
+  if (
+    alert.hazardType
+    === "earthquakes"
+  ) {
+    const intensity =
+      alert.intensity ?? 0;
+
+    if (intensity >= 7) {
+      return "CRITICAL";
+    }
+
+    if (intensity >= 6) {
+      return "SEVERE";
+    }
+
+    if (intensity >= 5) {
+      return "HIGH";
+    }
+
+    return "MODERATE";
+  }
+
+  if (
+    alert.hazardType
+    === "severe-storms"
+  ) {
+    const intensity =
+      alert.intensity ?? 0;
+
+    if (intensity >= 120) {
+      return "CRITICAL";
+    }
+
+    if (intensity >= 90) {
+      return "SEVERE";
+    }
+
+    return "HIGH";
+  }
+
+  return "HIGH";
 }
 
 function HazardIcon({
@@ -479,6 +531,55 @@ export function AlertCenterPanel({
               instanceof Error
               ? caughtError.message
               : "Unable to delete rule.",
+          );
+        },
+      )
+      .finally(() => {
+        setBusy(false);
+      });
+  };
+
+  const handleOpenIncident = (
+    alert: AlertEvent,
+  ) => {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    void createIncident({
+      alertEventId:
+        alert.id,
+      sourceEventId:
+        alert.sourceEventId,
+      hazardType:
+        alert.hazardType,
+      title:
+        alert.title,
+      description:
+        `Promoted from TerraScope alert rule: ${alert.ruleName}`,
+      latitude:
+        alert.latitude,
+      longitude:
+        alert.longitude,
+      severity:
+        incidentSeverity(
+          alert,
+        ),
+      owner:
+        "Unassigned",
+    })
+      .then(() => {
+        setMessage(
+          "Incident opened in Situation Room.",
+        );
+      })
+      .catch(
+        (caughtError: unknown) => {
+          setError(
+            caughtError
+              instanceof Error
+              ? caughtError.message
+              : "Unable to open incident.",
           );
         },
       )
@@ -1064,6 +1165,22 @@ export function AlertCenterPanel({
                           </div>
 
                           <div className="alert-event-actions">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                handleOpenIncident(
+                                  alert,
+                                )
+                              }
+                            >
+                              <Siren
+                                size={13}
+                              />
+
+                              Open incident
+                            </button>
+
                             {alert.status
                               === "NEW" && (
                               <button

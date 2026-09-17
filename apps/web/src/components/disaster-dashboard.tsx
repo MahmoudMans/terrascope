@@ -27,6 +27,7 @@ import {
   Sparkles,
   Radar,
   BellRing,
+  Siren,
   Waves,
 } from "lucide-react";
 
@@ -64,6 +65,10 @@ import {
 import {
   AlertCenterPanel,
 } from "@/components/alert-center-panel";
+
+import {
+  SituationRoomPanel,
+} from "@/components/situation-room-panel";
 
 import {
   VolcanoList,
@@ -160,6 +165,11 @@ const navItems = [
   {
     label: "Alerts",
     icon: BellRing,
+    active: true,
+  },
+  {
+    label: "Situation",
+    icon: Siren,
     active: true,
   },
   {
@@ -351,6 +361,12 @@ export function DisasterDashboard() {
   const [
     alertCenterOpen,
     setAlertCenterOpen,
+  ] =
+    useState(false);
+
+  const [
+    situationRoomOpen,
+    setSituationRoomOpen,
   ] =
     useState(false);
 
@@ -961,6 +977,15 @@ export function DisasterDashboard() {
                     === "Alerts"
                   ) {
                     setAlertCenterOpen(
+                      true,
+                    );
+                  }
+
+                  if (
+                    label
+                    === "Situation"
+                  ) {
+                    setSituationRoomOpen(
                       true,
                     );
                   }
@@ -2332,6 +2357,13 @@ export function DisasterDashboard() {
           open={alertCenterOpen}
           onClose={() =>
             setAlertCenterOpen(false)
+          }
+        />
+
+        <SituationRoomPanel
+          open={situationRoomOpen}
+          onClose={() =>
+            setSituationRoomOpen(false)
           }
         />
 
