@@ -119,6 +119,12 @@ import type {
   ResilienceValidationBoardResponse,
 } from "@/types/resilience-validation";
 
+import type {
+  IncidentResilienceCertification,
+  ResilienceCertificationHistoryResponse,
+  ResilienceCertificationReadinessResponse,
+} from "@/types/resilience-certification";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2527,4 +2533,76 @@ export async function deletePreparednessCorrectiveAction(
   }
 
   return response.json() as Promise<ResilienceValidationBoardResponse>;
+}
+
+export async function fetchResilienceCertificationReadiness(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ResilienceCertificationReadinessResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-certification/readiness`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Resilience certification readiness returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceCertificationReadinessResponse>;
+}
+
+export async function fetchResilienceCertificationHistory(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ResilienceCertificationHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-certification/history`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Resilience certification history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceCertificationHistoryResponse>;
+}
+
+export async function createResilienceCertification(
+  incidentId: string,
+): Promise<IncidentResilienceCertification> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-certification`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create resilience certification. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentResilienceCertification>;
 }

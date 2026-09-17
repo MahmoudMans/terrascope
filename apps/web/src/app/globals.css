@@ -8865,3 +8865,357 @@ a:focus-visible {
     grid-column: 1;
   }
 }
+
+.resilience-certification {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(93, 176, 158, 0.13);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(68, 185, 157, 0.024),
+      rgba(255, 255, 255, 0.004)
+    );
+}
+
+.resilience-certification-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resilience-certification-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resilience-certification-heading strong {
+  color: #adc1c1;
+  font-size: 10px;
+}
+
+.resilience-certification-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.resilience-certification-actions button {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #82aca4;
+  border: 1px solid rgba(87, 177, 158, 0.14);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.resilience-certification-error {
+  padding: 8px 9px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.resilience-certification-empty {
+  display: grid;
+  min-height: 100px;
+  place-items: center;
+  color: #587174;
+  font-size: 8px;
+}
+
+.resilience-certification-hero {
+  display: grid;
+  grid-template-columns:
+    auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.resilience-certification-hero--ready {
+  border-color: rgba(73, 190, 113, 0.2);
+}
+
+.resilience-certification-hero--blocked {
+  border-color: rgba(232, 133, 88, 0.2);
+}
+
+.resilience-certification-hero > div:first-child {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: #79c49c;
+  border: 1px solid rgba(90, 175, 153, 0.15);
+  border-radius: 9px;
+}
+
+.resilience-certification-hero--blocked
+> div:first-child {
+  color: #e69578;
+}
+
+.resilience-certification-hero
+> div:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.resilience-certification-hero span {
+  color: #607a7d;
+  font-size: 6px;
+}
+
+.resilience-certification-hero
+> div:nth-child(2)
+> strong {
+  color: #b4c7c8;
+  font-size: 13px;
+}
+
+.resilience-certification-hero p {
+  margin: 0;
+  color: #657e80;
+  font-size: 7px;
+  line-height: 1.55;
+}
+
+.resilience-certification-score {
+  display: grid;
+  grid-template-columns:
+    auto auto;
+  align-items: baseline;
+  text-align: right;
+}
+
+.resilience-certification-score span {
+  grid-column: 1 / -1;
+}
+
+.resilience-certification-score strong {
+  color: #a8c5ba;
+  font-size: 20px;
+}
+
+.resilience-certification-score small {
+  color: #60777a;
+  font-size: 7px;
+}
+
+.resilience-certification-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(8, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.resilience-certification-summary > div {
+  display: flex;
+  min-height: 47px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 6px;
+}
+
+.resilience-certification-summary span {
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.resilience-certification-summary strong {
+  color: #a5babc;
+  font-size: 9px;
+}
+
+.resilience-certification-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.resilience-certification-grid > section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(105, 152, 157, 0.07);
+  border-radius: 7px;
+}
+
+.resilience-certification-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #70aaa4;
+}
+
+.resilience-certification-section-heading strong {
+  color: #9eb3b5;
+  font-size: 8px;
+}
+
+.resilience-certification-section-heading > span {
+  margin-left: auto;
+  color: #587174;
+  font-size: 6px;
+}
+
+.resilience-certification-clear {
+  display: flex;
+  min-height: 105px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  color: #79bb94;
+}
+
+.resilience-certification-clear strong {
+  color: #96aba7;
+  font-size: 8px;
+}
+
+.resilience-certification-clear span {
+  max-width: 250px;
+  color: #587174;
+  font-size: 6px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.resilience-certification-blockers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resilience-certification-blockers article {
+  display: grid;
+  grid-template-columns:
+    auto 1fr;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  color: #e29a78;
+  border: 1px solid rgba(221, 126, 84, 0.1);
+  border-radius: 5px;
+}
+
+.resilience-certification-blockers article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resilience-certification-blockers strong {
+  color: #9eadae;
+  font-size: 7px;
+}
+
+.resilience-certification-blockers span {
+  color: #5d7578;
+  font-size: 6px;
+}
+
+.resilience-certification-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resilience-certification-history article {
+  display: grid;
+  grid-template-columns:
+    auto 1fr 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.06);
+  border-radius: 5px;
+}
+
+.resilience-certification-history article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resilience-certification-history span {
+  color: #587174;
+  font-size: 6px;
+}
+
+.resilience-certification-history strong {
+  color: #9bafb1;
+  font-size: 7px;
+}
+
+.resilience-certification-history time {
+  color: #4f686a;
+  font-size: 6px;
+}
+
+.resilience-certification-latest {
+  padding: 10px;
+  border: 1px solid rgba(103, 153, 158, 0.07);
+  border-radius: 7px;
+}
+
+.resilience-certification-latest > span {
+  color: #607a7d;
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.resilience-certification-latest p {
+  margin: 6px 0 0;
+  color: #95aaac;
+  font-size: 7px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1050px) {
+  .resilience-certification-summary {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .resilience-certification-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .resilience-certification-score {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .resilience-certification-summary {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .resilience-certification-grid {
+    grid-template-columns: 1fr;
+  }
+}
