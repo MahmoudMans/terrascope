@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step20-backend.log"
+BACKEND_LOG="/tmp/terrascope-step21-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -22,7 +22,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 20 VERIFICATION"
+echo " TERRASCOPE — STEP 21 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -64,12 +64,8 @@ echo "[PASS] BACKEND_PACKAGE"
 
 (
   cd apps/web
-
-  npx eslint . \
-    --max-warnings=0
-
+  npx eslint . --max-warnings=0
   npm run typecheck
-
   npm run build
 )
 
@@ -115,26 +111,29 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step20-status.json
+  >/tmp/terrascope-step21-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-status.json",
+    "/tmp/terrascope-step21-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.20.0"
+assert payload["version"] == "0.21.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+for VERSION in \
+  1 2 3 4 5 6 7 8 9 10 \
+  11 12 13 14 15 16 17 18 19 20 21
+do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -155,10 +154,10 @@ for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V20_RUNTIME"
+echo "[PASS] FLYWAY_V21_RUNTIME"
 
 echo
-echo "===== CLEAN STEP 20 FIXTURE ====="
+echo "===== CLEAN STEP 21 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -168,24 +167,24 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step20-incident';
+            'verification-step21-incident';
     " \
   >/dev/null
 
-echo "[PASS] STEP20_PRE_CLEAN"
+echo "[PASS] STEP21_PRE_CLEAN"
 
 echo
-echo "===== CREATE CERTIFICATION INCIDENT ====="
+echo "===== CREATE EVIDENCE INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step20-incident.json \
+  /tmp/terrascope-step21-incident.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step20-incident",
+  "sourceEventId": "verification-step21-incident",
   "hazardType": "earthquakes",
-  "title": "Verification Certification Incident",
-  "description": "Step 20 final resilience certification fixture.",
+  "title": "Verification Evidence Incident",
+  "description": "Step 21 resilience evidence manifest fixture.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
@@ -198,16 +197,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-incident.json \
+  --data @/tmp/terrascope-step21-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step20-incident-response.json
+  >/tmp/terrascope-step21-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-incident-response.json",
+    "/tmp/terrascope-step21-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -219,64 +218,31 @@ PY
 )"
 
 echo "INCIDENT_ID=${INCIDENT_ID}"
-echo "[PASS] CERTIFICATION_INCIDENT_CREATE"
+
+echo "[PASS] EVIDENCE_INCIDENT_CREATE"
 
 echo
-echo "===== OPEN INCIDENT READINESS ====="
+echo "===== UNCERTIFIED EVIDENCE GUARD ====="
 
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification/readiness" \
-  >/tmp/terrascope-step20-open-readiness.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step20-open-readiness.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["ready"] is False
-assert payload["status"] == "BLOCKED"
-
-codes = {
-    blocker["code"]
-    for blocker
-    in payload["blockers"]
-}
-
-assert "INCIDENT_NOT_CLOSED" in codes
-assert "AAR_MISSING" in codes
-assert "COMPLETED_IMPROVEMENT_MISSING" in codes
-
-print(
-    "[PASS] OPEN_INCIDENT_CERTIFICATION_READINESS"
-)
-PY
-
-OPEN_CERT_HTTP="$(
+UNCERTIFIED_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step20-open-cert.json \
+    --output /tmp/terrascope-step21-uncertified.json \
     --write-out '%{http_code}' \
-    --request POST \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification"
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/preview"
 )"
 
-echo "OPEN_INCIDENT_CERTIFICATION_HTTP=${OPEN_CERT_HTTP}"
+echo "UNCERTIFIED_EVIDENCE_HTTP=${UNCERTIFIED_HTTP}"
 
-[[ "${OPEN_CERT_HTTP}" == "409" ]]
+[[ "${UNCERTIFIED_HTTP}" == "409" ]]
 
-echo "[PASS] OPEN_INCIDENT_CERTIFICATION_GUARD"
+echo "[PASS] UNCERTIFIED_EVIDENCE_GUARD"
 
 echo
 echo "===== CLOSE INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step20-close.json \
+  /tmp/terrascope-step21-close.json \
 <<'JSON'
 {
   "status": "CLOSED"
@@ -288,33 +254,31 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-close.json \
+  --data @/tmp/terrascope-step21-close.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/status" \
   >/dev/null
 
-echo "[PASS] CERTIFICATION_INCIDENT_CLOSED"
+echo "[PASS] EVIDENCE_INCIDENT_CLOSED"
 
 echo
-echo "===== CAPTURE AAR ====="
+echo "===== CREATE AAR ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/after-action-reviews" \
-  >/tmp/terrascope-step20-aar.json
+  >/tmp/terrascope-step21-aar.json
 
 AAR_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-aar.json",
+    "/tmp/terrascope-step21-aar.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
-
-assert payload["reviewNumber"] == 1
 
 print(
     payload["id"]
@@ -323,32 +287,32 @@ PY
 )"
 
 echo "AAR_ID=${AAR_ID}"
-echo "[PASS] CERTIFICATION_AAR_EVIDENCE"
+
+echo "[PASS] EVIDENCE_AAR_SOURCE"
 
 echo
-echo "===== CAPTURE FINAL SITREP ====="
+echo "===== CREATE SITREP ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/sitrep/reports" \
-  >/tmp/terrascope-step20-sitrep.json
+  >/tmp/terrascope-step21-sitrep.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-sitrep.json",
+    "/tmp/terrascope-step21-sitrep.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["reportNumber"] == 1
-assert payload["incidentStatus"] == "CLOSED"
 
 print(
-    "[PASS] CERTIFICATION_SITREP_EVIDENCE"
+    "[PASS] EVIDENCE_SITREP_SOURCE"
 )
 PY
 
@@ -356,13 +320,13 @@ echo
 echo "===== CREATE COMPLETED IMPROVEMENT ====="
 
 cat > \
-  /tmp/terrascope-step20-improvement.json \
+  /tmp/terrascope-step21-improvement.json \
 <<JSON
 {
   "afterActionReviewId": "${AAR_ID}",
   "category": "PROCESS",
-  "title": "Formalize certified command handoff checklist",
-  "description": "Final assurance improvement.",
+  "title": "Formalize evidence-ready handoff checklist",
+  "description": "Validation source for evidence packaging.",
   "priority": "HIGH",
   "owner": "Resilience Office",
   "dueAt": "2030-01-01T00:00:00Z"
@@ -374,16 +338,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-improvement.json \
+  --data @/tmp/terrascope-step21-improvement.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step20-improvement-response.json
+  >/tmp/terrascope-step21-improvement-response.json
 
 IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-improvement-response.json",
+    "/tmp/terrascope-step21-improvement-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -395,7 +359,7 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step20-improvement-complete.json \
+  /tmp/terrascope-step21-improvement-complete.json \
 <<'JSON'
 {
   "status": "COMPLETED"
@@ -407,61 +371,25 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-improvement-complete.json \
+  --data @/tmp/terrascope-step21-improvement-complete.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/status" \
   >/dev/null
 
-echo "[PASS] CERTIFICATION_IMPROVEMENT_COMPLETED"
+echo "[PASS] EVIDENCE_IMPROVEMENT_SOURCE"
 
 echo
-echo "===== UNTESTED CERTIFICATION BLOCK ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification/readiness" \
-  >/tmp/terrascope-step20-untested.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step20-untested.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["ready"] is False
-assert payload["completedImprovementCount"] == 1
-assert payload["untestedCount"] == 1
-
-codes = {
-    blocker["code"]
-    for blocker
-    in payload["blockers"]
-}
-
-assert "UNTESTED_IMPROVEMENTS" in codes
-assert "READINESS_SCORE_BELOW_THRESHOLD" in codes
-
-print(
-    "[PASS] UNTESTED_CERTIFICATION_BLOCK"
-)
-PY
-
-echo
-echo "===== PARTIAL VALIDATION ====="
+echo "===== CREATE PASSED PREPAREDNESS EXERCISE ====="
 
 cat > \
-  /tmp/terrascope-step20-exercise-one.json \
+  /tmp/terrascope-step21-exercise.json \
 <<JSON
 {
   "improvementActionId": "${IMPROVEMENT_ID}",
-  "exerciseType": "TABLETOP",
-  "title": "Initial certification validation",
-  "description": "Initial assurance validation.",
+  "exerciseType": "FUNCTIONAL",
+  "title": "Evidence package validation exercise",
+  "description": "Validate the completed improvement.",
   "owner": "Preparedness Office",
-  "scheduledAt": "2030-01-02T10:00:00Z"
+  "scheduledAt": "2030-02-01T10:00:00Z"
 }
 JSON
 
@@ -470,16 +398,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-exercise-one.json \
+  --data @/tmp/terrascope-step21-exercise.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises" \
-  >/tmp/terrascope-step20-exercise-one-response.json
+  >/tmp/terrascope-step21-exercise-response.json
 
-EXERCISE_ONE_ID="$(
+EXERCISE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-exercise-one-response.json",
+    "/tmp/terrascope-step21-exercise-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -491,214 +419,14 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step20-partial.json \
-<<'JSON'
-{
-  "result": "PARTIAL",
-  "readinessScore": 65,
-  "performedAt": "2030-01-02T12:00:00Z",
-  "evidenceSummary": "Most handoff controls passed.",
-  "findings": "One mandatory assurance control remained incomplete.",
-  "correctiveAction": "Correct the missing assurance control and revalidate."
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-partial.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ONE_ID}/assess" \
-  >/dev/null
-
-echo "[PASS] CERTIFICATION_PARTIAL_VALIDATION"
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification/readiness" \
-  >/tmp/terrascope-step20-revalidation-block.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step20-revalidation-block.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["ready"] is False
-assert payload["needsRevalidationCount"] == 1
-
-codes = {
-    blocker["code"]
-    for blocker
-    in payload["blockers"]
-}
-
-assert "REVALIDATION_REQUIRED" in codes
-assert "READINESS_SCORE_BELOW_THRESHOLD" in codes
-
-print(
-    "[PASS] REVALIDATION_CERTIFICATION_BLOCK"
-)
-PY
-
-echo
-echo "===== CREATE CORRECTIVE ACTION ====="
-
-cat > \
-  /tmp/terrascope-step20-corrective.json \
-<<'JSON'
-{
-  "title": "Close final assurance control gap",
-  "description": "Correct the validation finding before certification.",
-  "priority": "HIGH",
-  "owner": "Preparedness Office",
-  "dueAt": "2035-01-01T00:00:00Z"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-corrective.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-validation/exercises/${EXERCISE_ONE_ID}/corrective-actions" \
-  >/tmp/terrascope-step20-corrective-response.json
-
-CORRECTIVE_ID="$(
-  python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step20-corrective-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["openCorrectiveActionCount"] == 1
-
-print(
-    payload["correctiveActions"][0]["id"]
-)
-PY
-)"
-
-echo "CORRECTIVE_ID=${CORRECTIVE_ID}"
-
-echo "[PASS] CERTIFICATION_CORRECTIVE_ACTION_CREATE"
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification/readiness" \
-  >/tmp/terrascope-step20-corrective-block.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step20-corrective-block.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-codes = {
-    blocker["code"]
-    for blocker
-    in payload["blockers"]
-}
-
-assert "OPEN_CORRECTIVE_ACTIONS" in codes
-
-print(
-    "[PASS] OPEN_CORRECTIVE_CERTIFICATION_BLOCK"
-)
-PY
-
-echo
-echo "===== COMPLETE CORRECTIVE ACTION ====="
-
-cat > \
-  /tmp/terrascope-step20-corrective-complete.json \
-<<'JSON'
-{
-  "status": "COMPLETED"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-corrective-complete.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-validation/corrective-actions/${CORRECTIVE_ID}/status" \
-  >/dev/null
-
-echo "[PASS] CERTIFICATION_CORRECTIVE_ACTION_COMPLETED"
-
-echo
-echo "===== REVALIDATION EXERCISE ====="
-
-cat > \
-  /tmp/terrascope-step20-exercise-two.json \
-<<JSON
-{
-  "improvementActionId": "${IMPROVEMENT_ID}",
-  "exerciseType": "FUNCTIONAL",
-  "title": "Final resilience certification revalidation",
-  "description": "Validate the corrected assurance control.",
-  "owner": "Preparedness Office",
-  "scheduledAt": "2030-02-01T10:00:00Z"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-exercise-two.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises" \
-  >/tmp/terrascope-step20-exercise-two-response.json
-
-EXERCISE_TWO_ID="$(
-  python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step20-exercise-two-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-match = next(
-    exercise
-    for exercise in payload["exercises"]
-    if exercise["title"]
-    == "Final resilience certification revalidation"
-)
-
-print(
-    match["id"]
-)
-PY
-)"
-
-cat > \
-  /tmp/terrascope-step20-pass.json \
+  /tmp/terrascope-step21-assessment.json \
 <<'JSON'
 {
   "result": "PASSED",
-  "readinessScore": 95,
+  "readinessScore": 94,
   "performedAt": "2030-02-01T12:00:00Z",
-  "evidenceSummary": "All assurance controls executed successfully.",
-  "findings": "No material validation gaps remained.",
+  "evidenceSummary": "All evidence controls executed successfully.",
+  "findings": "No material resilience gaps remained.",
   "correctiveAction": ""
 }
 JSON
@@ -708,185 +436,317 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step20-pass.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_TWO_ID}/assess" \
+  --data @/tmp/terrascope-step21-assessment.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/assess" \
   >/dev/null
 
-echo "[PASS] CERTIFICATION_REVALIDATION_PASSED"
+echo "[PASS] EVIDENCE_EXERCISE_SOURCE"
 
 echo
-echo "===== READY FOR CERTIFICATION ====="
+echo "===== CREATE RESILIENCE CERTIFICATION ====="
 
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification/readiness" \
-  >/tmp/terrascope-step20-ready.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step20-ready.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["ready"] is True
-assert payload["status"] == "READY"
-
-assert payload["completedImprovementCount"] == 1
-
-assert payload["validatedCount"] == 1
-assert payload["untestedCount"] == 0
-assert payload["needsRevalidationCount"] == 0
-assert payload["failedCount"] == 0
-
-assert payload["openCorrectiveActionCount"] == 0
-
-assert payload["totalExerciseCount"] == 2
-assert payload["passedExerciseCount"] == 1
-
-assert payload["averageLatestReadinessScore"] == 95.0
-
-assert payload["afterActionReviewCount"] == 1
-assert payload["sitrepCount"] == 1
-
-assert payload["blockers"] == []
-
-print(
-    "[PASS] CERTIFICATION_READY_STATE"
-)
-PY
-
-echo
-echo "===== CERTIFICATION SNAPSHOT #1 ====="
-
-CERT_ONE_HTTP="$(
+CERT_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step20-cert-one.json \
+    --output /tmp/terrascope-step21-certification.json \
     --write-out '%{http_code}' \
     --request POST \
     "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification"
 )"
 
-echo "CERTIFICATION_ONE_HTTP=${CERT_ONE_HTTP}"
+echo "RESILIENCE_CERTIFICATION_HTTP=${CERT_HTTP}"
 
-[[ "${CERT_ONE_HTTP}" == "200" ]]
+[[ "${CERT_HTTP}" == "200" ]]
 
-python3 - <<'PY'
+CERTIFICATION_ID="$(
+  python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-cert-one.json",
+    "/tmp/terrascope-step21-certification.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["certificationNumber"] == 1
 assert payload["status"] == "CERTIFIED"
+assert payload["averageLatestReadinessScore"] == 94.0
 
-assert payload["completedImprovementCount"] == 1
-assert payload["validatedCount"] == 1
+print(
+    payload["id"]
+)
+PY
+)"
 
-assert payload["untestedCount"] == 0
-assert payload["needsRevalidationCount"] == 0
-assert payload["failedCount"] == 0
-assert payload["openCorrectiveActionCount"] == 0
+echo "CERTIFICATION_ID=${CERTIFICATION_ID}"
 
-assert payload["totalExerciseCount"] == 2
-assert payload["passedExerciseCount"] == 1
-assert payload["averageLatestReadinessScore"] == 95.0
+echo "[PASS] EVIDENCE_CERTIFICATION_SOURCE"
+
+echo
+echo "===== EVIDENCE PREVIEW ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/preview" \
+  >/tmp/terrascope-step21-preview.json
+
+python3 - <<'PY'
+import json
+import re
+
+with open(
+    "/tmp/terrascope-step21-preview.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["certificationNumber"] == 1
+assert payload["certificationReadinessScore"] == 94.0
+assert payload["certificationCount"] == 1
 
 assert payload["afterActionReviewCount"] == 1
 assert payload["sitrepCount"] == 1
+assert payload["improvementCount"] == 1
+assert payload["exerciseCount"] == 1
+assert payload["correctiveActionCount"] == 0
+
+assert payload["timelineEventCount"] > 0
 
 assert (
-    "post-incident assurance lifecycle"
+    payload["manifestVersion"]
+    == "TS-RESILIENCE-EVIDENCE-V1"
+)
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["manifestHash"],
+)
+
+assert (
+    "generated locally with SHA-256"
     in payload["executiveSummary"]
 )
 
 print(
-    "[PASS] RESILIENCE_CERTIFICATION_CREATE"
+    "[PASS] EVIDENCE_PREVIEW"
+)
+
+print(
+    "[PASS] EVIDENCE_CANONICAL_HASH"
+)
+PY
+
+PREVIEW_HASH="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step21-preview.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+print(
+    payload["manifestHash"]
+)
+PY
+)"
+
+echo "PREVIEW_HASH=${PREVIEW_HASH}"
+
+echo
+echo "===== CREATE EVIDENCE PACKAGE #1 ====="
+
+PACKAGE_ONE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step21-package-one.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages"
+)"
+
+echo "EVIDENCE_PACKAGE_ONE_HTTP=${PACKAGE_ONE_HTTP}"
+
+[[ "${PACKAGE_ONE_HTTP}" == "200" ]]
+
+PACKAGE_ONE_ID="$(
+  python3 - "${PREVIEW_HASH}" <<'PY'
+import json
+import sys
+
+expected_hash = sys.argv[1]
+
+with open(
+    "/tmp/terrascope-step21-package-one.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["packageNumber"] == 1
+
+assert payload["certificationNumber"] == 1
+assert payload["certificationReadinessScore"] == 94.0
+
+assert payload["certificationCount"] == 1
+assert payload["afterActionReviewCount"] == 1
+assert payload["sitrepCount"] == 1
+assert payload["improvementCount"] == 1
+assert payload["exerciseCount"] == 1
+assert payload["correctiveActionCount"] == 0
+
+assert (
+    payload["manifestVersion"]
+    == "TS-RESILIENCE-EVIDENCE-V1"
+)
+
+assert payload["manifestHash"] == expected_hash
+
+print(
+    payload["id"]
+)
+PY
+)"
+
+echo "PACKAGE_ONE_ID=${PACKAGE_ONE_ID}"
+
+echo "[PASS] EVIDENCE_PACKAGE_ONE_CREATE"
+
+echo
+echo "===== VERIFY EVIDENCE PACKAGE #1 ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages/${PACKAGE_ONE_ID}/verify" \
+  >/tmp/terrascope-step21-verify-one.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step21-verify-one.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is True
+
+assert (
+    payload["storedHash"]
+    == payload["recomputedHash"]
+)
+
+assert (
+    payload["manifestVersion"]
+    == "TS-RESILIENCE-EVIDENCE-V1"
+)
+
+print(
+    "[PASS] EVIDENCE_PACKAGE_INTEGRITY"
 )
 PY
 
 echo
-echo "===== CERTIFICATION SNAPSHOT #2 ====="
+echo "===== CREATE EVIDENCE PACKAGE #2 ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification" \
-  >/tmp/terrascope-step20-cert-two.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages" \
+  >/tmp/terrascope-step21-package-two.json
 
-python3 - <<'PY'
+PACKAGE_TWO_ID="$(
+  python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-cert-two.json",
+    "/tmp/terrascope-step21-package-two.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["certificationNumber"] == 2
-assert payload["status"] == "CERTIFIED"
-assert payload["averageLatestReadinessScore"] == 95.0
+assert payload["packageNumber"] == 2
+assert payload["certificationNumber"] == 1
 
 print(
-    "[PASS] RESILIENCE_CERTIFICATION_SEQUENCE"
+    payload["id"]
 )
 PY
+)"
+
+PACKAGE_TWO_HASH="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step21-package-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+print(
+    payload["manifestHash"]
+)
+PY
+)"
+
+echo "PACKAGE_TWO_ID=${PACKAGE_TWO_ID}"
+echo "PACKAGE_TWO_HASH=${PACKAGE_TWO_HASH}"
+
+[[ "${PACKAGE_TWO_HASH}" != "${PREVIEW_HASH}" ]]
+
+echo "[PASS] EVIDENCE_PACKAGE_SEQUENCE"
+echo "[PASS] EVIDENCE_TIMELINE_SENSITIVE_MANIFEST"
 
 echo
-echo "===== CERTIFICATION HISTORY ====="
+echo "===== EVIDENCE PACKAGE HISTORY ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-certification/history" \
-  >/tmp/terrascope-step20-history.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/resilience-evidence/packages" \
+  >/tmp/terrascope-step21-history.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-history.json",
+    "/tmp/terrascope-step21-history.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-certifications = payload["certifications"]
+packages = payload["packages"]
 
-assert len(certifications) == 2
+assert len(packages) == 2
 
-assert certifications[0]["certificationNumber"] == 2
-assert certifications[1]["certificationNumber"] == 1
+assert packages[0]["packageNumber"] == 2
+assert packages[1]["packageNumber"] == 1
 
-assert certifications[0]["status"] == "CERTIFIED"
-assert certifications[0]["averageLatestReadinessScore"] == 95.0
+assert packages[0]["manifestHash"] != packages[1]["manifestHash"]
 
 print(
-    "[PASS] RESILIENCE_CERTIFICATION_HISTORY"
+    "[PASS] EVIDENCE_PACKAGE_HISTORY"
 )
 PY
 
 echo
-echo "===== CERTIFICATION TIMELINE ====="
+echo "===== EVIDENCE TIMELINE ====="
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step20-detail.json
+  >/tmp/terrascope-step21-detail.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step20-detail.json",
+    "/tmp/terrascope-step21-detail.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -898,25 +758,26 @@ types = [
 
 assert (
     types.count(
-        "RESILIENCE_CERTIFICATION_CREATED"
+        "RESILIENCE_EVIDENCE_PACKAGE_CREATED"
     )
     == 2
 )
 
+assert "RESILIENCE_CERTIFICATION_CREATED" in types
 assert "AFTER_ACTION_REVIEW_CREATED" in types
+assert "SITREP_CREATED" in types
 assert "IMPROVEMENT_STATUS_CHANGED" in types
 assert "PREPAREDNESS_EXERCISE_ASSESSED" in types
-assert "PREPAREDNESS_CORRECTIVE_STATUS_CHANGED" in types
 
 print(
-    "[PASS] RESILIENCE_CERTIFICATION_TIMELINE"
+    "[PASS] EVIDENCE_TIMELINE_CONTRACT"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-CERT_COLUMNS="$(
+EVIDENCE_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -927,12 +788,12 @@ CERT_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name =
-            'incident_resilience_certifications';
+            'incident_resilience_evidence_packages';
       " \
     | tr -d '[:space:]'
 )"
 
-CERT_ROWS="$(
+EVIDENCE_ROWS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -940,14 +801,32 @@ CERT_ROWS="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_resilience_certifications
+      FROM incident_resilience_evidence_packages
       WHERE incident_id =
             '${INCIDENT_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
 
-CERT_UNIQUE="$(
+CERT_FK="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conrelid =
+            'incident_resilience_evidence_packages'::regclass
+        AND contype = 'f'
+        AND pg_get_constraintdef(oid)
+            LIKE '%incident_resilience_certifications%';
+      " \
+    | tr -d '[:space:]'
+)"
+
+UNIQUE_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -957,7 +836,7 @@ CERT_UNIQUE="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conname =
-            'uq_resilience_certification_number';
+            'uq_resilience_evidence_package_number';
       " \
     | tr -d '[:space:]'
 )"
@@ -976,25 +855,27 @@ TIMELINE_CONSTRAINT="$(
         AND conname =
             'ck_incident_timeline_type'
         AND pg_get_constraintdef(oid)
-            LIKE '%RESILIENCE_CERTIFICATION_CREATED%';
+            LIKE '%RESILIENCE_EVIDENCE_PACKAGE_CREATED%';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "CERTIFICATION_COLUMN_COUNT=${CERT_COLUMNS}"
-echo "CERTIFICATION_ROW_COUNT=${CERT_ROWS}"
-echo "CERTIFICATION_UNIQUE_COUNT=${CERT_UNIQUE}"
-echo "CERTIFICATION_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT}"
+echo "EVIDENCE_PACKAGE_COLUMN_COUNT=${EVIDENCE_COLUMNS}"
+echo "EVIDENCE_PACKAGE_ROW_COUNT=${EVIDENCE_ROWS}"
+echo "EVIDENCE_CERTIFICATION_FK_COUNT=${CERT_FK}"
+echo "EVIDENCE_PACKAGE_UNIQUE_COUNT=${UNIQUE_COUNT}"
+echo "EVIDENCE_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT}"
 
-[[ "${CERT_COLUMNS}" == "17" ]]
-[[ "${CERT_ROWS}" == "2" ]]
-[[ "${CERT_UNIQUE}" == "1" ]]
+[[ "${EVIDENCE_COLUMNS}" == "17" ]]
+[[ "${EVIDENCE_ROWS}" == "2" ]]
+[[ "${CERT_FK}" == "1" ]]
+[[ "${UNIQUE_COUNT}" == "1" ]]
 [[ "${TIMELINE_CONSTRAINT}" == "1" ]]
 
-echo "[PASS] RESILIENCE_CERTIFICATION_DATABASE_CONTRACT"
+echo "[PASS] EVIDENCE_DATABASE_CONTRACT"
 
 echo
-echo "===== CLEAN STEP 20 FIXTURE ====="
+echo "===== CLEAN STEP 21 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -1004,7 +885,7 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step20-incident';
+            'verification-step21-incident';
     " \
   >/dev/null
 
@@ -1018,12 +899,12 @@ VERIFY_INCIDENT_COUNT="$(
       SELECT COUNT(*)
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step20-incident';
+            'verification-step21-incident';
       " \
     | tr -d '[:space:]'
 )"
 
-ORPHAN_CERTIFICATION_COUNT="$(
+ORPHAN_EVIDENCE_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1031,26 +912,26 @@ ORPHAN_CERTIFICATION_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_resilience_certifications certification
+      FROM incident_resilience_evidence_packages evidence
       WHERE NOT EXISTS (
           SELECT 1
           FROM incident_cases incident
           WHERE incident.id =
-                certification.incident_id
+                evidence.incident_id
       );
       " \
     | tr -d '[:space:]'
 )"
 
 echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
-echo "ORPHAN_CERTIFICATION_COUNT=${ORPHAN_CERTIFICATION_COUNT}"
+echo "ORPHAN_EVIDENCE_PACKAGE_COUNT=${ORPHAN_EVIDENCE_COUNT}"
 
 [[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
-[[ "${ORPHAN_CERTIFICATION_COUNT}" == "0" ]]
+[[ "${ORPHAN_EVIDENCE_COUNT}" == "0" ]]
 
-echo "[PASS] CERTIFICATION_CLEANUP"
+echo "[PASS] EVIDENCE_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 20 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 21 VERIFICATION PASSED"
 echo "========================================================================"

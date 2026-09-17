@@ -84,6 +84,10 @@ import {
   IncidentResilienceCertification,
 } from "@/components/incident-resilience-certification";
 
+import {
+  IncidentResilienceEvidence,
+} from "@/components/incident-resilience-evidence";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1171,6 +1175,40 @@ export function SituationRoomPanel({
                                   instanceof Error
                                   ? caughtError.message
                                   : "Unable to refresh certification timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
+
+                    <IncidentResilienceEvidence
+                      key={
+                        `evidence-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh evidence timeline.",
                               );
                             },
                           );

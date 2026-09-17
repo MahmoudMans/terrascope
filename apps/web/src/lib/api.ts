@@ -125,6 +125,13 @@ import type {
   ResilienceCertificationReadinessResponse,
 } from "@/types/resilience-certification";
 
+import type {
+  EvidencePackageVerificationResponse,
+  ResilienceEvidencePackage,
+  ResilienceEvidencePackageHistoryResponse,
+  ResilienceEvidencePackagePreview,
+} from "@/types/resilience-evidence";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2605,4 +2612,100 @@ export async function createResilienceCertification(
   }
 
   return response.json() as Promise<IncidentResilienceCertification>;
+}
+
+export async function fetchResilienceEvidencePreview(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ResilienceEvidencePackagePreview> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-evidence/preview`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Evidence preview returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceEvidencePackagePreview>;
+}
+
+export async function fetchResilienceEvidenceHistory(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<ResilienceEvidencePackageHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-evidence/packages`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Evidence history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceEvidencePackageHistoryResponse>;
+}
+
+export async function createResilienceEvidencePackage(
+  incidentId: string,
+): Promise<ResilienceEvidencePackage> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-evidence/packages`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create evidence package. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResilienceEvidencePackage>;
+}
+
+export async function verifyResilienceEvidencePackage(
+  incidentId: string,
+  packageId: string,
+): Promise<EvidencePackageVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/resilience-evidence/packages/${packageId}/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Evidence verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<EvidencePackageVerificationResponse>;
 }
