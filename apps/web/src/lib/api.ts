@@ -139,6 +139,12 @@ import type {
   ResilienceAuditReceipt,
 } from "@/types/resilience-audit-ledger";
 
+import type {
+  ResiliencePortfolioHistoryResponse,
+  ResiliencePortfolioResponse,
+  ResiliencePortfolioSnapshot,
+} from "@/types/resilience-portfolio";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2810,4 +2816,72 @@ export async function verifyResilienceAuditLedger(
   }
 
   return response.json() as Promise<ResilienceAuditLedgerVerificationResponse>;
+}
+
+export async function fetchResiliencePortfolio(
+  signal?: AbortSignal,
+): Promise<ResiliencePortfolioResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Resilience portfolio returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResiliencePortfolioResponse>;
+}
+
+export async function fetchResiliencePortfolioHistory(
+  signal?: AbortSignal,
+): Promise<ResiliencePortfolioHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/history`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Resilience portfolio history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResiliencePortfolioHistoryResponse>;
+}
+
+export async function createResiliencePortfolioSnapshot(): Promise<ResiliencePortfolioSnapshot> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/snapshots`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create resilience portfolio snapshot. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResiliencePortfolioSnapshot>;
 }

@@ -9872,3 +9872,348 @@ a:focus-visible {
       1fr 1fr;
   }
 }
+
+.resilience-portfolio {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(84, 176, 165, 0.13);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(52, 182, 165, 0.027),
+      rgba(255, 255, 255, 0.004)
+    );
+}
+
+.resilience-portfolio-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resilience-portfolio-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resilience-portfolio-heading strong {
+  color: #aec2c2;
+  font-size: 10px;
+}
+
+.resilience-portfolio-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.resilience-portfolio-actions button {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #82aaa4;
+  border: 1px solid rgba(88, 177, 163, 0.14);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.resilience-portfolio-error {
+  padding: 8px 9px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.resilience-portfolio-empty {
+  display: grid;
+  min-height: 110px;
+  place-items: center;
+  color: #587174;
+  font-size: 8px;
+}
+
+.resilience-portfolio-hero {
+  display: grid;
+  grid-template-columns:
+    auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(73, 184, 163, 0.16);
+  border-radius: 8px;
+}
+
+.resilience-portfolio-score {
+  display: grid;
+  grid-template-columns:
+    auto auto auto;
+  align-items: center;
+  gap: 4px;
+  color: #71b9aa;
+}
+
+.resilience-portfolio-score strong {
+  color: #a5c7bd;
+  font-size: 24px;
+}
+
+.resilience-portfolio-score span {
+  color: #60787b;
+  font-size: 7px;
+}
+
+.resilience-portfolio-hero > div:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.resilience-portfolio-hero > div:nth-child(2) > span {
+  color: #607a7d;
+  font-size: 6px;
+}
+
+.resilience-portfolio-hero p {
+  margin: 0;
+  max-width: 520px;
+  color: #657e80;
+  font-size: 7px;
+  line-height: 1.55;
+}
+
+.portfolio-band {
+  font-size: 12px;
+}
+
+.portfolio-band--foundational {
+  color: #8d9c9e;
+}
+
+.portfolio-band--developing {
+  color: #d8b978;
+}
+
+.portfolio-band--assured {
+  color: #83bba9;
+}
+
+.portfolio-band--high-assurance {
+  color: #79c59b;
+}
+
+.resilience-portfolio-readiness {
+  display: grid;
+  grid-template-columns:
+    auto auto;
+  align-items: baseline;
+  text-align: right;
+}
+
+.resilience-portfolio-readiness span {
+  grid-column: 1 / -1;
+  color: #60777a;
+  font-size: 6px;
+}
+
+.resilience-portfolio-readiness strong {
+  color: #9fc7b7;
+  font-size: 20px;
+}
+
+.resilience-portfolio-readiness small {
+  color: #60777a;
+  font-size: 7px;
+}
+
+.resilience-portfolio-metrics {
+  display: grid;
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.resilience-portfolio-metrics > div {
+  display: flex;
+  min-height: 47px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 6px;
+}
+
+.resilience-portfolio-metrics span,
+.resilience-portfolio-assurance-grid span,
+.resilience-portfolio-exercise span {
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.resilience-portfolio-metrics strong,
+.resilience-portfolio-assurance-grid strong,
+.resilience-portfolio-exercise strong {
+  color: #a5babc;
+  font-size: 9px;
+}
+
+.resilience-portfolio-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.resilience-portfolio-grid > section,
+.resilience-portfolio-history-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(105, 152, 157, 0.07);
+  border-radius: 7px;
+}
+
+.resilience-portfolio-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #70aaa4;
+}
+
+.resilience-portfolio-section-heading strong {
+  color: #9eb3b5;
+  font-size: 8px;
+}
+
+.resilience-portfolio-section-heading > span {
+  margin-left: auto;
+  color: #587174;
+  font-size: 6px;
+}
+
+.resilience-portfolio-assurance-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.resilience-portfolio-assurance-grid article {
+  display: flex;
+  min-height: 46px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.05);
+  border-radius: 5px;
+}
+
+.resilience-portfolio-exercise {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.resilience-portfolio-exercise > div {
+  display: flex;
+  min-height: 58px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px;
+  color: #77b49f;
+  border: 1px solid rgba(104, 151, 156, 0.05);
+  border-radius: 5px;
+}
+
+.resilience-portfolio-history-empty {
+  padding: 18px;
+  color: #567074;
+  text-align: center;
+  font-size: 7px;
+}
+
+.resilience-portfolio-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resilience-portfolio-history article {
+  display: grid;
+  grid-template-columns:
+    auto 1fr 1.3fr 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.06);
+  border-radius: 5px;
+}
+
+.resilience-portfolio-history article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resilience-portfolio-history span {
+  color: #587174;
+  font-size: 6px;
+}
+
+.resilience-portfolio-history strong {
+  color: #9bafb1;
+  font-size: 7px;
+}
+
+.resilience-portfolio-history time {
+  color: #4f686a;
+  font-size: 6px;
+}
+
+@media (max-width: 1000px) {
+  .resilience-portfolio-metrics {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .resilience-portfolio-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .resilience-portfolio-readiness {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .resilience-portfolio-metrics,
+  .resilience-portfolio-assurance-grid,
+  .resilience-portfolio-exercise {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .resilience-portfolio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resilience-portfolio-history article {
+    grid-template-columns:
+      1fr 1fr;
+  }
+}
