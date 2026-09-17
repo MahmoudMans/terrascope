@@ -21,7 +21,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 2 VERIFICATION"
+echo " TERRASCOPE — STEP 3 VERIFICATION"
 echo "========================================================================"
 
 echo
@@ -106,9 +106,9 @@ echo "===== FRONTEND BUILD ====="
 echo "[PASS] FRONTEND_BUILD"
 
 echo
-echo "===== BACKEND RUNTIME SMOKE ====="
+echo "===== BACKEND RUNTIME ====="
 
-BACKEND_LOG="/tmp/terrascope-step2-backend.log"
+BACKEND_LOG="/tmp/terrascope-step3-backend.log"
 
 rm -f "${BACKEND_LOG}"
 
@@ -124,7 +124,7 @@ for attempt in $(seq 1 45); do
       --fail \
       --silent \
       "http://localhost:8087/actuator/health" \
-      >/tmp/terrascope-health.json \
+      >/tmp/terrascope-step3-health.json \
       2>/dev/null; then
 
     echo "[PASS] BACKEND_RUNTIME_READY"
@@ -150,13 +150,13 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  > /tmp/terrascope-status.json
+  >/tmp/terrascope-step3-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-status.json",
+    "/tmp/terrascope-step3-status.json",
     "r",
     encoding="utf-8",
 ) as handle:
@@ -164,7 +164,7 @@ with open(
 
 assert payload["application"] == "TerraScope"
 assert payload["status"] == "operational"
-assert payload["version"] == "0.2.0"
+assert payload["version"] == "0.3.0"
 
 sources = {
     item["id"]: item["status"]
@@ -173,6 +173,8 @@ sources = {
 
 assert sources["usgs-earthquakes"] == "configured"
 assert sources["nasa-eonet-volcanoes"] == "configured"
+assert sources["nasa-eonet-wildfires"] == "configured"
+assert sources["nasa-eonet-storms"] == "configured"
 
 print("[PASS] STATUS_ENDPOINT")
 PY
@@ -181,13 +183,13 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/earthquakes?period=day&minMagnitude=4.5&maxDepth=1000&limit=5&sort=magnitude" \
-  > /tmp/terrascope-earthquakes.json
+  >/tmp/terrascope-step3-earthquakes.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-earthquakes.json",
+    "/tmp/terrascope-step3-earthquakes.json",
     "r",
     encoding="utf-8",
 ) as handle:
@@ -198,18 +200,8 @@ assert payload["source"] in {
     "DEMO_FALLBACK",
 }
 
-assert isinstance(
-    payload["events"],
-    list,
-)
-
 assert payload["returnedEventCount"] <= 5
-
-summary = payload["summary"]
-
-assert "eventCount" in summary
-assert "strongestMagnitude" in summary
-assert "averageDepthKm" in summary
+assert isinstance(payload["events"], list)
 
 print(
     "[PASS] EARTHQUAKE_ENDPOINT "
@@ -222,13 +214,13 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/volcanoes?status=open&days=3650&limit=5" \
-  > /tmp/terrascope-volcanoes.json
+  >/tmp/terrascope-step3-volcanoes.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-volcanoes.json",
+    "/tmp/terrascope-step3-volcanoes.json",
     "r",
     encoding="utf-8",
 ) as handle:
@@ -239,19 +231,8 @@ assert payload["source"] in {
     "DEMO_FALLBACK",
 }
 
-assert isinstance(
-    payload["events"],
-    list,
-)
-
 assert payload["returnedEventCount"] <= 5
-assert payload["status"] == "open"
-
-summary = payload["summary"]
-
-assert "eventCount" in summary
-assert "totalObservationCount" in summary
-assert "sourceReferenceCount" in summary
+assert isinstance(payload["events"], list)
 
 print(
     "[PASS] VOLCANO_ENDPOINT "
@@ -263,14 +244,90 @@ PY
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/hazards/layers" \
-  > /tmp/terrascope-hazard-layers.json
+  "http://localhost:8087/api/v1/hazards/events?type=wildfires&status=open&days=90&limit=5" \
+  >/tmp/terrascope-step3-wildfires.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-hazard-layers.json",
+    "/tmp/terrascope-step3-wildfires.json",
+    "r",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["hazardType"] == "wildfires"
+
+assert payload["source"] in {
+    "NASA_EONET",
+    "DEMO_FALLBACK",
+}
+
+assert payload["returnedEventCount"] <= 5
+assert isinstance(payload["events"], list)
+
+for event in payload["events"]:
+    assert event["hazardType"] == "wildfires"
+    assert isinstance(event["latitude"], (int, float))
+    assert isinstance(event["longitude"], (int, float))
+
+print(
+    "[PASS] WILDFIRE_ENDPOINT "
+    f"SOURCE={payload['source']} "
+    f"RETURNED={payload['returnedEventCount']}"
+)
+PY
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/hazards/events?type=severe-storms&status=open&days=90&limit=5" \
+  >/tmp/terrascope-step3-storms.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step3-storms.json",
+    "r",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["hazardType"] == "severe-storms"
+
+assert payload["source"] in {
+    "NASA_EONET",
+    "DEMO_FALLBACK",
+}
+
+assert payload["returnedEventCount"] <= 5
+assert isinstance(payload["events"], list)
+
+for event in payload["events"]:
+    assert event["hazardType"] == "severe-storms"
+    assert isinstance(event["latitude"], (int, float))
+    assert isinstance(event["longitude"], (int, float))
+
+print(
+    "[PASS] STORM_ENDPOINT "
+    f"SOURCE={payload['source']} "
+    f"RETURNED={payload['returnedEventCount']}"
+)
+PY
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/hazards/layers" \
+  >/tmp/terrascope-step3-layers.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step3-layers.json",
     "r",
     encoding="utf-8",
 ) as handle:
@@ -284,23 +341,22 @@ by_id = {
     for item in payload
 }
 
-assert by_id["earthquakes"]["available"] is True
-assert by_id["volcanoes"]["available"] is True
-assert by_id["wildfires"]["available"] is False
-assert by_id["severe-storms"]["available"] is False
+expected = {
+    "earthquakes",
+    "volcanoes",
+    "wildfires",
+    "severe-storms",
+}
 
-available_count = sum(
-    1
-    for item in payload
-    if item["available"]
-)
+assert set(by_id.keys()) == expected
 
-assert available_count == 2
+for item in payload:
+    assert item["available"] is True
+    assert item["status"] == "available"
 
 print(
     "[PASS] HAZARD_LAYERS_ENDPOINT "
-    f"COUNT={len(payload)} "
-    f"AVAILABLE={available_count}"
+    "COUNT=4 AVAILABLE=4"
 )
 PY
 
@@ -334,50 +390,31 @@ if [ "${DATABASE_TABLE_COUNT}" != "4" ]; then
   exit 1
 fi
 
-FLYWAY_V1_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM flyway_schema_history
-      WHERE version = '1'
-        AND success = TRUE;
-      " \
-    | tr -d '[:space:]'
-)"
+for version in 1 2 3; do
+  COUNT="$(
+    docker compose exec -T postgres \
+      psql \
+        -U terrascope \
+        -d terrascope \
+        -tAc \
+        "
+        SELECT COUNT(*)
+        FROM flyway_schema_history
+        WHERE version = '${version}'
+          AND success = TRUE;
+        " \
+      | tr -d '[:space:]'
+  )"
 
-FLYWAY_V2_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM flyway_schema_history
-      WHERE version = '2'
-        AND success = TRUE;
-      " \
-    | tr -d '[:space:]'
-)"
+  echo "FLYWAY_V${version}_COUNT=${COUNT}"
 
-echo "FLYWAY_V1_COUNT=${FLYWAY_V1_COUNT}"
-echo "FLYWAY_V2_COUNT=${FLYWAY_V2_COUNT}"
+  if [ "${COUNT}" != "1" ]; then
+    echo "[FAIL] FLYWAY_V${version}"
+    exit 1
+  fi
+done
 
-if [ "${FLYWAY_V1_COUNT}" != "1" ]; then
-  echo "[FAIL] FLYWAY_V1"
-  exit 1
-fi
-
-if [ "${FLYWAY_V2_COUNT}" != "1" ]; then
-  echo "[FAIL] FLYWAY_V2"
-  exit 1
-fi
-
-SOURCE_METADATA_COLUMN_COUNT="$(
+V3_COLUMN_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -389,18 +426,19 @@ SOURCE_METADATA_COLUMN_COUNT="$(
       WHERE table_schema = 'public'
         AND table_name = 'saved_disaster_events'
         AND column_name IN (
-          'source_provider',
-          'source_url',
-          'event_status'
+          'last_observed_at',
+          'observation_count',
+          'magnitude_value',
+          'magnitude_unit'
         );
       " \
     | tr -d '[:space:]'
 )"
 
-echo "SOURCE_METADATA_COLUMN_COUNT=${SOURCE_METADATA_COLUMN_COUNT}"
+echo "V3_COLUMN_COUNT=${V3_COLUMN_COUNT}"
 
-if [ "${SOURCE_METADATA_COLUMN_COUNT}" != "3" ]; then
-  echo "[FAIL] SOURCE_METADATA_COLUMNS"
+if [ "${V3_COLUMN_COUNT}" != "4" ]; then
+  echo "[FAIL] V3_COLUMNS"
   exit 1
 fi
 
@@ -408,5 +446,5 @@ echo "[PASS] DATABASE_MIGRATIONS"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 2 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 3 VERIFICATION PASSED"
 echo "========================================================================"

@@ -4,6 +4,11 @@ import type {
 } from "@/types/earthquake";
 
 import type {
+  NaturalHazardFeedResponse,
+  NaturalHazardQuery,
+} from "@/types/natural-hazard";
+
+import type {
   VolcanoFeedResponse,
   VolcanoQuery,
 } from "@/types/volcano";
@@ -83,4 +88,40 @@ export async function fetchVolcanoes(
   }
 
   return response.json() as Promise<VolcanoFeedResponse>;
+}
+
+export async function fetchNaturalHazards(
+  query: NaturalHazardQuery,
+  signal?: AbortSignal,
+): Promise<NaturalHazardFeedResponse> {
+  const params = new URLSearchParams({
+    type: query.type,
+    status: query.status ?? "open",
+    days:
+      (query.days ?? 90).toString(),
+    limit:
+      (query.limit ?? 120).toString(),
+    search:
+      query.search ?? "",
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/hazards/events?${params.toString()}`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `TerraScope ${query.type} API returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<NaturalHazardFeedResponse>;
 }

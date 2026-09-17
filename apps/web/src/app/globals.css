@@ -503,7 +503,7 @@ a:focus-visible {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 20px;
 }
@@ -1629,7 +1629,7 @@ a:focus-visible {
   }
 
   .stats-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .stat-card {
@@ -1904,5 +1904,182 @@ a:focus-visible {
   .hazard-layer-toggle {
     flex: 1;
     justify-content: center;
+  }
+}
+
+
+.hazard-layer-toggle--wildfire.hazard-layer-toggle--active {
+  color: #ffad79;
+  border-color: rgba(255, 127, 65, 0.24);
+  background: rgba(255, 93, 36, 0.06);
+}
+
+.hazard-layer-toggle--storm.hazard-layer-toggle--active {
+  color: #84c8ff;
+  border-color: rgba(93, 177, 255, 0.24);
+  background: rgba(72, 148, 255, 0.06);
+}
+
+.feed-tabs--four {
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+}
+
+.feed-tab--wildfires {
+  color: #ffad79;
+  border-color: rgba(255, 127, 65, 0.18);
+  background: rgba(255, 93, 36, 0.055);
+}
+
+.feed-tab--severe-storms {
+  color: #91ceff;
+  border-color: rgba(89, 174, 255, 0.18);
+  background: rgba(75, 151, 255, 0.055);
+}
+
+.hazard-event-badge {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  place-items: center;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.hazard-event-badge--fire {
+  color: #ff9560;
+  border-color: rgba(255, 120, 60, 0.2);
+  background: rgba(255, 90, 30, 0.065);
+}
+
+.hazard-event-badge--storm {
+  color: #7fc4ff;
+  border-color: rgba(93, 175, 255, 0.2);
+  background: rgba(63, 140, 255, 0.065);
+}
+
+.wildfire-div-icon,
+.storm-div-icon {
+  border: 0;
+  background: transparent;
+}
+
+.wildfire-map-marker,
+.storm-map-marker {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wildfire-map-marker {
+  color: #ffb277;
+  border-color: rgba(255, 160, 94, 0.75);
+  background: rgba(67, 21, 7, 0.92);
+  box-shadow:
+    0 0 0 4px rgba(255, 91, 31, 0.09),
+    0 0 18px rgba(255, 91, 31, 0.42);
+}
+
+.wildfire-map-marker--selected {
+  color: #fff0df;
+  border-color: #ffc08d;
+  background: #a03f16;
+  box-shadow:
+    0 0 0 6px rgba(255, 91, 31, 0.16),
+    0 0 28px rgba(255, 91, 31, 0.62);
+}
+
+.storm-map-marker {
+  color: #9bd5ff;
+  border-color: rgba(122, 201, 255, 0.75);
+  background: rgba(6, 33, 60, 0.93);
+  box-shadow:
+    0 0 0 4px rgba(62, 155, 255, 0.09),
+    0 0 18px rgba(62, 155, 255, 0.42);
+}
+
+.storm-map-marker--selected {
+  color: #e9f8ff;
+  border-color: #b9e4ff;
+  background: #155e91;
+  box-shadow:
+    0 0 0 6px rgba(62, 155, 255, 0.16),
+    0 0 28px rgba(62, 155, 255, 0.62);
+}
+
+.wildfire-legend-symbol {
+  color: #ff9560;
+  font-style: normal;
+}
+
+.storm-legend-symbol {
+  color: #82c9ff;
+  font-style: normal;
+}
+
+.event-inspector--wildfire {
+  border-color: rgba(255, 119, 56, 0.2);
+  background:
+    linear-gradient(
+      120deg,
+      rgba(28, 13, 8, 0.96),
+      rgba(20, 21, 20, 0.93)
+    );
+}
+
+.event-inspector--storm {
+  border-color: rgba(79, 163, 255, 0.2);
+  background:
+    linear-gradient(
+      120deg,
+      rgba(7, 20, 32, 0.96),
+      rgba(12, 24, 29, 0.93)
+    );
+}
+
+.inspector-hazard {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid;
+  border-radius: 9px;
+}
+
+.inspector-hazard--fire {
+  color: #ff9f67;
+  border-color: rgba(255, 126, 61, 0.23);
+  background: rgba(255, 91, 31, 0.07);
+}
+
+.inspector-hazard--storm {
+  color: #88caff;
+  border-color: rgba(86, 175, 255, 0.23);
+  background: rgba(68, 149, 255, 0.07);
+}
+
+@media (max-width: 1350px) {
+  .stats-grid {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  .stats-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .feed-tabs--four {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
   }
 }

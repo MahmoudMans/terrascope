@@ -15,38 +15,36 @@ public class HazardLayerController {
     @GetMapping("/layers")
     public List<HazardLayerInfo> layers() {
         return List.of(
-                new HazardLayerInfo(
-                        HazardType.EARTHQUAKE.key(),
-                        HazardType.EARTHQUAKE.label(),
-                        "USGS",
-                        "available",
-                        true,
-                        true
+                layer(
+                        HazardType.EARTHQUAKE,
+                        "USGS"
                 ),
-                new HazardLayerInfo(
-                        HazardType.VOLCANO.key(),
-                        HazardType.VOLCANO.label(),
-                        "NASA EONET",
-                        "available",
-                        true,
-                        true
+                layer(
+                        HazardType.VOLCANO,
+                        "NASA EONET"
                 ),
-                new HazardLayerInfo(
-                        HazardType.WILDFIRE.key(),
-                        HazardType.WILDFIRE.label(),
-                        "NASA EONET",
-                        "planned",
-                        false,
-                        false
+                layer(
+                        HazardType.WILDFIRE,
+                        "NASA EONET"
                 ),
-                new HazardLayerInfo(
-                        HazardType.SEVERE_STORM.key(),
-                        HazardType.SEVERE_STORM.label(),
-                        "NASA EONET",
-                        "planned",
-                        false,
-                        false
+                layer(
+                        HazardType.SEVERE_STORM,
+                        "NASA EONET"
                 )
+        );
+    }
+
+    private HazardLayerInfo layer(
+            HazardType hazardType,
+            String source
+    ) {
+        return new HazardLayerInfo(
+                hazardType.key(),
+                hazardType.label(),
+                source,
+                "available",
+                true,
+                true
         );
     }
 }

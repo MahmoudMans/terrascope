@@ -17,7 +17,7 @@ public class SystemStatusController {
         return new SystemStatusResponse(
                 "TerraScope",
                 "operational",
-                "0.2.0",
+                "0.3.0",
                 Instant.now(),
                 List.of(
                         new SystemStatusResponse.DataSourceStatus(
@@ -36,13 +36,13 @@ public class SystemStatusController {
                                 "nasa-eonet-wildfires",
                                 "NASA EONET",
                                 "wildfires",
-                                "planned"
+                                "configured"
                         ),
                         new SystemStatusResponse.DataSourceStatus(
                                 "nasa-eonet-storms",
                                 "NASA EONET",
-                                "storms",
-                                "planned"
+                                "severe-storms",
+                                "configured"
                         )
                 )
         );

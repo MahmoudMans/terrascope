@@ -16,15 +16,23 @@ import type {
 } from "@/types/earthquake";
 
 import type {
+  NaturalHazardEvent,
+} from "@/types/natural-hazard";
+
+import type {
   VolcanoEvent,
 } from "@/types/volcano";
 
 type EarthquakeMapProps = {
   events: EarthquakeEvent[];
   volcanoEvents: VolcanoEvent[];
+  wildfireEvents: NaturalHazardEvent[];
+  stormEvents: NaturalHazardEvent[];
 
   earthquakesVisible: boolean;
   volcanoesVisible: boolean;
+  wildfiresVisible: boolean;
+  stormsVisible: boolean;
 
   selectedEarthquake:
     EarthquakeEvent | null;
@@ -32,11 +40,17 @@ type EarthquakeMapProps = {
   selectedVolcano:
     VolcanoEvent | null;
 
+  selectedNaturalHazard:
+    NaturalHazardEvent | null;
+
   onSelectEarthquake:
     (event: EarthquakeEvent) => void;
 
   onSelectVolcano:
     (event: VolcanoEvent) => void;
+
+  onSelectNaturalHazard:
+    (event: NaturalHazardEvent) => void;
 };
 
 function markerColor(
@@ -75,12 +89,18 @@ function escapeHtml(
 export function EarthquakeMap({
   events,
   volcanoEvents,
+  wildfireEvents,
+  stormEvents,
   earthquakesVisible,
   volcanoesVisible,
+  wildfiresVisible,
+  stormsVisible,
   selectedEarthquake,
   selectedVolcano,
+  selectedNaturalHazard,
   onSelectEarthquake,
   onSelectVolcano,
+  onSelectNaturalHazard,
 }: EarthquakeMapProps) {
   const containerRef =
     useRef<HTMLDivElement | null>(
@@ -98,6 +118,16 @@ export function EarthquakeMap({
     );
 
   const volcanoLayerRef =
+    useRef<LayerGroup | null>(
+      null,
+    );
+
+  const wildfireLayerRef =
+    useRef<LayerGroup | null>(
+      null,
+    );
+
+  const stormLayerRef =
     useRef<LayerGroup | null>(
       null,
     );
@@ -163,6 +193,12 @@ export function EarthquakeMap({
       volcanoLayerRef.current =
         L.layerGroup().addTo(map);
 
+      wildfireLayerRef.current =
+        L.layerGroup().addTo(map);
+
+      stormLayerRef.current =
+        L.layerGroup().addTo(map);
+
       leafletRef.current = L;
       mapRef.current = map;
 
@@ -181,27 +217,39 @@ export function EarthquakeMap({
       }
 
       mapRef.current = null;
-      earthquakeLayerRef.current = null;
-      volcanoLayerRef.current = null;
-      leafletRef.current = null;
+
+      earthquakeLayerRef.current =
+        null;
+
+      volcanoLayerRef.current =
+        null;
+
+      wildfireLayerRef.current =
+        null;
+
+      stormLayerRef.current =
+        null;
+
+      leafletRef.current =
+        null;
     };
   }, []);
 
   useEffect(() => {
     const L = leafletRef.current;
 
-    const markerLayer =
+    const layer =
       earthquakeLayerRef.current;
 
     if (
       !ready
       || L === null
-      || markerLayer === null
+      || layer === null
     ) {
       return;
     }
 
-    markerLayer.clearLayers();
+    layer.clearLayers();
 
     if (!earthquakesVisible) {
       return;
@@ -209,34 +257,37 @@ export function EarthquakeMap({
 
     events.forEach((event) => {
       const color =
-        markerColor(event.magnitude);
+        markerColor(
+          event.magnitude,
+        );
 
-      const marker = L.circleMarker(
-        [
-          event.latitude,
-          event.longitude,
-        ],
-        {
-          radius: Math.min(
-            14,
-            Math.max(
-              4.5,
-              3
-                + event.magnitude
-                * 1.25,
+      const marker =
+        L.circleMarker(
+          [
+            event.latitude,
+            event.longitude,
+          ],
+          {
+            radius: Math.min(
+              14,
+              Math.max(
+                4.5,
+                3
+                  + event.magnitude
+                  * 1.25,
+              ),
             ),
-          ),
-          color,
-          fillColor: color,
-          fillOpacity: 0.72,
-          opacity: 0.95,
-          weight:
-            selectedEarthquake?.id
-              === event.id
-              ? 3
-              : 1.5,
-        },
-      );
+            color,
+            fillColor: color,
+            fillOpacity: 0.72,
+            opacity: 0.95,
+            weight:
+              selectedEarthquake?.id
+                === event.id
+                ? 3
+                : 1.5,
+          },
+        );
 
       marker.bindTooltip(
         `
@@ -262,7 +313,7 @@ export function EarthquakeMap({
         onSelectEarthquake(event);
       });
 
-      marker.addTo(markerLayer);
+      marker.addTo(layer);
     });
   }, [
     earthquakesVisible,
@@ -275,82 +326,88 @@ export function EarthquakeMap({
   useEffect(() => {
     const L = leafletRef.current;
 
-    const markerLayer =
+    const layer =
       volcanoLayerRef.current;
 
     if (
       !ready
       || L === null
-      || markerLayer === null
+      || layer === null
     ) {
       return;
     }
 
-    markerLayer.clearLayers();
+    layer.clearLayers();
 
     if (!volcanoesVisible) {
       return;
     }
 
-    volcanoEvents.forEach((event) => {
-      const selected =
-        selectedVolcano?.id === event.id;
+    volcanoEvents.forEach(
+      (event) => {
+        const selected =
+          selectedVolcano?.id
+          === event.id;
 
-      const icon = L.divIcon({
-        className: "volcano-div-icon",
-        html: `
-          <span class="
-            volcano-map-marker
-            ${
-              selected
-                ? "volcano-map-marker--selected"
-                : ""
-            }
-          ">
-            ▲
-          </span>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      });
+        const icon = L.divIcon({
+          className:
+            "volcano-div-icon",
 
-      const marker = L.marker(
-        [
-          event.latitude,
-          event.longitude,
-        ],
-        {
-          icon,
-          keyboard: true,
-        },
-      );
-
-      marker.bindTooltip(
-        `
-          <div class="map-tooltip">
-            <strong>
-              VOLCANO
-            </strong>
-            <span>
-              ${escapeHtml(event.title)}
+          html: `
+            <span class="
+              volcano-map-marker
+              ${
+                selected
+                  ? "volcano-map-marker--selected"
+                  : ""
+              }
+            ">
+              ▲
             </span>
-            <small>
-              ${escapeHtml(event.primarySource)}
-            </small>
-          </div>
-        `,
-        {
-          direction: "top",
-          opacity: 0.96,
-        },
-      );
+          `,
 
-      marker.on("click", () => {
-        onSelectVolcano(event);
-      });
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        });
 
-      marker.addTo(markerLayer);
-    });
+        const marker = L.marker(
+          [
+            event.latitude,
+            event.longitude,
+          ],
+          {
+            icon,
+            keyboard: true,
+          },
+        );
+
+        marker.bindTooltip(
+          `
+            <div class="map-tooltip">
+              <strong>
+                VOLCANO
+              </strong>
+              <span>
+                ${escapeHtml(event.title)}
+              </span>
+              <small>
+                ${escapeHtml(event.primarySource)}
+              </small>
+            </div>
+          `,
+          {
+            direction: "top",
+            opacity: 0.96,
+          },
+        );
+
+        marker.on("click", () => {
+          onSelectVolcano(event);
+        });
+
+        marker.addTo(layer);
+      },
+    );
   }, [
     onSelectVolcano,
     ready,
@@ -360,8 +417,214 @@ export function EarthquakeMap({
   ]);
 
   useEffect(() => {
+    const L = leafletRef.current;
+
+    const layer =
+      wildfireLayerRef.current;
+
+    if (
+      !ready
+      || L === null
+      || layer === null
+    ) {
+      return;
+    }
+
+    layer.clearLayers();
+
+    if (!wildfiresVisible) {
+      return;
+    }
+
+    wildfireEvents.forEach(
+      (event) => {
+        const selected =
+          selectedNaturalHazard?.id
+            === event.id
+          && selectedNaturalHazard
+            .hazardType
+            === "wildfires";
+
+        const icon = L.divIcon({
+          className:
+            "wildfire-div-icon",
+
+          html: `
+            <span class="
+              wildfire-map-marker
+              ${
+                selected
+                  ? "wildfire-map-marker--selected"
+                  : ""
+              }
+            ">
+              ◆
+            </span>
+          `,
+
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+
+        const marker = L.marker(
+          [
+            event.latitude,
+            event.longitude,
+          ],
+          {
+            icon,
+            keyboard: true,
+          },
+        );
+
+        marker.bindTooltip(
+          `
+            <div class="map-tooltip">
+              <strong>
+                WILDFIRE
+              </strong>
+              <span>
+                ${escapeHtml(event.title)}
+              </span>
+              <small>
+                ${escapeHtml(event.primarySource)}
+              </small>
+            </div>
+          `,
+          {
+            direction: "top",
+            opacity: 0.96,
+          },
+        );
+
+        marker.on("click", () => {
+          onSelectNaturalHazard(
+            event,
+          );
+        });
+
+        marker.addTo(layer);
+      },
+    );
+  }, [
+    onSelectNaturalHazard,
+    ready,
+    selectedNaturalHazard,
+    wildfireEvents,
+    wildfiresVisible,
+  ]);
+
+  useEffect(() => {
+    const L = leafletRef.current;
+
+    const layer =
+      stormLayerRef.current;
+
+    if (
+      !ready
+      || L === null
+      || layer === null
+    ) {
+      return;
+    }
+
+    layer.clearLayers();
+
+    if (!stormsVisible) {
+      return;
+    }
+
+    stormEvents.forEach(
+      (event) => {
+        const selected =
+          selectedNaturalHazard?.id
+            === event.id
+          && selectedNaturalHazard
+            .hazardType
+            === "severe-storms";
+
+        const icon = L.divIcon({
+          className:
+            "storm-div-icon",
+
+          html: `
+            <span class="
+              storm-map-marker
+              ${
+                selected
+                  ? "storm-map-marker--selected"
+                  : ""
+              }
+            ">
+              ◎
+            </span>
+          `,
+
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        });
+
+        const marker = L.marker(
+          [
+            event.latitude,
+            event.longitude,
+          ],
+          {
+            icon,
+            keyboard: true,
+          },
+        );
+
+        marker.bindTooltip(
+          `
+            <div class="map-tooltip">
+              <strong>
+                SEVERE STORM
+              </strong>
+              <span>
+                ${escapeHtml(event.title)}
+              </span>
+              <small>
+                ${
+                  event.magnitudeValue
+                    === null
+                    ? escapeHtml(
+                        event.primarySource,
+                      )
+                    : `${event.magnitudeValue} ${escapeHtml(
+                        event.magnitudeUnit,
+                      )}`
+                }
+              </small>
+            </div>
+          `,
+          {
+            direction: "top",
+            opacity: 0.96,
+          },
+        );
+
+        marker.on("click", () => {
+          onSelectNaturalHazard(
+            event,
+          );
+        });
+
+        marker.addTo(layer);
+      },
+    );
+  }, [
+    onSelectNaturalHazard,
+    ready,
+    selectedNaturalHazard,
+    stormEvents,
+    stormsVisible,
+  ]);
+
+  useEffect(() => {
     const target =
-      selectedVolcano
+      selectedNaturalHazard
+      ?? selectedVolcano
       ?? selectedEarthquake;
 
     if (
@@ -386,6 +649,7 @@ export function EarthquakeMap({
     );
   }, [
     selectedEarthquake,
+    selectedNaturalHazard,
     selectedVolcano,
   ]);
 
@@ -399,6 +663,18 @@ export function EarthquakeMap({
     (
       volcanoesVisible
         ? volcanoEvents.length
+        : 0
+    )
+    +
+    (
+      wildfiresVisible
+        ? wildfireEvents.length
+        : 0
+    )
+    +
+    (
+      stormsVisible
+        ? stormEvents.length
         : 0
     );
 
@@ -435,7 +711,7 @@ export function EarthquakeMap({
 
         <span>
           <i className="legend-dot legend-dot--minor" />
-          Earthquake
+          Quake
         </span>
 
         <span>
@@ -446,8 +722,17 @@ export function EarthquakeMap({
         </span>
 
         <span>
-          <i className="legend-dot legend-dot--major" />
-          M7+
+          <i className="wildfire-legend-symbol">
+            ◆
+          </i>
+          Fire
+        </span>
+
+        <span>
+          <i className="storm-legend-symbol">
+            ◎
+          </i>
+          Storm
         </span>
       </div>
     </div>

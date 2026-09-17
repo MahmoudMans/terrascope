@@ -43,7 +43,7 @@ public record EonetEventCollection(
             String magnitudeDescription,
             String date,
             String type,
-            List<Double> coordinates
+            Object coordinates
     ) {
     }
 }

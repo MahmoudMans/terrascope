@@ -1,6 +1,8 @@
 package com.terrascope.platform.infrastructure.eonet;
 
+import com.terrascope.platform.api.model.NaturalHazardEvent;
 import com.terrascope.platform.api.model.VolcanoEvent;
+import com.terrascope.platform.domain.HazardType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -36,6 +38,60 @@ public class NasaEonetClient {
             String status,
             int days
     ) {
+        return fetchCategoryEvents(
+                HazardType.VOLCANO,
+                status,
+                days
+        )
+                .stream()
+                .map(this::toVolcanoEvent)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public List<NaturalHazardEvent> fetchNaturalHazardEvents(
+            HazardType hazardType,
+            String status,
+            int days
+    ) {
+        if (!hazardType.isGenericEonetHazard()) {
+            throw new IllegalArgumentException(
+                    "Hazard type "
+                            + hazardType
+                            + " is not handled by the "
+                            + "generic EONET event API."
+            );
+        }
+
+        return fetchCategoryEvents(
+                hazardType,
+                status,
+                days
+        )
+                .stream()
+                .map(event ->
+                        toNaturalHazardEvent(
+                                hazardType,
+                                event
+                        )
+                )
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private List<EonetEventCollection.Event> fetchCategoryEvents(
+            HazardType hazardType,
+            String status,
+            int days
+    ) {
+        if (!hazardType.hasEonetCategory()) {
+            throw new IllegalArgumentException(
+                    "Hazard type "
+                            + hazardType
+                            + " has no NASA EONET category."
+            );
+        }
+
         try {
             EonetEventCollection payload =
                     restClient
@@ -45,7 +101,8 @@ public class NasaEonetClient {
                                             .path("/events")
                                             .queryParam(
                                                     "category",
-                                                    "volcanoes"
+                                                    hazardType
+                                                            .eonetCategory()
                                             )
                                             .queryParam(
                                                     "status",
@@ -73,20 +130,16 @@ public class NasaEonetClient {
                 return List.of();
             }
 
-            return payload
-                    .events()
-                    .stream()
-                    .map(this::toVolcanoEvent)
-                    .filter(Objects::nonNull)
-                    .toList();
+            return payload.events();
 
         } catch (
                 RestClientException
                 | IllegalStateException exception
         ) {
             throw new EonetSourceUnavailableException(
-                    "NASA EONET volcano feed is "
-                            + "currently unavailable.",
+                    "NASA EONET "
+                            + hazardType.label()
+                            + " feed is currently unavailable.",
                     exception
             );
         }
@@ -95,53 +148,20 @@ public class NasaEonetClient {
     private VolcanoEvent toVolcanoEvent(
             EonetEventCollection.Event event
     ) {
+        ResolvedGeometry geometry =
+                latestGeometry(event);
+
         if (
                 event == null
                 || event.id() == null
                 || event.title() == null
-                || event.geometry() == null
-                || event.geometry().isEmpty()
+                || geometry == null
         ) {
             return null;
         }
 
-        EonetEventCollection.Geometry latestGeometry =
-                event
-                        .geometry()
-                        .stream()
-                        .filter(Objects::nonNull)
-                        .filter(this::isPointGeometry)
-                        .max(
-                                Comparator.comparing(
-                                        this::geometryInstant
-                                )
-                        )
-                        .orElse(null);
-
-        if (latestGeometry == null) {
-            return null;
-        }
-
-        List<Double> coordinates =
-                latestGeometry.coordinates();
-
-        List<EonetEventCollection.Source> sources =
-                event.sources() == null
-                        ? List.of()
-                        : event.sources();
-
-        EonetEventCollection.Source primarySource =
-                sources
-                        .stream()
-                        .filter(Objects::nonNull)
-                        .findFirst()
-                        .orElse(null);
-
-        String status =
-                event.closed() == null
-                        || event.closed().isBlank()
-                        ? "open"
-                        : "closed";
+        SourceInfo source =
+                sourceInfo(event);
 
         return new VolcanoEvent(
                 event.id(),
@@ -153,30 +173,16 @@ public class NasaEonetClient {
                         event.description(),
                         ""
                 ),
-                geometryInstant(
-                        latestGeometry
-                ),
-                safeDouble(
-                        coordinates.get(0)
-                ),
-                safeDouble(
-                        coordinates.get(1)
-                ),
-                event.geometry().size(),
-                sources.size(),
-                status,
-                primarySource == null
-                        ? "NASA EONET"
-                        : safeText(
-                                primarySource.id(),
-                                "NASA EONET"
-                        ),
-                primarySource == null
-                        ? ""
-                        : safeText(
-                                primarySource.url(),
-                                ""
-                        ),
+                geometry.observedAt(),
+                geometry.longitude(),
+                geometry.latitude(),
+                event.geometry() == null
+                        ? 0
+                        : event.geometry().size(),
+                source.sourceCount(),
+                eventStatus(event),
+                source.primarySource(),
+                source.sourceUrl(),
                 safeText(
                         event.link(),
                         ""
@@ -184,17 +190,184 @@ public class NasaEonetClient {
         );
     }
 
-    private boolean isPointGeometry(
+    private NaturalHazardEvent toNaturalHazardEvent(
+            HazardType hazardType,
+            EonetEventCollection.Event event
+    ) {
+        ResolvedGeometry geometry =
+                latestGeometry(event);
+
+        if (
+                event == null
+                || event.id() == null
+                || event.title() == null
+                || geometry == null
+        ) {
+            return null;
+        }
+
+        SourceInfo source =
+                sourceInfo(event);
+
+        return new NaturalHazardEvent(
+                event.id(),
+                hazardType.key(),
+                safeText(
+                        event.title(),
+                        "Unnamed "
+                                + hazardType.label()
+                                + " event"
+                ),
+                safeText(
+                        event.description(),
+                        ""
+                ),
+                geometry.observedAt(),
+                geometry.longitude(),
+                geometry.latitude(),
+                event.geometry() == null
+                        ? 0
+                        : event.geometry().size(),
+                source.sourceCount(),
+                eventStatus(event),
+                source.primarySource(),
+                source.sourceUrl(),
+                safeText(
+                        event.link(),
+                        ""
+                ),
+                geometry.magnitudeValue(),
+                safeText(
+                        geometry.magnitudeUnit(),
+                        ""
+                ),
+                safeText(
+                        geometry.magnitudeDescription(),
+                        ""
+                )
+        );
+    }
+
+    private ResolvedGeometry latestGeometry(
+            EonetEventCollection.Event event
+    ) {
+        if (
+                event == null
+                || event.geometry() == null
+                || event.geometry().isEmpty()
+        ) {
+            return null;
+        }
+
+        return event
+                .geometry()
+                .stream()
+                .filter(Objects::nonNull)
+                .map(this::resolveGeometry)
+                .filter(Objects::nonNull)
+                .max(
+                        Comparator.comparing(
+                                ResolvedGeometry::observedAt
+                        )
+                )
+                .orElse(null);
+    }
+
+    private ResolvedGeometry resolveGeometry(
             EonetEventCollection.Geometry geometry
     ) {
-        return geometry.coordinates() != null
-                && geometry.coordinates().size() >= 2
-                && (
-                        geometry.type() == null
-                        || "Point".equalsIgnoreCase(
-                                geometry.type()
-                        )
+        Coordinate coordinate =
+                extractRepresentativeCoordinate(
+                        geometry.coordinates()
                 );
+
+        if (coordinate == null) {
+            return null;
+        }
+
+        return new ResolvedGeometry(
+                geometryInstant(
+                        geometry
+                ),
+                coordinate.longitude(),
+                coordinate.latitude(),
+                geometry.magnitudeValue(),
+                geometry.magnitudeUnit(),
+                geometry.magnitudeDescription()
+        );
+    }
+
+    private Coordinate extractRepresentativeCoordinate(
+            Object coordinates
+    ) {
+        if (!(coordinates instanceof List<?> values)) {
+            return null;
+        }
+
+        if (
+                values.size() >= 2
+                && values.get(0) instanceof Number longitude
+                && values.get(1) instanceof Number latitude
+        ) {
+            return new Coordinate(
+                    longitude.doubleValue(),
+                    latitude.doubleValue()
+            );
+        }
+
+        for (Object child : values) {
+            Coordinate nested =
+                    extractRepresentativeCoordinate(
+                            child
+                    );
+
+            if (nested != null) {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    private SourceInfo sourceInfo(
+            EonetEventCollection.Event event
+    ) {
+        List<EonetEventCollection.Source> sources =
+                event.sources() == null
+                        ? List.of()
+                        : event.sources();
+
+        EonetEventCollection.Source primary =
+                sources
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElse(null);
+
+        return new SourceInfo(
+                sources.size(),
+                primary == null
+                        ? "NASA EONET"
+                        : safeText(
+                                primary.id(),
+                                "NASA EONET"
+                        ),
+                primary == null
+                        ? ""
+                        : safeText(
+                                primary.url(),
+                                ""
+                        )
+        );
+    }
+
+    private String eventStatus(
+            EonetEventCollection.Event event
+    ) {
+        return event.closed() == null
+                || event.closed().isBlank()
+                ? "open"
+                : "closed";
     }
 
     private Instant geometryInstant(
@@ -233,11 +406,26 @@ public class NasaEonetClient {
         return value;
     }
 
-    private double safeDouble(
-            Double value
+    private record Coordinate(
+            double longitude,
+            double latitude
     ) {
-        return value == null
-                ? 0.0
-                : value;
+    }
+
+    private record SourceInfo(
+            int sourceCount,
+            String primarySource,
+            String sourceUrl
+    ) {
+    }
+
+    private record ResolvedGeometry(
+            Instant observedAt,
+            double longitude,
+            double latitude,
+            Double magnitudeValue,
+            String magnitudeUnit,
+            String magnitudeDescription
+    ) {
     }
 }
