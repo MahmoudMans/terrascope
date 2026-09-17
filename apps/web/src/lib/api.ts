@@ -76,6 +76,12 @@ import type {
   LifelineOperationsBoardResponse,
 } from "@/types/lifeline-operations";
 
+import type {
+  CreateDamageAssessmentRequest,
+  DamageRecoveryBoardResponse,
+  DamageSeverity,
+} from "@/types/damage-recovery";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -1534,4 +1540,212 @@ export async function deleteLifelineAsset(
   }
 
   return response.json() as Promise<LifelineOperationsBoardResponse>;
+}
+
+export async function fetchDamageRecoveryBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Damage recovery board returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function createDamageAssessment(
+  incidentId: string,
+  request: CreateDamageAssessmentRequest,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create damage assessment. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function verifyDamageAssessment(
+  incidentId: string,
+  assessmentId: string,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage/${assessmentId}/verify`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to verify damage assessment. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function updateDamageProgress(
+  incidentId: string,
+  assessmentId: string,
+  repairProgressPct: number,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage/${assessmentId}/progress`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        repairProgressPct,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update recovery progress. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function updateDamageSeverity(
+  incidentId: string,
+  assessmentId: string,
+  severity: DamageSeverity,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage/${assessmentId}/severity`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        severity,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update damage severity. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function updateDamageOwner(
+  incidentId: string,
+  assessmentId: string,
+  owner: string,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage/${assessmentId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update recovery owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function updateDamageRecoveryEta(
+  incidentId: string,
+  assessmentId: string,
+  recoveryEta: string | null,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage/${assessmentId}/recovery-eta`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        recoveryEta,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update recovery ETA. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
+}
+
+export async function deleteDamageAssessment(
+  incidentId: string,
+  assessmentId: string,
+): Promise<DamageRecoveryBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/damage/${assessmentId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete damage assessment. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<DamageRecoveryBoardResponse>;
 }
