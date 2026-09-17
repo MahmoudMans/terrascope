@@ -79,7 +79,8 @@ export type IncidentTimelineEvent = {
     | "DAMAGE_ETA_CHANGED"
     | "DAMAGE_ASSESSMENT_DELETED"
     | "COMMAND_SNAPSHOT_CREATED"
-    | "SITREP_CREATED";
+    | "SITREP_CREATED"
+    | "AFTER_ACTION_REVIEW_CREATED";
   message: string;
   createdAt: string;
 };

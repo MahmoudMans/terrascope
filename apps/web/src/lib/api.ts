@@ -94,6 +94,12 @@ import type {
   IncidentSituationReport,
 } from "@/types/sitrep";
 
+import type {
+  AfterActionReviewHistoryResponse,
+  IncidentAfterActionReview,
+  IncidentClosureReadinessResponse,
+} from "@/types/closure-review";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -1904,4 +1910,76 @@ export async function createIncidentSituationReport(
   }
 
   return response.json() as Promise<IncidentSituationReport>;
+}
+
+export async function fetchIncidentClosureReadiness(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<IncidentClosureReadinessResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/closure-readiness`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Closure readiness returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentClosureReadinessResponse>;
+}
+
+export async function fetchAfterActionReviewHistory(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<AfterActionReviewHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/after-action-reviews`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `After-action review history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<AfterActionReviewHistoryResponse>;
+}
+
+export async function createAfterActionReview(
+  incidentId: string,
+): Promise<IncidentAfterActionReview> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/after-action-reviews`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create after-action review. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<IncidentAfterActionReview>;
 }

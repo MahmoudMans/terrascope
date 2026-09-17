@@ -7258,3 +7258,361 @@ a:focus-visible {
     display: none !important;
   }
 }
+
+.closure-review {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(100, 167, 164, 0.11);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(60, 175, 160, 0.018),
+      rgba(255, 255, 255, 0.004)
+    );
+}
+
+.closure-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.closure-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.closure-heading strong {
+  color: #a8bdbf;
+  font-size: 10px;
+}
+
+.closure-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.closure-actions button {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #7ba6a0;
+  border: 1px solid rgba(94, 166, 162, 0.12);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.closure-error {
+  padding: 8px 9px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.closure-empty {
+  display: grid;
+  min-height: 100px;
+  place-items: center;
+  color: #587174;
+  font-size: 8px;
+}
+
+.closure-hero {
+  display: grid;
+  grid-template-columns:
+    auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.closure-hero--ready {
+  border-color: rgba(73, 184, 110, 0.17);
+}
+
+.closure-hero--blocked {
+  border-color: rgba(237, 135, 88, 0.19);
+}
+
+.closure-status-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(103, 160, 161, 0.1);
+  border-radius: 8px;
+}
+
+.closure-hero--ready
+.closure-status-icon {
+  color: #77c696;
+}
+
+.closure-hero--blocked
+.closure-status-icon {
+  color: #eda078;
+}
+
+.closure-hero > div:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.closure-hero > div:nth-child(2) > span {
+  color: #607a7d;
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.closure-hero > div:nth-child(2) > strong {
+  color: #b0c2c3;
+  font-size: 12px;
+}
+
+.closure-hero p {
+  margin: 0;
+  color: #647d80;
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.closure-command {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+.closure-command span,
+.closure-command small {
+  color: #597275;
+  font-size: 6px;
+}
+
+.closure-command strong {
+  color: #a9bdbe;
+  font-size: 15px;
+}
+
+.closure-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.closure-summary > div {
+  display: flex;
+  min-height: 47px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 6px;
+}
+
+.closure-summary span {
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.closure-summary strong {
+  color: #a5babc;
+  font-size: 10px;
+}
+
+.closure-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.closure-blockers,
+.after-action-history {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(105, 152, 157, 0.07);
+  border-radius: 7px;
+}
+
+.closure-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #70aaa4;
+}
+
+.closure-section-heading strong {
+  color: #9eb3b5;
+  font-size: 8px;
+}
+
+.closure-section-heading > span {
+  margin-left: auto;
+  color: #587174;
+  font-size: 6px;
+}
+
+.closure-blocker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.closure-blocker-list article {
+  display: grid;
+  grid-template-columns:
+    auto 1fr;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  color: #dc9877;
+  border: 1px solid rgba(218, 126, 84, 0.1);
+  border-radius: 5px;
+}
+
+.closure-blocker-list article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.closure-blocker-list strong {
+  color: #9facad;
+  font-size: 7px;
+}
+
+.closure-blocker-list span {
+  color: #5e7578;
+  font-size: 6px;
+}
+
+.closure-clear,
+.closure-history-empty {
+  display: flex;
+  min-height: 108px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  color: #74bb91;
+}
+
+.closure-clear strong {
+  color: #91aaa7;
+  font-size: 8px;
+}
+
+.closure-clear span,
+.closure-history-empty span {
+  max-width: 230px;
+  color: #587174;
+  font-size: 6px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.closure-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.closure-history-list article {
+  display: grid;
+  grid-template-columns:
+    auto 1fr 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.06);
+  border-radius: 5px;
+}
+
+.closure-history-list article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.closure-history-list article > div:nth-child(4) {
+  flex-direction: row;
+  align-items: center;
+  color: #5e7779;
+}
+
+.closure-history-list span {
+  color: #587174;
+  font-size: 6px;
+}
+
+.closure-history-list strong {
+  color: #98adaf;
+  font-size: 7px;
+}
+
+.closure-history-list time {
+  color: #4f686a;
+  font-size: 6px;
+}
+
+.closure-latest-review {
+  padding: 10px;
+  border: 1px solid rgba(103, 153, 158, 0.07);
+  border-radius: 7px;
+}
+
+.closure-latest-review > span {
+  color: #607a7d;
+  font-size: 6px;
+  font-weight: 800;
+}
+
+.closure-latest-review p {
+  margin: 6px 0 0;
+  color: #95aaac;
+  font-size: 7px;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .closure-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .closure-command {
+    text-align: left;
+  }
+
+  .closure-summary {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .closure-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .closure-history-list article {
+    grid-template-columns:
+      1fr 1fr;
+  }
+}

@@ -64,6 +64,10 @@ import {
   IncidentSitrepCenter,
 } from "@/components/incident-sitrep-center";
 
+import {
+  IncidentClosureReview,
+} from "@/components/incident-closure-review";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -969,6 +973,43 @@ export function SituationRoomPanel({
                                   instanceof Error
                                   ? caughtError.message
                                   : "Unable to refresh command timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
+
+                    <IncidentClosureReview
+                      key={
+                        `closure-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      incidentStatus={
+                        detail.incident.status
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh after-action timeline.",
                               );
                             },
                           );
