@@ -145,6 +145,12 @@ import type {
   ResiliencePortfolioSnapshot,
 } from "@/types/resilience-portfolio";
 
+import type {
+  ResiliencePortfolioReview,
+  ResiliencePortfolioReviewHistoryResponse,
+  ResiliencePortfolioReviewPreview,
+} from "@/types/resilience-portfolio-review";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2884,4 +2890,72 @@ export async function createResiliencePortfolioSnapshot(): Promise<ResiliencePor
   }
 
   return response.json() as Promise<ResiliencePortfolioSnapshot>;
+}
+
+export async function fetchResiliencePortfolioReviewPreview(
+  signal?: AbortSignal,
+): Promise<ResiliencePortfolioReviewPreview> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/review-preview`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portfolio review preview returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResiliencePortfolioReviewPreview>;
+}
+
+export async function fetchResiliencePortfolioReviewHistory(
+  signal?: AbortSignal,
+): Promise<ResiliencePortfolioReviewHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/reviews`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portfolio review history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResiliencePortfolioReviewHistoryResponse>;
+}
+
+export async function createResiliencePortfolioReview(): Promise<ResiliencePortfolioReview> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/reviews`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create portfolio review. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ResiliencePortfolioReview>;
 }

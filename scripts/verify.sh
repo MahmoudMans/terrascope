@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step23-backend.log"
+BACKEND_LOG="/tmp/terrascope-step24-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -22,7 +22,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 23 VERIFICATION"
+echo " TERRASCOPE — STEP 24 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -64,12 +64,8 @@ echo "[PASS] BACKEND_PACKAGE"
 
 (
   cd apps/web
-
-  npx eslint . \
-    --max-warnings=0
-
+  npx eslint . --max-warnings=0
   npm run typecheck
-
   npm run build
 )
 
@@ -115,19 +111,19 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step23-status.json
+  >/tmp/terrascope-step24-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-status.json",
+    "/tmp/terrascope-step24-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.23.0"
+assert payload["version"] == "0.24.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
@@ -136,7 +132,7 @@ PY
 
 for VERSION in \
   1 2 3 4 5 6 7 8 9 10 \
-  11 12 13 14 15 16 17 18 19 20 21 22 23
+  11 12 13 14 15 16 17 18 19 20 21 22 23 24
 do
   COUNT="$(
     docker compose exec -T postgres \
@@ -158,10 +154,10 @@ do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V23_RUNTIME"
+echo "[PASS] FLYWAY_V24_RUNTIME"
 
 echo
-echo "===== CLEAN STEP 23 FIXTURES ====="
+echo "===== CLEAN STEP 24 FIXTURES ====="
 
 docker compose exec -T postgres \
   psql \
@@ -171,59 +167,57 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id IN (
-          'verification-step23-open',
-          'verification-step23-certified',
-          'verification-step23-untested'
+          'verification-step24-open',
+          'verification-step24-certified',
+          'verification-step24-untested'
       );
     " \
   >/dev/null
 
-echo "[PASS] STEP23_PRE_CLEAN"
+echo "[PASS] STEP24_PRE_CLEAN"
 
 echo
-echo "===== CAPTURE BASELINE PORTFOLIO ====="
+echo "===== BASELINE PORTFOLIO SNAPSHOT ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio" \
-  >/tmp/terrascope-step23-baseline.json
+  --request POST \
+  "http://localhost:8087/api/v1/resilience-portfolio/snapshots" \
+  >/tmp/terrascope-step24-baseline-snapshot.json
 
-python3 - <<'PY'
+BASELINE_SNAPSHOT_ID="$(
+  python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-baseline.json",
+    "/tmp/terrascope-step24-baseline-snapshot.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert 0 <= payload["score"] <= 100
-
-assert payload["band"] in {
-    "FOUNDATIONAL",
-    "DEVELOPING",
-    "ASSURED",
-    "HIGH_ASSURANCE",
-}
-
 print(
-    "[PASS] PORTFOLIO_BASELINE"
+    payload["id"]
 )
 PY
+)"
+
+echo "BASELINE_SNAPSHOT_ID=${BASELINE_SNAPSHOT_ID}"
+
+echo "[PASS] PORTFOLIO_REVIEW_BASELINE_SNAPSHOT"
 
 echo
 echo "===== CREATE OPEN INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step23-open.json \
+  /tmp/terrascope-step24-open.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step23-open",
+  "sourceEventId": "verification-step24-open",
   "hazardType": "wildfires",
-  "title": "Verification Open Portfolio Incident",
-  "description": "Open incident portfolio fixture.",
+  "title": "Verification Review Open Incident",
+  "description": "Step 24 open incident fixture.",
   "latitude": 36.80,
   "longitude": 10.18,
   "severity": "HIGH",
@@ -236,42 +230,24 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-open.json \
+  --data @/tmp/terrascope-step24-open.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step23-open-response.json
+  >/dev/null
 
-OPEN_INCIDENT_ID="$(
-  python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step23-open-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-print(
-    payload["incident"]["id"]
-)
-PY
-)"
-
-echo "OPEN_INCIDENT_ID=${OPEN_INCIDENT_ID}"
-
-echo "[PASS] PORTFOLIO_OPEN_INCIDENT"
+echo "[PASS] PORTFOLIO_REVIEW_OPEN_INCIDENT"
 
 echo
-echo "===== CREATE CERTIFIED INCIDENT ====="
+echo "===== CREATE CERTIFIED + AUDITED INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step23-certified.json \
+  /tmp/terrascope-step24-certified.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step23-certified",
+  "sourceEventId": "verification-step24-certified",
   "hazardType": "earthquakes",
-  "title": "Verification Certified Portfolio Incident",
-  "description": "Certified portfolio fixture.",
+  "title": "Verification Review Certified Incident",
+  "description": "Step 24 certified incident fixture.",
   "latitude": 36.81,
   "longitude": 10.19,
   "severity": "SEVERE",
@@ -284,16 +260,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-certified.json \
+  --data @/tmp/terrascope-step24-certified.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step23-certified-response.json
+  >/tmp/terrascope-step24-certified-response.json
 
 CERTIFIED_INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-certified-response.json",
+    "/tmp/terrascope-step24-certified-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -305,7 +281,7 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step23-close.json \
+  /tmp/terrascope-step24-close.json \
 <<'JSON'
 {
   "status": "CLOSED"
@@ -317,7 +293,7 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-close.json \
+  --data @/tmp/terrascope-step24-close.json \
   "http://localhost:8087/api/v1/incidents/${CERTIFIED_INCIDENT_ID}/status" \
   >/dev/null
 
@@ -326,14 +302,14 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${CERTIFIED_INCIDENT_ID}/after-action-reviews" \
-  >/tmp/terrascope-step23-certified-aar.json
+  >/tmp/terrascope-step24-certified-aar.json
 
 CERTIFIED_AAR_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-certified-aar.json",
+    "/tmp/terrascope-step24-certified-aar.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -352,13 +328,13 @@ curl \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step23-certified-improvement.json \
+  /tmp/terrascope-step24-certified-improvement.json \
 <<JSON
 {
   "afterActionReviewId": "${CERTIFIED_AAR_ID}",
   "category": "PROCESS",
-  "title": "Validate portfolio assurance process",
-  "description": "Certified portfolio fixture improvement.",
+  "title": "Executive review validated improvement",
+  "description": "Certified Step 24 improvement.",
   "priority": "HIGH",
   "owner": "Resilience Office",
   "dueAt": "2030-01-01T00:00:00Z"
@@ -370,16 +346,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-certified-improvement.json \
+  --data @/tmp/terrascope-step24-certified-improvement.json \
   "http://localhost:8087/api/v1/incidents/${CERTIFIED_INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step23-certified-improvement-response.json
+  >/tmp/terrascope-step24-certified-improvement-response.json
 
 CERTIFIED_IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-certified-improvement-response.json",
+    "/tmp/terrascope-step24-certified-improvement-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -391,7 +367,7 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step23-complete.json \
+  /tmp/terrascope-step24-complete.json \
 <<'JSON'
 {
   "status": "COMPLETED"
@@ -403,18 +379,18 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-complete.json \
+  --data @/tmp/terrascope-step24-complete.json \
   "http://localhost:8087/api/v1/incidents/${CERTIFIED_INCIDENT_ID}/improvements/${CERTIFIED_IMPROVEMENT_ID}/status" \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step23-exercise.json \
+  /tmp/terrascope-step24-exercise.json \
 <<JSON
 {
   "improvementActionId": "${CERTIFIED_IMPROVEMENT_ID}",
   "exerciseType": "FUNCTIONAL",
-  "title": "Portfolio assurance validation exercise",
-  "description": "Validate enterprise resilience assurance.",
+  "title": "Executive review assurance validation",
+  "description": "Validate executive portfolio assurance.",
   "owner": "Preparedness Office",
   "scheduledAt": "2030-02-01T10:00:00Z"
 }
@@ -425,16 +401,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-exercise.json \
+  --data @/tmp/terrascope-step24-exercise.json \
   "http://localhost:8087/api/v1/incidents/${CERTIFIED_INCIDENT_ID}/preparedness-exercises" \
-  >/tmp/terrascope-step23-exercise-response.json
+  >/tmp/terrascope-step24-exercise-response.json
 
 CERTIFIED_EXERCISE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-exercise-response.json",
+    "/tmp/terrascope-step24-exercise-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -446,13 +422,13 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step23-assessment.json \
+  /tmp/terrascope-step24-assessment.json \
 <<'JSON'
 {
   "result": "PASSED",
   "readinessScore": 95,
   "performedAt": "2030-02-01T12:00:00Z",
-  "evidenceSummary": "Enterprise assurance controls executed successfully.",
+  "evidenceSummary": "Executive assurance controls executed successfully.",
   "findings": "No material validation gaps remained.",
   "correctiveAction": ""
 }
@@ -463,7 +439,7 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-assessment.json \
+  --data @/tmp/terrascope-step24-assessment.json \
   "http://localhost:8087/api/v1/incidents/${CERTIFIED_INCIDENT_ID}/preparedness-exercises/${CERTIFIED_EXERCISE_ID}/assess" \
   >/dev/null
 
@@ -488,22 +464,20 @@ curl \
   "http://localhost:8087/api/v1/incidents/${CERTIFIED_INCIDENT_ID}/resilience-audit-ledger/receipts" \
   >/dev/null
 
-echo "CERTIFIED_INCIDENT_ID=${CERTIFIED_INCIDENT_ID}"
-
-echo "[PASS] PORTFOLIO_CERTIFIED_INCIDENT"
+echo "[PASS] PORTFOLIO_REVIEW_CERTIFIED_INCIDENT"
 
 echo
-echo "===== CREATE CLOSED UNTESTED INCIDENT ====="
+echo "===== CREATE UNTESTED CLOSED INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step23-untested.json \
+  /tmp/terrascope-step24-untested.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step23-untested",
+  "sourceEventId": "verification-step24-untested",
   "hazardType": "severe-storms",
-  "title": "Verification Untested Portfolio Incident",
-  "description": "Untested assurance-debt fixture.",
+  "title": "Verification Review Untested Incident",
+  "description": "Step 24 assurance debt fixture.",
   "latitude": 36.82,
   "longitude": 10.20,
   "severity": "HIGH",
@@ -516,16 +490,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-untested.json \
+  --data @/tmp/terrascope-step24-untested.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step23-untested-response.json
+  >/tmp/terrascope-step24-untested-response.json
 
 UNTESTED_INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-untested-response.json",
+    "/tmp/terrascope-step24-untested-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -541,7 +515,7 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-close.json \
+  --data @/tmp/terrascope-step24-close.json \
   "http://localhost:8087/api/v1/incidents/${UNTESTED_INCIDENT_ID}/status" \
   >/dev/null
 
@@ -550,14 +524,14 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${UNTESTED_INCIDENT_ID}/after-action-reviews" \
-  >/tmp/terrascope-step23-untested-aar.json
+  >/tmp/terrascope-step24-untested-aar.json
 
 UNTESTED_AAR_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-untested-aar.json",
+    "/tmp/terrascope-step24-untested-aar.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -569,13 +543,13 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step23-untested-improvement.json \
+  /tmp/terrascope-step24-untested-improvement.json \
 <<JSON
 {
   "afterActionReviewId": "${UNTESTED_AAR_ID}",
   "category": "COMMUNICATIONS",
-  "title": "Untested portfolio improvement",
-  "description": "Completed but not yet validated.",
+  "title": "Executive review untested improvement",
+  "description": "Completed but not validated.",
   "priority": "MEDIUM",
   "owner": "Preparedness Office",
   "dueAt": "2030-03-01T00:00:00Z"
@@ -587,16 +561,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-untested-improvement.json \
+  --data @/tmp/terrascope-step24-untested-improvement.json \
   "http://localhost:8087/api/v1/incidents/${UNTESTED_INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step23-untested-improvement-response.json
+  >/tmp/terrascope-step24-untested-improvement-response.json
 
 UNTESTED_IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-untested-improvement-response.json",
+    "/tmp/terrascope-step24-untested-improvement-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -612,357 +586,349 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step23-complete.json \
+  --data @/tmp/terrascope-step24-complete.json \
   "http://localhost:8087/api/v1/incidents/${UNTESTED_INCIDENT_ID}/improvements/${UNTESTED_IMPROVEMENT_ID}/status" \
   >/dev/null
 
-echo "UNTESTED_INCIDENT_ID=${UNTESTED_INCIDENT_ID}"
-
-echo "[PASS] PORTFOLIO_UNTESTED_INCIDENT"
+echo "[PASS] PORTFOLIO_REVIEW_ASSURANCE_DEBT_FIXTURE"
 
 echo
-echo "===== PORTFOLIO DELTA CONTRACT ====="
+echo "===== LIVE PORTFOLIO ====="
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/resilience-portfolio" \
-  >/tmp/terrascope-step23-portfolio.json
+  >/tmp/terrascope-step24-live-portfolio.json
+
+echo
+echo "===== REVIEW PREVIEW ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/review-preview" \
+  >/tmp/terrascope-step24-review-preview.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-baseline.json",
+    "/tmp/terrascope-step24-baseline-snapshot.json",
     encoding="utf-8",
 ) as handle:
     baseline = json.load(handle)
 
 with open(
-    "/tmp/terrascope-step23-portfolio.json",
+    "/tmp/terrascope-step24-live-portfolio.json",
     encoding="utf-8",
 ) as handle:
     current = json.load(handle)
 
-assert (
-    current["totalIncidentCount"]
-    == baseline["totalIncidentCount"] + 3
-)
-
-assert (
-    current["openIncidentCount"]
-    == baseline["openIncidentCount"] + 1
-)
-
-assert (
-    current["closedIncidentCount"]
-    == baseline["closedIncidentCount"] + 2
-)
-
-assert (
-    current["certifiedIncidentCount"]
-    == baseline["certifiedIncidentCount"] + 1
-)
-
-assert (
-    current["evidencePackagedIncidentCount"]
-    == baseline["evidencePackagedIncidentCount"] + 1
-)
-
-assert (
-    current["auditLedgerIncidentCount"]
-    == baseline["auditLedgerIncidentCount"] + 1
-)
-
-assert (
-    current["auditVerifiedIncidentCount"]
-    == baseline["auditVerifiedIncidentCount"] + 1
-)
-
-assert (
-    current["completedImprovementCount"]
-    == baseline["completedImprovementCount"] + 2
-)
-
-assert (
-    current["validatedImprovementCount"]
-    == baseline["validatedImprovementCount"] + 1
-)
-
-assert (
-    current["untestedImprovementCount"]
-    == baseline["untestedImprovementCount"] + 1
-)
-
-assert (
-    current["totalExerciseCount"]
-    == baseline["totalExerciseCount"] + 1
-)
-
-assert (
-    current["completedExerciseCount"]
-    == baseline["completedExerciseCount"] + 1
-)
-
-assert (
-    current["passedExerciseCount"]
-    == baseline["passedExerciseCount"] + 1
-)
-
-assert 0 <= current["score"] <= 100
-
-assert current["band"] in {
-    "FOUNDATIONAL",
-    "DEVELOPING",
-    "ASSURED",
-    "HIGH_ASSURANCE",
-}
-
-assert (
-    0.0
-    <= current["averageLatestReadinessScore"]
-    <= 100.0
-)
-
-print(
-    "[PASS] PORTFOLIO_AGGREGATION_CONTRACT"
-)
-
-print(
-    "[PASS] PORTFOLIO_AUDIT_VERIFICATION_CONTRACT"
-)
-
-print(
-    "[PASS] PORTFOLIO_ASSURANCE_DEBT_CONTRACT"
-)
-PY
-
-echo
-echo "===== PORTFOLIO SCORE AUTHORITY ====="
-
-python3 - <<'PY'
-import json
-
 with open(
-    "/tmp/terrascope-step23-portfolio.json",
+    "/tmp/terrascope-step24-review-preview.json",
     encoding="utf-8",
 ) as handle:
-    payload = json.load(handle)
+    preview = json.load(handle)
 
-def weighted(weight, numerator, denominator):
-    if denominator <= 0:
-        return 0
-
-    ratio = min(
-        1.0,
-        max(
-            0.0,
-            numerator / denominator,
-        ),
+def debt(payload):
+    return (
+        payload["untestedImprovementCount"] * 2
+        + payload["needsRevalidationCount"] * 3
+        + payload["failedImprovementCount"] * 5
+        + payload["openCorrectiveActionCount"] * 2
     )
 
-    return int(
-        weight * ratio
-        + 0.5
-    )
-
-score = 0
-
-score += weighted(
-    35,
-    payload["certifiedIncidentCount"],
-    payload["closedIncidentCount"],
+baseline_debt = debt(
+    baseline,
 )
 
-score += weighted(
-    20,
-    payload["evidencePackagedIncidentCount"],
-    payload["closedIncidentCount"],
+current_debt = debt(
+    current,
 )
 
-score += weighted(
-    15,
-    payload["auditVerifiedIncidentCount"],
-    payload["closedIncidentCount"],
+score_delta = (
+    current["score"]
+    - baseline["score"]
 )
 
-score += weighted(
-    20,
-    payload["validatedImprovementCount"],
-    payload["completedImprovementCount"],
+debt_delta = (
+    current_debt
+    - baseline_debt
 )
 
-score += weighted(
-    10,
-    payload["passedExerciseCount"],
-    payload["completedExerciseCount"],
-)
+if score_delta >= 5:
+    trend = "IMPROVING"
 
-debt = (
-    payload["untestedImprovementCount"] * 2
-    + payload["needsRevalidationCount"] * 3
-    + payload["failedImprovementCount"] * 5
-    + payload["openCorrectiveActionCount"] * 2
-)
+elif score_delta <= -5:
+    trend = "DECLINING"
 
-penalty = min(
-    20,
-    debt,
-)
+elif (
+    debt_delta <= -3
+    and score_delta >= 0
+):
+    trend = "IMPROVING"
 
-score = max(
-    0,
-    min(
-        100,
-        score - penalty,
-    ),
-)
-
-assert payload["score"] == score
-
-if score >= 80:
-    expected_band = "HIGH_ASSURANCE"
-
-elif score >= 60:
-    expected_band = "ASSURED"
-
-elif score >= 40:
-    expected_band = "DEVELOPING"
+elif (
+    debt_delta >= 3
+    and score_delta <= 0
+):
+    trend = "DECLINING"
 
 else:
-    expected_band = "FOUNDATIONAL"
+    trend = "STABLE"
 
-assert payload["band"] == expected_band
+assert (
+    preview["previousSnapshotId"]
+    == baseline["id"]
+)
 
-print(
-    f"PORTFOLIO_SCORE={score}"
+assert (
+    preview["previousSnapshotNumber"]
+    == baseline["snapshotNumber"]
+)
+
+assert preview["trend"] == trend
+
+assert (
+    preview["currentScore"]
+    == current["score"]
+)
+
+assert (
+    preview["previousScore"]
+    == baseline["score"]
+)
+
+assert (
+    preview["scoreDelta"]
+    == score_delta
+)
+
+assert (
+    preview["currentAssuranceDebt"]
+    == current_debt
+)
+
+assert (
+    preview["previousAssuranceDebt"]
+    == baseline_debt
+)
+
+assert (
+    preview["assuranceDebtDelta"]
+    == debt_delta
+)
+
+assert (
+    preview["certifiedIncidentDelta"]
+    == (
+        current["certifiedIncidentCount"]
+        - baseline["certifiedIncidentCount"]
+    )
+)
+
+assert (
+    preview["validatedImprovementDelta"]
+    == (
+        current["validatedImprovementCount"]
+        - baseline["validatedImprovementCount"]
+    )
+)
+
+assert (
+    preview["auditVerifiedIncidentDelta"]
+    == (
+        current["auditVerifiedIncidentCount"]
+        - baseline["auditVerifiedIncidentCount"]
+    )
 )
 
 print(
-    f"PORTFOLIO_BAND={expected_band}"
+    f"REVIEW_TREND={trend}"
 )
 
 print(
-    "[PASS] PORTFOLIO_SCORE_AUTHORITY"
+    f"REVIEW_SCORE_DELTA={score_delta}"
+)
+
+print(
+    f"REVIEW_ASSURANCE_DEBT_DELTA={debt_delta}"
+)
+
+print(
+    "[PASS] PORTFOLIO_REVIEW_PREVIEW"
+)
+
+print(
+    "[PASS] PORTFOLIO_REVIEW_TREND_AUTHORITY"
+)
+
+print(
+    "[PASS] PORTFOLIO_REVIEW_DEBT_AUTHORITY"
 )
 PY
 
 echo
-echo "===== CREATE PORTFOLIO SNAPSHOT ====="
+echo "===== CAPTURE EXECUTIVE REVIEW ====="
 
-SNAPSHOT_HTTP="$(
+REVIEW_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step23-snapshot.json \
+    --output /tmp/terrascope-step24-review.json \
     --write-out '%{http_code}' \
     --request POST \
-    "http://localhost:8087/api/v1/resilience-portfolio/snapshots"
+    "http://localhost:8087/api/v1/resilience-portfolio/reviews"
 )"
 
-echo "PORTFOLIO_SNAPSHOT_HTTP=${SNAPSHOT_HTTP}"
+echo "PORTFOLIO_REVIEW_HTTP=${REVIEW_HTTP}"
 
-[[ "${SNAPSHOT_HTTP}" == "200" ]]
+[[ "${REVIEW_HTTP}" == "200" ]]
 
-SNAPSHOT_ID="$(
+REVIEW_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step23-portfolio.json",
+    "/tmp/terrascope-step24-review-preview.json",
     encoding="utf-8",
 ) as handle:
-    live = json.load(handle)
+    preview = json.load(handle)
 
 with open(
-    "/tmp/terrascope-step23-snapshot.json",
+    "/tmp/terrascope-step24-review.json",
     encoding="utf-8",
 ) as handle:
-    snapshot = json.load(handle)
+    review = json.load(handle)
 
-assert snapshot["snapshotNumber"] >= 1
+assert review["reviewNumber"] >= 1
 
-for field in (
-    "score",
-    "band",
+assert (
+    review["previousSnapshotId"]
+    == preview["previousSnapshotId"]
+)
 
-    "totalIncidentCount",
-    "openIncidentCount",
-    "closedIncidentCount",
+assert (
+    review["previousSnapshotNumber"]
+    == preview["previousSnapshotNumber"]
+)
 
-    "certifiedIncidentCount",
-    "evidencePackagedIncidentCount",
-    "auditLedgerIncidentCount",
-    "auditVerifiedIncidentCount",
+assert (
+    review["trend"]
+    == preview["trend"]
+)
 
-    "completedImprovementCount",
-    "validatedImprovementCount",
-    "untestedImprovementCount",
-    "needsRevalidationCount",
-    "failedImprovementCount",
+assert (
+    review["currentScore"]
+    == preview["currentScore"]
+)
 
-    "openCorrectiveActionCount",
+assert (
+    review["previousScore"]
+    == preview["previousScore"]
+)
 
-    "totalExerciseCount",
-    "completedExerciseCount",
-    "passedExerciseCount",
+assert (
+    review["scoreDelta"]
+    == preview["scoreDelta"]
+)
 
-    "averageLatestReadinessScore",
-):
-    assert snapshot[field] == live[field], (
-        field,
-        snapshot[field],
-        live[field],
-    )
+assert (
+    review["currentAssuranceDebt"]
+    == preview["currentAssuranceDebt"]
+)
+
+assert (
+    review["previousAssuranceDebt"]
+    == preview["previousAssuranceDebt"]
+)
+
+assert (
+    review["assuranceDebtDelta"]
+    == preview["assuranceDebtDelta"]
+)
+
+assert (
+    review["certifiedIncidentDelta"]
+    == preview["certifiedIncidentDelta"]
+)
+
+assert (
+    review["validatedImprovementDelta"]
+    == preview["validatedImprovementDelta"]
+)
+
+assert (
+    review["auditVerifiedIncidentDelta"]
+    == preview["auditVerifiedIncidentDelta"]
+)
 
 print(
-    snapshot["id"]
+    review["id"]
 )
 PY
 )"
 
-echo "SNAPSHOT_ID=${SNAPSHOT_ID}"
+CURRENT_SNAPSHOT_ID="$(
+  python3 - <<'PY'
+import json
 
-echo "[PASS] PORTFOLIO_SNAPSHOT_CREATE"
+with open(
+    "/tmp/terrascope-step24-review.json",
+    encoding="utf-8",
+) as handle:
+    review = json.load(handle)
+
+print(
+    review["currentSnapshotId"]
+)
+PY
+)"
+
+echo "REVIEW_ID=${REVIEW_ID}"
+echo "CURRENT_SNAPSHOT_ID=${CURRENT_SNAPSHOT_ID}"
+
+echo "[PASS] PORTFOLIO_REVIEW_CREATE"
 
 echo
-echo "===== PORTFOLIO HISTORY ====="
+echo "===== REVIEW HISTORY ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/history" \
-  >/tmp/terrascope-step23-history.json
+  "http://localhost:8087/api/v1/resilience-portfolio/reviews" \
+  >/tmp/terrascope-step24-review-history.json
 
-python3 - "${SNAPSHOT_ID}" <<'PY'
+python3 - "${REVIEW_ID}" <<'PY'
 import json
 import sys
 
-snapshot_id = sys.argv[1]
+review_id = sys.argv[1]
 
 with open(
-    "/tmp/terrascope-step23-history.json",
+    "/tmp/terrascope-step24-review-history.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert len(
-    payload["snapshots"]
+    payload["reviews"]
 ) >= 1
 
 assert (
-    payload["snapshots"][0]["id"]
-    == snapshot_id
+    payload["reviews"][0]["id"]
+    == review_id
 )
 
 print(
-    "[PASS] PORTFOLIO_SNAPSHOT_HISTORY"
+    "[PASS] PORTFOLIO_REVIEW_HISTORY"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-PORTFOLIO_COLUMNS="$(
+REVIEW_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -973,12 +939,12 @@ PORTFOLIO_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name =
-            'resilience_portfolio_snapshots';
+            'resilience_portfolio_reviews';
       " \
     | tr -d '[:space:]'
 )"
 
-SNAPSHOT_ROW_COUNT="$(
+REVIEW_ROWS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -986,14 +952,32 @@ SNAPSHOT_ROW_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_portfolio_snapshots
+      FROM resilience_portfolio_reviews
       WHERE id =
-            '${SNAPSHOT_ID}'::uuid;
+            '${REVIEW_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
 
-SNAPSHOT_UNIQUE_COUNT="$(
+CURRENT_SNAPSHOT_FK="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conrelid =
+            'resilience_portfolio_reviews'::regclass
+        AND contype = 'f'
+        AND pg_get_constraintdef(oid)
+            LIKE '%current_snapshot_id%';
+      " \
+    | tr -d '[:space:]'
+)"
+
+REVIEW_UNIQUE="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1003,23 +987,25 @@ SNAPSHOT_UNIQUE_COUNT="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conname =
-            'uq_resilience_portfolio_snapshot_number';
+            'uq_resilience_portfolio_review_number';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "PORTFOLIO_COLUMN_COUNT=${PORTFOLIO_COLUMNS}"
-echo "PORTFOLIO_SNAPSHOT_ROW_COUNT=${SNAPSHOT_ROW_COUNT}"
-echo "PORTFOLIO_SNAPSHOT_UNIQUE_COUNT=${SNAPSHOT_UNIQUE_COUNT}"
+echo "PORTFOLIO_REVIEW_COLUMN_COUNT=${REVIEW_COLUMNS}"
+echo "PORTFOLIO_REVIEW_ROW_COUNT=${REVIEW_ROWS}"
+echo "PORTFOLIO_REVIEW_CURRENT_SNAPSHOT_FK_COUNT=${CURRENT_SNAPSHOT_FK}"
+echo "PORTFOLIO_REVIEW_UNIQUE_COUNT=${REVIEW_UNIQUE}"
 
-[[ "${PORTFOLIO_COLUMNS}" == "22" ]]
-[[ "${SNAPSHOT_ROW_COUNT}" == "1" ]]
-[[ "${SNAPSHOT_UNIQUE_COUNT}" == "1" ]]
+[[ "${REVIEW_COLUMNS}" == "18" ]]
+[[ "${REVIEW_ROWS}" == "1" ]]
+[[ "${CURRENT_SNAPSHOT_FK}" == "1" ]]
+[[ "${REVIEW_UNIQUE}" == "1" ]]
 
-echo "[PASS] PORTFOLIO_DATABASE_CONTRACT"
+echo "[PASS] PORTFOLIO_REVIEW_DATABASE_CONTRACT"
 
 echo
-echo "===== CLEAN STEP 23 FIXTURES ====="
+echo "===== CLEAN STEP 24 FIXTURES ====="
 
 docker compose exec -T postgres \
   psql \
@@ -1027,16 +1013,23 @@ docker compose exec -T postgres \
     -d terrascope \
     -c "
       DELETE
-      FROM resilience_portfolio_snapshots
+      FROM resilience_portfolio_reviews
       WHERE id =
-            '${SNAPSHOT_ID}'::uuid;
+            '${REVIEW_ID}'::uuid;
+
+      DELETE
+      FROM resilience_portfolio_snapshots
+      WHERE id IN (
+          '${CURRENT_SNAPSHOT_ID}'::uuid,
+          '${BASELINE_SNAPSHOT_ID}'::uuid
+      );
 
       DELETE
       FROM incident_cases
       WHERE source_event_id IN (
-          'verification-step23-open',
-          'verification-step23-certified',
-          'verification-step23-untested'
+          'verification-step24-open',
+          'verification-step24-certified',
+          'verification-step24-untested'
       );
     " \
   >/dev/null
@@ -1051,10 +1044,25 @@ VERIFY_INCIDENT_COUNT="$(
       SELECT COUNT(*)
       FROM incident_cases
       WHERE source_event_id IN (
-          'verification-step23-open',
-          'verification-step23-certified',
-          'verification-step23-untested'
+          'verification-step24-open',
+          'verification-step24-certified',
+          'verification-step24-untested'
       );
+      " \
+    | tr -d '[:space:]'
+)"
+
+VERIFY_REVIEW_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_portfolio_reviews
+      WHERE id =
+            '${REVIEW_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
@@ -1068,21 +1076,25 @@ VERIFY_SNAPSHOT_COUNT="$(
       "
       SELECT COUNT(*)
       FROM resilience_portfolio_snapshots
-      WHERE id =
-            '${SNAPSHOT_ID}'::uuid;
+      WHERE id IN (
+          '${CURRENT_SNAPSHOT_ID}'::uuid,
+          '${BASELINE_SNAPSHOT_ID}'::uuid
+      );
       " \
     | tr -d '[:space:]'
 )"
 
 echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
-echo "VERIFICATION_PORTFOLIO_SNAPSHOT_COUNT=${VERIFY_SNAPSHOT_COUNT}"
+echo "VERIFICATION_REVIEW_COUNT=${VERIFY_REVIEW_COUNT}"
+echo "VERIFICATION_REVIEW_SNAPSHOT_COUNT=${VERIFY_SNAPSHOT_COUNT}"
 
 [[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
+[[ "${VERIFY_REVIEW_COUNT}" == "0" ]]
 [[ "${VERIFY_SNAPSHOT_COUNT}" == "0" ]]
 
-echo "[PASS] PORTFOLIO_CLEANUP"
+echo "[PASS] PORTFOLIO_REVIEW_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 23 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 24 VERIFICATION PASSED"
 echo "========================================================================"

@@ -96,6 +96,10 @@ import {
   ResiliencePortfolioScorecard,
 } from "@/components/resilience-portfolio-scorecard";
 
+import {
+  ResiliencePortfolioReview,
+} from "@/components/resilience-portfolio-review";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1224,6 +1228,8 @@ export function SituationRoomPanel({
                     />
 
                     <ResiliencePortfolioScorecard />
+
+                    <ResiliencePortfolioReview />
 
                     <IncidentResilienceAuditLedger
                       key={
