@@ -15,10 +15,28 @@ import type {
   EarthquakeEvent,
 } from "@/types/earthquake";
 
+import type {
+  VolcanoEvent,
+} from "@/types/volcano";
+
 type EarthquakeMapProps = {
   events: EarthquakeEvent[];
-  selectedEvent: EarthquakeEvent | null;
-  onSelect: (event: EarthquakeEvent) => void;
+  volcanoEvents: VolcanoEvent[];
+
+  earthquakesVisible: boolean;
+  volcanoesVisible: boolean;
+
+  selectedEarthquake:
+    EarthquakeEvent | null;
+
+  selectedVolcano:
+    VolcanoEvent | null;
+
+  onSelectEarthquake:
+    (event: EarthquakeEvent) => void;
+
+  onSelectVolcano:
+    (event: VolcanoEvent) => void;
 };
 
 function markerColor(
@@ -56,20 +74,38 @@ function escapeHtml(
 
 export function EarthquakeMap({
   events,
-  selectedEvent,
-  onSelect,
+  volcanoEvents,
+  earthquakesVisible,
+  volcanoesVisible,
+  selectedEarthquake,
+  selectedVolcano,
+  onSelectEarthquake,
+  onSelectVolcano,
 }: EarthquakeMapProps) {
   const containerRef =
-    useRef<HTMLDivElement | null>(null);
+    useRef<HTMLDivElement | null>(
+      null,
+    );
 
   const mapRef =
-    useRef<LeafletMap | null>(null);
+    useRef<LeafletMap | null>(
+      null,
+    );
 
-  const markerLayerRef =
-    useRef<LayerGroup | null>(null);
+  const earthquakeLayerRef =
+    useRef<LayerGroup | null>(
+      null,
+    );
+
+  const volcanoLayerRef =
+    useRef<LayerGroup | null>(
+      null,
+    );
 
   const leafletRef =
-    useRef<typeof import("leaflet") | null>(null);
+    useRef<
+      typeof import("leaflet") | null
+    >(null);
 
   const [ready, setReady] =
     useState(false);
@@ -121,7 +157,10 @@ export function EarthquakeMap({
         })
         .addTo(map);
 
-      markerLayerRef.current =
+      earthquakeLayerRef.current =
+        L.layerGroup().addTo(map);
+
+      volcanoLayerRef.current =
         L.layerGroup().addTo(map);
 
       leafletRef.current = L;
@@ -142,15 +181,17 @@ export function EarthquakeMap({
       }
 
       mapRef.current = null;
-      markerLayerRef.current = null;
+      earthquakeLayerRef.current = null;
+      volcanoLayerRef.current = null;
       leafletRef.current = null;
     };
   }, []);
 
   useEffect(() => {
     const L = leafletRef.current;
+
     const markerLayer =
-      markerLayerRef.current;
+      earthquakeLayerRef.current;
 
     if (
       !ready
@@ -161,6 +202,10 @@ export function EarthquakeMap({
     }
 
     markerLayer.clearLayers();
+
+    if (!earthquakesVisible) {
+      return;
+    }
 
     events.forEach((event) => {
       const color =
@@ -176,7 +221,9 @@ export function EarthquakeMap({
             14,
             Math.max(
               4.5,
-              3 + event.magnitude * 1.25,
+              3
+                + event.magnitude
+                * 1.25,
             ),
           ),
           color,
@@ -184,7 +231,8 @@ export function EarthquakeMap({
           fillOpacity: 0.72,
           opacity: 0.95,
           weight:
-            selectedEvent?.id === event.id
+            selectedEarthquake?.id
+              === event.id
               ? 3
               : 1.5,
         },
@@ -193,9 +241,15 @@ export function EarthquakeMap({
       marker.bindTooltip(
         `
           <div class="map-tooltip">
-            <strong>M${event.magnitude.toFixed(1)}</strong>
-            <span>${escapeHtml(event.place)}</span>
-            <small>${event.depthKm.toFixed(1)} km deep</small>
+            <strong>
+              M${event.magnitude.toFixed(1)}
+            </strong>
+            <span>
+              ${escapeHtml(event.place)}
+            </span>
+            <small>
+              ${event.depthKm.toFixed(1)} km deep
+            </small>
           </div>
         `,
         {
@@ -205,21 +259,113 @@ export function EarthquakeMap({
       );
 
       marker.on("click", () => {
-        onSelect(event);
+        onSelectEarthquake(event);
       });
 
       marker.addTo(markerLayer);
     });
   }, [
+    earthquakesVisible,
     events,
-    onSelect,
+    onSelectEarthquake,
     ready,
-    selectedEvent?.id,
+    selectedEarthquake?.id,
   ]);
 
   useEffect(() => {
+    const L = leafletRef.current;
+
+    const markerLayer =
+      volcanoLayerRef.current;
+
     if (
-      selectedEvent === null
+      !ready
+      || L === null
+      || markerLayer === null
+    ) {
+      return;
+    }
+
+    markerLayer.clearLayers();
+
+    if (!volcanoesVisible) {
+      return;
+    }
+
+    volcanoEvents.forEach((event) => {
+      const selected =
+        selectedVolcano?.id === event.id;
+
+      const icon = L.divIcon({
+        className: "volcano-div-icon",
+        html: `
+          <span class="
+            volcano-map-marker
+            ${
+              selected
+                ? "volcano-map-marker--selected"
+                : ""
+            }
+          ">
+            ▲
+          </span>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+
+      const marker = L.marker(
+        [
+          event.latitude,
+          event.longitude,
+        ],
+        {
+          icon,
+          keyboard: true,
+        },
+      );
+
+      marker.bindTooltip(
+        `
+          <div class="map-tooltip">
+            <strong>
+              VOLCANO
+            </strong>
+            <span>
+              ${escapeHtml(event.title)}
+            </span>
+            <small>
+              ${escapeHtml(event.primarySource)}
+            </small>
+          </div>
+        `,
+        {
+          direction: "top",
+          opacity: 0.96,
+        },
+      );
+
+      marker.on("click", () => {
+        onSelectVolcano(event);
+      });
+
+      marker.addTo(markerLayer);
+    });
+  }, [
+    onSelectVolcano,
+    ready,
+    selectedVolcano?.id,
+    volcanoEvents,
+    volcanoesVisible,
+  ]);
+
+  useEffect(() => {
+    const target =
+      selectedVolcano
+      ?? selectedEarthquake;
+
+    if (
+      target === null
       || mapRef.current === null
     ) {
       return;
@@ -227,8 +373,8 @@ export function EarthquakeMap({
 
     mapRef.current.flyTo(
       [
-        selectedEvent.latitude,
-        selectedEvent.longitude,
+        target.latitude,
+        target.longitude,
       ],
       Math.max(
         mapRef.current.getZoom(),
@@ -238,58 +384,70 @@ export function EarthquakeMap({
         duration: 0.75,
       },
     );
-  }, [selectedEvent]);
+  }, [
+    selectedEarthquake,
+    selectedVolcano,
+  ]);
+
+  const visibleCount =
+    (
+      earthquakesVisible
+        ? events.length
+        : 0
+    )
+    +
+    (
+      volcanoesVisible
+        ? volcanoEvents.length
+        : 0
+    );
 
   return (
     <div className="map-shell">
       <div
         ref={containerRef}
         className="earthquake-map"
-        aria-label="Global earthquake map"
+        aria-label="Global multi-hazard map"
       />
 
       {!ready && (
         <div className="map-loading">
           <div className="loading-orbit" />
-          <span>Initializing Earth view</span>
+
+          <span>
+            Initializing Earth view
+          </span>
         </div>
       )}
 
       <div className="map-overlay map-overlay--top">
         <span className="map-overlay__dot" />
+
         <span>
-          {events.length} visible events
+          {visibleCount} visible events
         </span>
       </div>
 
       <div className="map-legend">
         <span className="map-legend__title">
-          Magnitude
+          Layers
         </span>
 
         <span>
           <i className="legend-dot legend-dot--minor" />
-          &lt; 4
+          Earthquake
         </span>
 
         <span>
-          <i className="legend-dot legend-dot--light" />
-          4–4.9
-        </span>
-
-        <span>
-          <i className="legend-dot legend-dot--moderate" />
-          5–5.9
-        </span>
-
-        <span>
-          <i className="legend-dot legend-dot--strong" />
-          6–6.9
+          <i className="volcano-legend-symbol">
+            ▲
+          </i>
+          Volcano
         </span>
 
         <span>
           <i className="legend-dot legend-dot--major" />
-          7+
+          M7+
         </span>
       </div>
     </div>

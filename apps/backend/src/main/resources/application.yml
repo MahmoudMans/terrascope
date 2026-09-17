@@ -38,3 +38,6 @@ terrascope:
 
   usgs:
     feed-base-url: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary
+
+  eonet:
+    base-url: https://eonet.gsfc.nasa.gov/api/v3

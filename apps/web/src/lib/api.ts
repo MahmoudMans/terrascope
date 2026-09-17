@@ -1,7 +1,12 @@
-import {
+import type {
   EarthquakeFeedResponse,
   EarthquakeQuery,
 } from "@/types/earthquake";
+
+import type {
+  VolcanoFeedResponse,
+  VolcanoQuery,
+} from "@/types/volcano";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -13,11 +18,16 @@ export async function fetchEarthquakes(
 ): Promise<EarthquakeFeedResponse> {
   const params = new URLSearchParams({
     period: query.period,
-    minMagnitude: query.minMagnitude.toString(),
-    maxDepth: query.maxDepth.toString(),
-    limit: (query.limit ?? 300).toString(),
-    search: query.search ?? "",
-    sort: query.sort,
+    minMagnitude:
+      query.minMagnitude.toString(),
+    maxDepth:
+      query.maxDepth.toString(),
+    limit:
+      (query.limit ?? 300).toString(),
+    search:
+      query.search ?? "",
+    sort:
+      query.sort,
   });
 
   const response = await fetch(
@@ -34,9 +44,43 @@ export async function fetchEarthquakes(
 
   if (!response.ok) {
     throw new Error(
-      `TerraScope API returned HTTP ${response.status}`,
+      `TerraScope earthquake API returned HTTP ${response.status}`,
     );
   }
 
   return response.json() as Promise<EarthquakeFeedResponse>;
+}
+
+export async function fetchVolcanoes(
+  query: VolcanoQuery,
+  signal?: AbortSignal,
+): Promise<VolcanoFeedResponse> {
+  const params = new URLSearchParams({
+    status: query.status,
+    days: query.days.toString(),
+    limit:
+      (query.limit ?? 120).toString(),
+    search:
+      query.search ?? "",
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/volcanoes?${params.toString()}`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `TerraScope volcano API returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<VolcanoFeedResponse>;
 }

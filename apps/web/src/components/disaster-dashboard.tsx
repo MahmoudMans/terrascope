@@ -3,12 +3,13 @@
 import {
   Activity,
   AlertTriangle,
-  BarChart3,
   Bell,
   Bookmark,
   CircleDot,
   Clock3,
   Database,
+  Eye,
+  EyeOff,
   Gauge,
   Globe2,
   Layers3,
@@ -23,7 +24,6 @@ import {
   SlidersHorizontal,
   Sparkles,
   Waves,
-  Zap,
 } from "lucide-react";
 
 import {
@@ -46,7 +46,12 @@ import {
 } from "@/components/stat-card";
 
 import {
+  VolcanoList,
+} from "@/components/volcano-list";
+
+import {
   fetchEarthquakes,
+  fetchVolcanoes,
 } from "@/lib/api";
 
 import {
@@ -63,6 +68,11 @@ import type {
   EarthquakePeriod,
   EarthquakeSort,
 } from "@/types/earthquake";
+
+import type {
+  VolcanoEvent,
+  VolcanoFeedResponse,
+} from "@/types/volcano";
 
 const periodOptions: Array<{
   value: EarthquakePeriod;
@@ -114,134 +124,258 @@ const navItems = [
   },
 ];
 
+type FeedMode =
+  | "earthquakes"
+  | "volcanoes";
+
 export function DisasterDashboard() {
   const [
-    data,
-    setData,
-  ] = useState<EarthquakeFeedResponse | null>(
-    null,
-  );
+    earthquakeData,
+    setEarthquakeData,
+  ] =
+    useState<
+      EarthquakeFeedResponse | null
+    >(null);
 
   const [
-    selectedEvent,
-    setSelectedEvent,
-  ] = useState<EarthquakeEvent | null>(
-    null,
-  );
+    volcanoData,
+    setVolcanoData,
+  ] =
+    useState<
+      VolcanoFeedResponse | null
+    >(null);
+
+  const [
+    selectedEarthquake,
+    setSelectedEarthquake,
+  ] =
+    useState<
+      EarthquakeEvent | null
+    >(null);
+
+  const [
+    selectedVolcano,
+    setSelectedVolcano,
+  ] =
+    useState<
+      VolcanoEvent | null
+    >(null);
+
+  const [
+    feedMode,
+    setFeedMode,
+  ] =
+    useState<FeedMode>(
+      "earthquakes",
+    );
+
+  const [
+    earthquakesVisible,
+    setEarthquakesVisible,
+  ] =
+    useState(true);
+
+  const [
+    volcanoesVisible,
+    setVolcanoesVisible,
+  ] =
+    useState(true);
 
   const [
     period,
     setPeriod,
-  ] = useState<EarthquakePeriod>("day");
+  ] =
+    useState<EarthquakePeriod>(
+      "day",
+    );
 
   const [
     minMagnitude,
     setMinMagnitude,
-  ] = useState(2.5);
+  ] =
+    useState(2.5);
 
   const [
     maxDepth,
     setMaxDepth,
-  ] = useState(700);
+  ] =
+    useState(700);
 
   const [
     sort,
     setSort,
-  ] = useState<EarthquakeSort>("time");
+  ] =
+    useState<EarthquakeSort>(
+      "time",
+    );
 
   const [
     searchInput,
     setSearchInput,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     appliedSearch,
     setAppliedSearch,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     loading,
     setLoading,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const [
     refreshing,
     setRefreshing,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     error,
     setError,
-  ] = useState<string | null>(null);
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   const [
     refreshCounter,
     setRefreshCounter,
-  ] = useState(0);
+  ] =
+    useState(0);
 
   useEffect(() => {
     const controller =
       new AbortController();
 
-    void fetchEarthquakes(
-      {
-        period,
-        minMagnitude,
-        maxDepth,
-        search: appliedSearch,
-        sort,
-        limit: 300,
-      },
-      controller.signal,
-    )
-      .then((response) => {
-        if (controller.signal.aborted) {
-          return;
-        }
+    void Promise.all([
+      fetchEarthquakes(
+        {
+          period,
+          minMagnitude,
+          maxDepth,
+          search: appliedSearch,
+          sort,
+          limit: 300,
+        },
+        controller.signal,
+      ),
 
-        setError(null);
+      fetchVolcanoes(
+        {
+          status: "open",
+          days: 3650,
+          search: appliedSearch,
+          limit: 120,
+        },
+        controller.signal,
+      ),
+    ])
+      .then(
+        ([
+          nextEarthquakes,
+          nextVolcanoes,
+        ]) => {
+          if (
+            controller.signal.aborted
+          ) {
+            return;
+          }
 
-        setData(response);
+          setError(null);
 
-        setSelectedEvent(
-          (current) => {
-            if (
-              current !== null
-              && response.events.some(
-                (event) =>
-                  event.id === current.id,
-              )
-            ) {
-              return response.events.find(
-                (event) =>
-                  event.id === current.id,
-              ) ?? null;
-            }
+          setEarthquakeData(
+            nextEarthquakes,
+          );
 
-            return response.events[0]
-              ?? null;
-          },
-        );
-      })
-      .catch((caughtError: unknown) => {
-        if (
-          controller.signal.aborted
-          || (
-            caughtError instanceof DOMException
-            && caughtError.name === "AbortError"
-          )
-        ) {
-          return;
-        }
+          setVolcanoData(
+            nextVolcanoes,
+          );
 
-        setError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Unable to load earthquake data.",
-        );
-      })
+          setSelectedEarthquake(
+            (current) => {
+              if (
+                current !== null
+                && nextEarthquakes
+                  .events
+                  .some(
+                    (event) =>
+                      event.id
+                      === current.id,
+                  )
+              ) {
+                return nextEarthquakes
+                  .events
+                  .find(
+                    (event) =>
+                      event.id
+                      === current.id,
+                  )
+                  ?? null;
+              }
+
+              return nextEarthquakes
+                .events[0]
+                ?? null;
+            },
+          );
+
+          setSelectedVolcano(
+            (current) => {
+              if (
+                current !== null
+                && nextVolcanoes
+                  .events
+                  .some(
+                    (event) =>
+                      event.id
+                      === current.id,
+                  )
+              ) {
+                return nextVolcanoes
+                  .events
+                  .find(
+                    (event) =>
+                      event.id
+                      === current.id,
+                  )
+                  ?? null;
+              }
+
+              return null;
+            },
+          );
+        },
+      )
+      .catch(
+        (caughtError: unknown) => {
+          if (
+            controller.signal.aborted
+            || (
+              caughtError
+                instanceof DOMException
+              && caughtError.name
+                === "AbortError"
+            )
+          ) {
+            return;
+          }
+
+          setError(
+            caughtError
+              instanceof Error
+              ? caughtError.message
+              : "Unable to load TerraScope data.",
+          );
+        },
+      )
       .finally(() => {
-        if (!controller.signal.aborted) {
+        if (
+          !controller.signal.aborted
+        ) {
           setLoading(false);
           setRefreshing(false);
         }
@@ -268,7 +402,8 @@ export function DisasterDashboard() {
   };
 
   const handleSearch = (
-    event: FormEvent<HTMLFormElement>,
+    event:
+      FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
 
@@ -277,18 +412,94 @@ export function DisasterDashboard() {
     );
   };
 
-  const sourceLabel =
-    data?.live
-      ? "LIVE USGS"
-      : "DEMO FALLBACK";
+  const handleSelectEarthquake = (
+    event: EarthquakeEvent,
+  ) => {
+    setSelectedVolcano(null);
+    setSelectedEarthquake(event);
+  };
+
+  const handleSelectVolcano = (
+    event: VolcanoEvent,
+  ) => {
+    setSelectedEarthquake(null);
+    setSelectedVolcano(event);
+  };
+
+  const openEarthquakeFeed = () => {
+    setFeedMode(
+      "earthquakes",
+    );
+
+    const event =
+      earthquakeData?.events[0];
+
+    if (event !== undefined) {
+      handleSelectEarthquake(
+        event,
+      );
+    }
+  };
+
+  const openVolcanoFeed = () => {
+    setFeedMode(
+      "volcanoes",
+    );
+
+    const event =
+      volcanoData?.events[0];
+
+    if (event !== undefined) {
+      handleSelectVolcano(
+        event,
+      );
+    }
+  };
+
+  const liveSourceCount =
+    (
+      earthquakeData?.live
+        ? 1
+        : 0
+    )
+    +
+    (
+      volcanoData?.live
+        ? 1
+        : 0
+    );
+
+  const fallbackSources =
+    [
+      earthquakeData !== null
+      && !earthquakeData.live
+        ? "USGS earthquakes"
+        : null,
+
+      volcanoData !== null
+      && !volcanoData.live
+        ? "NASA EONET volcanoes"
+        : null,
+    ]
+      .filter(
+        (
+          value,
+        ): value is string =>
+          value !== null,
+      );
 
   const eventTimeline =
     useMemo(
       () =>
-        (data?.events ?? [])
+        (
+          earthquakeData?.events
+          ?? []
+        )
           .slice(0, 18)
           .reverse(),
-      [data?.events],
+      [
+        earthquakeData?.events,
+      ],
     );
 
   const maximumTimelineMagnitude =
@@ -297,10 +508,13 @@ export function DisasterDashboard() {
         Math.max(
           1,
           ...eventTimeline.map(
-            (event) => event.magnitude,
+            (event) =>
+              event.magnitude,
           ),
         ),
-      [eventTimeline],
+      [
+        eventTimeline,
+      ],
     );
 
   return (
@@ -309,12 +523,18 @@ export function DisasterDashboard() {
         <div className="brand">
           <div className="brand__mark">
             <Globe2 size={24} />
+
             <span className="brand__pulse" />
           </div>
 
           <div className="brand__text">
-            <strong>TerraScope</strong>
-            <span>EARTH MONITOR</span>
+            <strong>
+              TerraScope
+            </strong>
+
+            <span>
+              EARTH MONITOR
+            </span>
           </div>
         </div>
 
@@ -340,10 +560,15 @@ export function DisasterDashboard() {
                 disabled={!active}
               >
                 <Icon size={18} />
-                <span>{label}</span>
+
+                <span>
+                  {label}
+                </span>
 
                 {!active && (
-                  <small>Soon</small>
+                  <small>
+                    Soon
+                  </small>
                 )}
               </button>
             ),
@@ -354,17 +579,20 @@ export function DisasterDashboard() {
           <div className="system-mini-card">
             <div className="system-mini-card__header">
               <Database size={15} />
-              <span>Data network</span>
+
+              <span>
+                Data network
+              </span>
             </div>
 
             <div className="system-mini-card__row">
               <span className="status-dot status-dot--online" />
-              USGS seismic feed
+              USGS earthquakes
             </div>
 
-            <div className="system-mini-card__row system-mini-card__row--muted">
-              <span className="status-dot" />
-              More sources soon
+            <div className="system-mini-card__row">
+              <span className="status-dot status-dot--online" />
+              NASA EONET
             </div>
           </div>
 
@@ -374,7 +602,10 @@ export function DisasterDashboard() {
             disabled
           >
             <Settings size={17} />
-            <span>Settings</span>
+
+            <span>
+              Settings
+            </span>
           </button>
         </div>
       </aside>
@@ -388,19 +619,25 @@ export function DisasterDashboard() {
               </span>
 
               <h1>
-                Earthquake Monitor
+                Multi-Hazard Monitor
               </h1>
             </div>
 
             <div
               className={
-                data?.live
+                liveSourceCount === 2
                   ? "source-status source-status--live"
                   : "source-status source-status--fallback"
               }
             >
               <Radio size={14} />
-              <span>{sourceLabel}</span>
+
+              <span>
+                {earthquakeData === null
+                  || volcanoData === null
+                  ? "CONNECTING"
+                  : `${liveSourceCount}/2 LIVE SOURCES`}
+              </span>
             </div>
           </div>
 
@@ -411,6 +648,7 @@ export function DisasterDashboard() {
               title="Notifications"
             >
               <Bell size={18} />
+
               <span className="notification-dot" />
             </button>
 
@@ -438,18 +676,21 @@ export function DisasterDashboard() {
           </div>
         </header>
 
-        {!data?.live && data !== null && (
+        {fallbackSources.length > 0 && (
           <div className="fallback-banner">
             <AlertTriangle size={17} />
 
             <div>
               <strong>
-                USGS feed unavailable
+                Demonstration fallback active
               </strong>
 
               <span>
-                TerraScope is displaying clearly
-                labelled local demonstration data.
+                {fallbackSources.join(
+                  ", ",
+                )}{" "}
+                are currently using local
+                fallback data.
               </span>
             </div>
           </div>
@@ -464,7 +705,9 @@ export function DisasterDashboard() {
                 Monitoring connection error
               </strong>
 
-              <span>{error}</span>
+              <span>
+                {error}
+              </span>
             </div>
 
             <button
@@ -479,29 +722,56 @@ export function DisasterDashboard() {
         <section className="stats-grid">
           <StatCard
             icon={Activity}
-            label="Detected events"
+            label="Earthquakes"
             value={
               loading
                 ? "—"
                 : String(
-                    data?.summary.eventCount
-                      ?? 0,
+                    earthquakeData
+                      ?.summary
+                      .eventCount
+                    ?? 0,
                   )
             }
-            detail={`Within ${periodOptions.find(
-              (option) =>
-                option.value === period,
-            )?.label.toLowerCase() ?? period}`}
+            detail="Filtered seismic events"
+          />
+
+          <StatCard
+            icon={Mountain}
+            label="Volcanic events"
+            value={
+              loading
+                ? "—"
+                : String(
+                    volcanoData
+                      ?.summary
+                      .eventCount
+                    ?? 0,
+                  )
+            }
+            detail="Open NASA EONET events"
+            tone={
+              (
+                volcanoData
+                  ?.summary
+                  .eventCount
+                ?? 0
+              ) > 0
+                ? "warning"
+                : "default"
+            }
           />
 
           <StatCard
             icon={Gauge}
-            label="Strongest"
+            label="Strongest quake"
             value={
               loading
                 ? "—"
                 : `M${
-                    data?.summary.strongestMagnitude
+                    earthquakeData
+                      ?.summary
+                      .strongestMagnitude
                       .toFixed(1)
                     ?? "0.0"
                   }`
@@ -509,7 +779,8 @@ export function DisasterDashboard() {
             detail="Highest filtered magnitude"
             tone={
               (
-                data?.summary
+                earthquakeData
+                  ?.summary
                   .strongestMagnitude
                 ?? 0
               ) >= 6
@@ -525,12 +796,14 @@ export function DisasterDashboard() {
               loading
                 ? "—"
                 : `${
-                    data?.summary.averageDepthKm
+                    earthquakeData
+                      ?.summary
+                      .averageDepthKm
                       .toFixed(1)
                     ?? "0.0"
                   } km`
             }
-            detail="Below surface"
+            detail="Earthquake depth"
           />
 
           <StatCard
@@ -540,15 +813,17 @@ export function DisasterDashboard() {
               loading
                 ? "—"
                 : String(
-                    data?.summary
+                    earthquakeData
+                      ?.summary
                       .tsunamiPotentialCount
-                      ?? 0,
+                    ?? 0,
                   )
             }
-            detail="Source-level potential flag"
+            detail="USGS source-level flags"
             tone={
               (
-                data?.summary
+                earthquakeData
+                  ?.summary
                   .tsunamiPotentialCount
                 ?? 0
               ) > 0
@@ -558,25 +833,23 @@ export function DisasterDashboard() {
           />
 
           <StatCard
-            icon={Zap}
-            label="Significant"
+            icon={Radio}
+            label="Live sources"
             value={
               loading
                 ? "—"
-                : String(
-                    data?.summary
-                      .significantEventCount
-                      ?? 0,
-                  )
+                : `${liveSourceCount}/2`
             }
-            detail="High significance or M5+"
+            detail="USGS + NASA EONET"
           />
         </section>
 
         <section className="control-panel">
           <div className="control-panel__heading">
             <SlidersHorizontal size={16} />
-            <span>Observation filters</span>
+            <span>
+              Observation filters
+            </span>
           </div>
 
           <div className="period-control">
@@ -585,13 +858,16 @@ export function DisasterDashboard() {
                 <button
                   key={option.value}
                   className={
-                    period === option.value
+                    period
+                      === option.value
                       ? "period-button period-button--active"
                       : "period-button"
                   }
                   type="button"
                   onClick={() =>
-                    setPeriod(option.value)
+                    setPeriod(
+                      option.value,
+                    )
                   }
                 >
                   {option.label}
@@ -601,7 +877,9 @@ export function DisasterDashboard() {
           </div>
 
           <label className="compact-field">
-            <span>Minimum magnitude</span>
+            <span>
+              Minimum magnitude
+            </span>
 
             <select
               value={minMagnitude}
@@ -644,7 +922,9 @@ export function DisasterDashboard() {
           </label>
 
           <label className="compact-field">
-            <span>Maximum depth</span>
+            <span>
+              Maximum depth
+            </span>
 
             <select
               value={maxDepth}
@@ -679,14 +959,15 @@ export function DisasterDashboard() {
           </label>
 
           <label className="compact-field">
-            <span>Sort by</span>
+            <span>
+              Sort earthquakes
+            </span>
 
             <select
               value={sort}
               onChange={(event) =>
                 setSort(
-                  event.target
-                    .value as EarthquakeSort,
+                  event.target.value as EarthquakeSort,
                 )
               }
             >
@@ -712,7 +993,7 @@ export function DisasterDashboard() {
 
             <input
               type="search"
-              placeholder="Search location..."
+              placeholder="Search events..."
               value={searchInput}
               onChange={(event) =>
                 setSearchInput(
@@ -727,61 +1008,166 @@ export function DisasterDashboard() {
           </form>
         </section>
 
+        <section className="hazard-layer-strip">
+          <div className="hazard-layer-strip__heading">
+            <Layers3 size={15} />
+
+            <span>
+              Map layers
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className={
+              earthquakesVisible
+                ? "hazard-layer-toggle hazard-layer-toggle--active hazard-layer-toggle--earthquake"
+                : "hazard-layer-toggle"
+            }
+            onClick={() =>
+              setEarthquakesVisible(
+                (value) => !value,
+              )
+            }
+          >
+            {earthquakesVisible
+              ? <Eye size={14} />
+              : <EyeOff size={14} />
+            }
+
+            Earthquakes
+
+            <strong>
+              {earthquakeData
+                ?.returnedEventCount
+                ?? 0}
+            </strong>
+          </button>
+
+          <button
+            type="button"
+            className={
+              volcanoesVisible
+                ? "hazard-layer-toggle hazard-layer-toggle--active hazard-layer-toggle--volcano"
+                : "hazard-layer-toggle"
+            }
+            onClick={() =>
+              setVolcanoesVisible(
+                (value) => !value,
+              )
+            }
+          >
+            {volcanoesVisible
+              ? <Eye size={14} />
+              : <EyeOff size={14} />
+            }
+
+            Volcanoes
+
+            <strong>
+              {volcanoData
+                ?.returnedEventCount
+                ?? 0}
+            </strong>
+          </button>
+
+          <div className="hazard-source-tags">
+            <span>
+              USGS
+            </span>
+
+            <span>
+              NASA EONET
+            </span>
+          </div>
+        </section>
+
         <section className="monitor-grid">
           <article className="panel map-panel">
             <div className="panel-heading">
               <div>
                 <span className="panel-kicker">
-                  SEISMIC ACTIVITY
+                  MULTI-HAZARD ACTIVITY
                 </span>
 
-                <h2>Global event map</h2>
+                <h2>
+                  Global event map
+                </h2>
               </div>
 
               <div className="panel-heading__meta">
                 <Layers3 size={14} />
-                OpenStreetMap
+                2 active layers
               </div>
             </div>
 
             <div className="map-content">
               <EarthquakeMap
-                events={data?.events ?? []}
-                selectedEvent={
-                  selectedEvent
+                events={
+                  earthquakeData
+                    ?.events
+                  ?? []
                 }
-                onSelect={
-                  setSelectedEvent
+                volcanoEvents={
+                  volcanoData
+                    ?.events
+                  ?? []
+                }
+                earthquakesVisible={
+                  earthquakesVisible
+                }
+                volcanoesVisible={
+                  volcanoesVisible
+                }
+                selectedEarthquake={
+                  selectedEarthquake
+                }
+                selectedVolcano={
+                  selectedVolcano
+                }
+                onSelectEarthquake={
+                  handleSelectEarthquake
+                }
+                onSelectVolcano={
+                  handleSelectVolcano
                 }
               />
 
-              {selectedEvent !== null && (
+              {selectedEarthquake
+                !== null && (
                 <div className="event-inspector">
                   <div className="event-inspector__header">
                     <div
-                      className={`inspector-magnitude inspector-magnitude--${severityClass(
-                        selectedEvent.magnitude,
-                      )}`}
+                      className={
+                        `inspector-magnitude inspector-magnitude--${severityClass(
+                          selectedEarthquake
+                            .magnitude,
+                        )}`
+                      }
                     >
-                      <span>MAG</span>
+                      <span>
+                        MAG
+                      </span>
 
                       <strong>
-                        {selectedEvent.magnitude.toFixed(
-                          1,
-                        )}
+                        {selectedEarthquake
+                          .magnitude
+                          .toFixed(1)}
                       </strong>
                     </div>
 
                     <div>
                       <span className="event-inspector__severity">
                         {severityLabel(
-                          selectedEvent.magnitude,
+                          selectedEarthquake
+                            .magnitude,
                         )}{" "}
                         earthquake
                       </span>
 
                       <h3>
-                        {selectedEvent.place}
+                        {selectedEarthquake
+                          .place}
                       </h3>
                     </div>
                   </div>
@@ -795,7 +1181,8 @@ export function DisasterDashboard() {
 
                       <strong>
                         {formatDepth(
-                          selectedEvent.depthKm,
+                          selectedEarthquake
+                            .depthKm,
                         )}
                       </strong>
                     </div>
@@ -808,7 +1195,8 @@ export function DisasterDashboard() {
 
                       <strong>
                         {formatCoordinate(
-                          selectedEvent.latitude,
+                          selectedEarthquake
+                            .latitude,
                           "N",
                           "S",
                         )}
@@ -823,7 +1211,8 @@ export function DisasterDashboard() {
 
                       <strong>
                         {formatCoordinate(
-                          selectedEvent.longitude,
+                          selectedEarthquake
+                            .longitude,
                           "E",
                           "W",
                         )}
@@ -832,12 +1221,12 @@ export function DisasterDashboard() {
 
                     <div>
                       <span>
-                        <BarChart3 size={13} />
                         Significance
                       </span>
 
                       <strong>
-                        {selectedEvent.significance}
+                        {selectedEarthquake
+                          .significance}
                       </strong>
                     </div>
 
@@ -849,7 +1238,8 @@ export function DisasterDashboard() {
 
                       <strong>
                         {formatDateTime(
-                          selectedEvent.occurredAt,
+                          selectedEarthquake
+                            .occurredAt,
                         )}
                       </strong>
                     </div>
@@ -861,7 +1251,7 @@ export function DisasterDashboard() {
                       </span>
 
                       <strong>
-                        {selectedEvent
+                        {selectedEarthquake
                           .tsunamiPotential
                           ? "Potential"
                           : "No flag"}
@@ -871,25 +1261,158 @@ export function DisasterDashboard() {
 
                   <div className="event-inspector__footer">
                     <span>
-                      Event ID
+                      USGS event
                     </span>
 
                     <code>
-                      {selectedEvent.id}
+                      {selectedEarthquake.id}
                     </code>
 
-                    {selectedEvent.detailUrl
-                      && (
-                        <a
-                          href={
-                            selectedEvent.detailUrl
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          USGS details
-                        </a>
-                      )}
+                    {selectedEarthquake
+                      .detailUrl && (
+                      <a
+                        href={
+                          selectedEarthquake
+                            .detailUrl
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        USGS details
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedVolcano
+                !== null && (
+                <div className="event-inspector event-inspector--volcano">
+                  <div className="event-inspector__header">
+                    <div className="inspector-volcano">
+                      <Mountain
+                        size={23}
+                        strokeWidth={1.6}
+                      />
+                    </div>
+
+                    <div>
+                      <span className="event-inspector__severity">
+                        NASA EONET VOLCANIC EVENT
+                      </span>
+
+                      <h3>
+                        {selectedVolcano.title}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="event-inspector__grid">
+                    <div>
+                      <span>
+                        <Clock3 size={13} />
+                        Observed
+                      </span>
+
+                      <strong>
+                        {formatDateTime(
+                          selectedVolcano
+                            .observedAt,
+                        )}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        <MapPin size={13} />
+                        Latitude
+                      </span>
+
+                      <strong>
+                        {formatCoordinate(
+                          selectedVolcano
+                            .latitude,
+                          "N",
+                          "S",
+                        )}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        <MapPin size={13} />
+                        Longitude
+                      </span>
+
+                      <strong>
+                        {formatCoordinate(
+                          selectedVolcano
+                            .longitude,
+                          "E",
+                          "W",
+                        )}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Observations
+                      </span>
+
+                      <strong>
+                        {selectedVolcano
+                          .observationCount}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Source
+                      </span>
+
+                      <strong>
+                        {selectedVolcano
+                          .primarySource}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Status
+                      </span>
+
+                      <strong>
+                        {selectedVolcano.status}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="event-inspector__footer">
+                    <span>
+                      EONET event
+                    </span>
+
+                    <code>
+                      {selectedVolcano.id}
+                    </code>
+
+                    {(selectedVolcano
+                      .sourceUrl
+                      || selectedVolcano
+                        .detailUrl) && (
+                      <a
+                        href={
+                          selectedVolcano
+                            .sourceUrl
+                          || selectedVolcano
+                            .detailUrl
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Source details
+                      </a>
+                    )}
                   </div>
                 </div>
               )}
@@ -903,68 +1426,181 @@ export function DisasterDashboard() {
                   EVENT STREAM
                 </span>
 
-                <h2>Recent activity</h2>
+                <h2>
+                  Hazard activity
+                </h2>
               </div>
 
               <div className="event-count-badge">
-                {data?.returnedEventCount
-                  ?? 0}
+                {feedMode
+                  === "earthquakes"
+                  ? (
+                      earthquakeData
+                        ?.returnedEventCount
+                      ?? 0
+                    )
+                  : (
+                      volcanoData
+                        ?.returnedEventCount
+                      ?? 0
+                    )
+                }
               </div>
+            </div>
+
+            <div className="feed-tabs">
+              <button
+                type="button"
+                className={
+                  feedMode
+                    === "earthquakes"
+                    ? "feed-tab feed-tab--active"
+                    : "feed-tab"
+                }
+                onClick={
+                  openEarthquakeFeed
+                }
+              >
+                Earthquakes
+              </button>
+
+              <button
+                type="button"
+                className={
+                  feedMode
+                    === "volcanoes"
+                    ? "feed-tab feed-tab--active feed-tab--volcano"
+                    : "feed-tab"
+                }
+                onClick={
+                  openVolcanoFeed
+                }
+              >
+                Volcanoes
+              </button>
             </div>
 
             <div className="feed-summary">
-              <span>
-                Showing{" "}
-                <strong>
-                  {data?.returnedEventCount
-                    ?? 0}
-                </strong>
-              </span>
+              {feedMode
+                === "earthquakes"
+                ? (
+                  <>
+                    <span>
+                      Showing{" "}
+                      <strong>
+                        {earthquakeData
+                          ?.returnedEventCount
+                          ?? 0}
+                      </strong>
+                    </span>
 
-              <span>
-                Matched{" "}
-                <strong>
-                  {data?.matchedEventCount
-                    ?? 0}
-                </strong>
-              </span>
+                    <span>
+                      Matched{" "}
+                      <strong>
+                        {earthquakeData
+                          ?.matchedEventCount
+                          ?? 0}
+                      </strong>
+                    </span>
 
-              <span>
-                Source{" "}
-                <strong>
-                  {data?.sourceEventCount
-                    ?? 0}
-                </strong>
-              </span>
+                    <span>
+                      Source{" "}
+                      <strong>
+                        {earthquakeData
+                          ?.sourceEventCount
+                          ?? 0}
+                      </strong>
+                    </span>
+                  </>
+                )
+                : (
+                  <>
+                    <span>
+                      Open{" "}
+                      <strong>
+                        {volcanoData
+                          ?.returnedEventCount
+                          ?? 0}
+                      </strong>
+                    </span>
+
+                    <span>
+                      Obs.{" "}
+                      <strong>
+                        {volcanoData
+                          ?.summary
+                          .totalObservationCount
+                          ?? 0}
+                      </strong>
+                    </span>
+
+                    <span>
+                      Sources{" "}
+                      <strong>
+                        {volcanoData
+                          ?.summary
+                          .sourceReferenceCount
+                          ?? 0}
+                      </strong>
+                    </span>
+                  </>
+                )
+              }
             </div>
 
-            {loading && data === null ? (
-              <div className="event-skeleton-list">
-                {Array.from({
-                  length: 8,
-                }).map((_, index) => (
-                  <div
-                    className="event-skeleton"
-                    key={index}
-                  >
-                    <div />
-                    <span />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EventList
-                events={
-                  data?.events ?? []
-                }
-                selectedEvent={
-                  selectedEvent
-                }
-                onSelect={
-                  setSelectedEvent
-                }
-              />
-            )}
+            {loading
+              && earthquakeData === null
+              && volcanoData === null
+              ? (
+                <div className="event-skeleton-list">
+                  {Array.from({
+                    length: 8,
+                  }).map(
+                    (_, index) => (
+                      <div
+                        className="event-skeleton"
+                        key={index}
+                      >
+                        <div />
+                        <span />
+                      </div>
+                    ),
+                  )}
+                </div>
+              )
+              : feedMode
+                === "earthquakes"
+                ? (
+                  <EventList
+                    events={
+                      earthquakeData
+                        ?.events
+                      ?? []
+                    }
+                    selectedEvent={
+                      selectedEarthquake
+                    }
+                    onSelect={
+                      handleSelectEarthquake
+                    }
+                  />
+                )
+                : (
+                  <VolcanoList
+                    events={
+                      volcanoData
+                        ?.events
+                      ?? []
+                    }
+                    selectedEvent={
+                      selectedVolcano
+                    }
+                    onSelect={
+                      handleSelectVolcano
+                    }
+                  />
+                )
+            }
           </article>
         </section>
 
@@ -972,27 +1608,31 @@ export function DisasterDashboard() {
           <div className="panel-heading">
             <div>
               <span className="panel-kicker">
-                RECENT SIGNAL
+                SEISMIC SIGNAL
               </span>
 
               <h2>
-                Magnitude timeline
+                Earthquake magnitude timeline
               </h2>
             </div>
 
             <div className="panel-heading__meta">
               <CircleDot size={14} />
-              Latest {eventTimeline.length} events
+
+              Latest{" "}
+              {eventTimeline.length} events
             </div>
           </div>
 
           <div className="timeline-chart">
-            {eventTimeline.length === 0 ? (
-              <div className="timeline-empty">
-                No timeline data available.
-              </div>
-            ) : (
-              eventTimeline.map(
+            {eventTimeline.length
+              === 0
+              ? (
+                <div className="timeline-empty">
+                  No timeline data available.
+                </div>
+              )
+              : eventTimeline.map(
                 (event) => {
                   const height =
                     Math.max(
@@ -1000,7 +1640,8 @@ export function DisasterDashboard() {
                       (
                         event.magnitude
                         / maximumTimelineMagnitude
-                      ) * 100,
+                      )
+                        * 100,
                     );
 
                   return (
@@ -1008,27 +1649,27 @@ export function DisasterDashboard() {
                       key={event.id}
                       className="timeline-bar-wrap"
                       type="button"
-                      title={`${event.place} — M${event.magnitude.toFixed(
-                        1,
-                      )}`}
+                      title={`${event.place} — M${event.magnitude.toFixed(1)}`}
                       onClick={() =>
-                        setSelectedEvent(
+                        handleSelectEarthquake(
                           event,
                         )
                       }
                     >
                       <span className="timeline-value">
-                        {event.magnitude.toFixed(
-                          1,
-                        )}
+                        {event.magnitude
+                          .toFixed(1)}
                       </span>
 
                       <span
-                        className={`timeline-bar timeline-bar--${severityClass(
-                          event.magnitude,
-                        )}`}
+                        className={
+                          `timeline-bar timeline-bar--${severityClass(
+                            event.magnitude,
+                          )}`
+                        }
                         style={{
-                          height: `${height}%`,
+                          height:
+                            `${height}%`,
                         }}
                       />
 
@@ -1038,7 +1679,8 @@ export function DisasterDashboard() {
                         ).toLocaleTimeString(
                           [],
                           {
-                            hour: "2-digit",
+                            hour:
+                              "2-digit",
                             minute:
                               "2-digit",
                           },
@@ -1048,25 +1690,29 @@ export function DisasterDashboard() {
                   );
                 },
               )
-            )}
+            }
           </div>
         </section>
 
         <footer className="application-footer">
           <div>
             <Activity size={14} />
+
             <span>
               TerraScope Observatory
             </span>
           </div>
 
           <div>
-            Earthquake data: USGS Earthquake
-            Hazards Program
+            Earthquakes: USGS
           </div>
 
           <div>
-            Map data: OpenStreetMap contributors
+            Volcanoes: NASA EONET
+          </div>
+
+          <div>
+            Map: OpenStreetMap contributors
           </div>
         </footer>
       </main>

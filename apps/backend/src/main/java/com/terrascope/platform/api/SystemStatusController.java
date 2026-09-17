@@ -17,7 +17,7 @@ public class SystemStatusController {
         return new SystemStatusResponse(
                 "TerraScope",
                 "operational",
-                "0.1.0",
+                "0.2.0",
                 Instant.now(),
                 List.of(
                         new SystemStatusResponse.DataSourceStatus(
@@ -27,20 +27,20 @@ public class SystemStatusController {
                                 "configured"
                         ),
                         new SystemStatusResponse.DataSourceStatus(
-                                "volcano-monitor",
-                                "Volcano Monitoring",
+                                "nasa-eonet-volcanoes",
+                                "NASA EONET",
                                 "volcanoes",
-                                "planned"
+                                "configured"
                         ),
                         new SystemStatusResponse.DataSourceStatus(
-                                "wildfire-monitor",
-                                "Wildfire Monitoring",
+                                "nasa-eonet-wildfires",
+                                "NASA EONET",
                                 "wildfires",
                                 "planned"
                         ),
                         new SystemStatusResponse.DataSourceStatus(
-                                "storm-monitor",
-                                "Storm Monitoring",
+                                "nasa-eonet-storms",
+                                "NASA EONET",
                                 "storms",
                                 "planned"
                         )
