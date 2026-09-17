@@ -72,6 +72,10 @@ import {
   IncidentImprovementBoard,
 } from "@/components/incident-improvement-board";
 
+import {
+  IncidentPreparednessExercises,
+} from "@/components/incident-preparedness-exercises";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1051,6 +1055,43 @@ export function SituationRoomPanel({
                                   instanceof Error
                                   ? caughtError.message
                                   : "Unable to refresh improvement timeline.",
+                              );
+                            },
+                          );
+                      }}
+                    />
+
+                    <IncidentPreparednessExercises
+                      key={
+                        `preparedness-${detail.incident.id}`
+                      }
+                      incidentId={
+                        detail.incident.id
+                      }
+                      incidentStatus={
+                        detail.incident.status
+                      }
+                      onTimelineChanged={() => {
+                        void fetchIncidentDetail(
+                          detail.incident.id,
+                        )
+                          .then(
+                            (response) => {
+                              setDetail(
+                                response,
+                              );
+                            },
+                          )
+                          .catch(
+                            (
+                              caughtError:
+                                unknown,
+                            ) => {
+                              setError(
+                                caughtError
+                                  instanceof Error
+                                  ? caughtError.message
+                                  : "Unable to refresh preparedness timeline.",
                               );
                             },
                           );

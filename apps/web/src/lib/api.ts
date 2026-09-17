@@ -106,6 +106,13 @@ import type {
   ImprovementActionStatus,
 } from "@/types/improvement-actions";
 
+import type {
+  AssessPreparednessExerciseRequest,
+  CreatePreparednessExerciseRequest,
+  PreparednessExerciseBoardResponse,
+  PreparednessExerciseStatus,
+} from "@/types/preparedness-exercises";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2173,4 +2180,187 @@ export async function deleteIncidentImprovementAction(
   }
 
   return response.json() as Promise<ImprovementActionBoardResponse>;
+}
+
+export async function fetchPreparednessExerciseBoard(
+  incidentId: string,
+  signal?: AbortSignal,
+): Promise<PreparednessExerciseBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/preparedness-exercises`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Preparedness exercise board returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PreparednessExerciseBoardResponse>;
+}
+
+export async function createPreparednessExercise(
+  incidentId: string,
+  request: CreatePreparednessExerciseRequest,
+): Promise<PreparednessExerciseBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/preparedness-exercises`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create preparedness exercise. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PreparednessExerciseBoardResponse>;
+}
+
+export async function updatePreparednessExerciseStatus(
+  incidentId: string,
+  exerciseId: string,
+  status: PreparednessExerciseStatus,
+): Promise<PreparednessExerciseBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/preparedness-exercises/${exerciseId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update preparedness exercise status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PreparednessExerciseBoardResponse>;
+}
+
+export async function updatePreparednessExerciseOwner(
+  incidentId: string,
+  exerciseId: string,
+  owner: string,
+): Promise<PreparednessExerciseBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/preparedness-exercises/${exerciseId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update preparedness exercise owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PreparednessExerciseBoardResponse>;
+}
+
+export async function updatePreparednessExerciseSchedule(
+  incidentId: string,
+  exerciseId: string,
+  scheduledAt: string | null,
+): Promise<PreparednessExerciseBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/preparedness-exercises/${exerciseId}/schedule`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        scheduledAt,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update preparedness exercise schedule. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PreparednessExerciseBoardResponse>;
+}
+
+export async function assessPreparednessExercise(
+  incidentId: string,
+  exerciseId: string,
+  request: AssessPreparednessExerciseRequest,
+): Promise<PreparednessExerciseBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/preparedness-exercises/${exerciseId}/assess`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to assess preparedness exercise. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PreparednessExerciseBoardResponse>;
+}
+
+export async function deletePreparednessExercise(
+  incidentId: string,
+  exerciseId: string,
+): Promise<PreparednessExerciseBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${incidentId}/preparedness-exercises/${exerciseId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete preparedness exercise. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PreparednessExerciseBoardResponse>;
 }

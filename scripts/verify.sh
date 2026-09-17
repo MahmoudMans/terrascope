@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step17-backend.log"
+BACKEND_LOG="/tmp/terrascope-step18-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -22,7 +22,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 17 VERIFICATION"
+echo " TERRASCOPE — STEP 18 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -112,26 +112,26 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step17-status.json
+  >/tmp/terrascope-step18-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-status.json",
+    "/tmp/terrascope-step18-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.17.0"
+assert payload["version"] == "0.18.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17; do
+for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -152,10 +152,10 @@ for VERSION in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17; do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V17_RUNTIME"
+echo "[PASS] FLYWAY_V18_RUNTIME"
 
 echo
-echo "===== CLEAN STEP 17 FIXTURE ====="
+echo "===== CLEAN STEP 18 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -165,24 +165,24 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step17-incident';
+            'verification-step18-incident';
     " \
   >/dev/null
 
-echo "[PASS] STEP17_PRE_CLEAN"
+echo "[PASS] STEP18_PRE_CLEAN"
 
 echo
-echo "===== CREATE IMPROVEMENT INCIDENT ====="
+echo "===== CREATE PREPAREDNESS INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step17-incident.json \
+  /tmp/terrascope-step18-incident.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step17-incident",
+  "sourceEventId": "verification-step18-incident",
   "hazardType": "earthquakes",
-  "title": "Verification Improvement Incident",
-  "description": "Step 17 lessons-learned verification fixture.",
+  "title": "Verification Preparedness Incident",
+  "description": "Step 18 continuous-improvement validation fixture.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
@@ -195,16 +195,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step17-incident.json \
+  --data @/tmp/terrascope-step18-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step17-incident-response.json
+  >/tmp/terrascope-step18-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-incident-response.json",
+    "/tmp/terrascope-step18-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -217,43 +217,49 @@ PY
 
 echo "INCIDENT_ID=${INCIDENT_ID}"
 
-echo "[PASS] IMPROVEMENT_INCIDENT_CREATE"
+echo "[PASS] PREPAREDNESS_INCIDENT_CREATE"
 
 echo
-echo "===== OPEN INCIDENT BOARD ====="
+echo "===== EMPTY PREPAREDNESS BOARD ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step17-open-board.json
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises" \
+  >/tmp/terrascope-step18-empty-board.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-open-board.json",
+    "/tmp/terrascope-step18-empty-board.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["totalCount"] == 0
-assert payload["openCount"] == 0
+assert payload["plannedCount"] == 0
 assert payload["inProgressCount"] == 0
 assert payload["completedCount"] == 0
-assert payload["dismissedCount"] == 0
+assert payload["cancelledCount"] == 0
+
+assert payload["passedCount"] == 0
+assert payload["partialCount"] == 0
+assert payload["failedCount"] == 0
+
 assert payload["overdueCount"] == 0
-assert payload["actions"] == []
+assert payload["averageReadinessScore"] == 0.0
+assert payload["exercises"] == []
 
 print(
-    "[PASS] IMPROVEMENT_BOARD_EMPTY_CONTRACT"
+    "[PASS] PREPAREDNESS_BOARD_EMPTY_CONTRACT"
 )
 PY
 
 echo
-echo "===== OPEN INCIDENT MUTATION GUARD ====="
+echo "===== OPEN INCIDENT PREPAREDNESS GUARD ====="
 
-FAKE_REVIEW_ID="$(
+FAKE_IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import uuid
 print(uuid.uuid4())
@@ -261,41 +267,40 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step17-open-create.json \
+  /tmp/terrascope-step18-open-create.json \
 <<JSON
 {
-  "afterActionReviewId": "${FAKE_REVIEW_ID}",
-  "category": "PROCESS",
+  "improvementActionId": "${FAKE_IMPROVEMENT_ID}",
+  "exerciseType": "TABLETOP",
   "title": "Should not be accepted",
   "description": "",
-  "priority": "HIGH",
-  "owner": "Resilience Office",
-  "dueAt": null
+  "owner": "Preparedness Office",
+  "scheduledAt": null
 }
 JSON
 
 OPEN_CREATE_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step17-open-create-response.json \
+    --output /tmp/terrascope-step18-open-create-response.json \
     --write-out '%{http_code}' \
     --request POST \
     --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step17-open-create.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements"
+    --data @/tmp/terrascope-step18-open-create.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises"
 )"
 
-echo "OPEN_INCIDENT_IMPROVEMENT_HTTP=${OPEN_CREATE_HTTP}"
+echo "OPEN_INCIDENT_PREPAREDNESS_HTTP=${OPEN_CREATE_HTTP}"
 
 [[ "${OPEN_CREATE_HTTP}" == "409" ]]
 
-echo "[PASS] OPEN_INCIDENT_IMPROVEMENT_GUARD"
+echo "[PASS] OPEN_INCIDENT_PREPAREDNESS_GUARD"
 
 echo
 echo "===== CLOSE INCIDENT ====="
 
 cat > \
-  /tmp/terrascope-step17-close.json \
+  /tmp/terrascope-step18-close.json \
 <<'JSON'
 {
   "status": "CLOSED"
@@ -307,15 +312,15 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step17-close.json \
+  --data @/tmp/terrascope-step18-close.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/status" \
-  >/tmp/terrascope-step17-close-response.json
+  >/tmp/terrascope-step18-close-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-close-response.json",
+    "/tmp/terrascope-step18-close-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -323,32 +328,26 @@ with open(
 assert payload["incident"]["status"] == "CLOSED"
 
 print(
-    "[PASS] IMPROVEMENT_INCIDENT_CLOSED"
+    "[PASS] PREPAREDNESS_INCIDENT_CLOSED"
 )
 PY
 
 echo
 echo "===== CREATE AFTER-ACTION REVIEW ====="
 
-AAR_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step17-aar.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/after-action-reviews"
-)"
-
-echo "AAR_HTTP=${AAR_HTTP}"
-
-[[ "${AAR_HTTP}" == "200" ]]
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/after-action-reviews" \
+  >/tmp/terrascope-step18-aar.json
 
 AAR_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-aar.json",
+    "/tmp/terrascope-step18-aar.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -364,287 +363,95 @@ PY
 
 echo "AAR_ID=${AAR_ID}"
 
-echo "[PASS] IMPROVEMENT_AAR_CREATE"
+echo "[PASS] PREPAREDNESS_AAR_CREATE"
 
 echo
-echo "===== INVALID REVIEW OWNERSHIP GUARD ====="
-
-INVALID_REVIEW_ID="$(
-  python3 - <<'PY'
-import uuid
-print(uuid.uuid4())
-PY
-)"
+echo "===== CREATE IMPROVEMENT ACTION ====="
 
 cat > \
-  /tmp/terrascope-step17-invalid-review.json \
-<<JSON
-{
-  "afterActionReviewId": "${INVALID_REVIEW_ID}",
-  "category": "PROCESS",
-  "title": "Invalid source review",
-  "description": "",
-  "priority": "HIGH",
-  "owner": "Resilience Office",
-  "dueAt": null
-}
-JSON
-
-INVALID_REVIEW_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step17-invalid-review-response.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step17-invalid-review.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements"
-)"
-
-echo "INVALID_REVIEW_HTTP=${INVALID_REVIEW_HTTP}"
-
-[[ "${INVALID_REVIEW_HTTP}" == "400" ]]
-
-echo "[PASS] IMPROVEMENT_AAR_OWNERSHIP_GUARD"
-
-echo
-echo "===== CREATE OVERDUE IMPROVEMENT ACTION ====="
-
-cat > \
-  /tmp/terrascope-step17-improvement.json \
+  /tmp/terrascope-step18-improvement.json \
 <<JSON
 {
   "afterActionReviewId": "${AAR_ID}",
   "category": "PROCESS",
-  "title": "Formalize incident command handoff checklist",
-  "description": "Convert the after-action lesson into a reusable command-transition checklist.",
+  "title": "Formalize command handoff checklist",
+  "description": "Improvement to validate through exercise.",
   "priority": "HIGH",
   "owner": "Resilience Office",
-  "dueAt": "2020-01-01T00:00:00Z"
+  "dueAt": "2030-01-01T00:00:00Z"
 }
 JSON
 
-CREATE_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step17-create-response.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step17-improvement.json \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements"
-)"
-
-echo "IMPROVEMENT_CREATE_HTTP=${CREATE_HTTP}"
-
-[[ "${CREATE_HTTP}" == "200" ]]
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step18-improvement.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements" \
+  >/tmp/terrascope-step18-improvement-response.json
 
 IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-create-response.json",
+    "/tmp/terrascope-step18-improvement-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["totalCount"] == 1
 assert payload["openCount"] == 1
-assert payload["inProgressCount"] == 0
-assert payload["completedCount"] == 0
-assert payload["dismissedCount"] == 0
-assert payload["overdueCount"] == 1
-
-action = payload["actions"][0]
-
-assert action["afterActionReviewId"] is not None
-assert action["category"] == "PROCESS"
-assert action["title"] == "Formalize incident command handoff checklist"
-assert action["priority"] == "HIGH"
-assert action["status"] == "OPEN"
-assert action["owner"] == "Resilience Office"
-assert action["dueAt"] == "2020-01-01T00:00:00Z"
-assert action["completedAt"] is None
 
 print(
-    action["id"]
+    payload["actions"][0]["id"]
 )
 PY
 )"
 
 echo "IMPROVEMENT_ID=${IMPROVEMENT_ID}"
 
-echo "[PASS] IMPROVEMENT_ACTION_CREATE"
-echo "[PASS] IMPROVEMENT_OVERDUE_INTELLIGENCE"
+echo "[PASS] PREPAREDNESS_IMPROVEMENT_CREATE"
 
 echo
-echo "===== UPDATE STATUS IN PROGRESS ====="
+echo "===== INCOMPLETE IMPROVEMENT VALIDATION GUARD ====="
 
 cat > \
-  /tmp/terrascope-step17-in-progress.json \
-<<'JSON'
+  /tmp/terrascope-step18-incomplete-exercise.json \
+<<JSON
 {
-  "status": "IN_PROGRESS"
+  "improvementActionId": "${IMPROVEMENT_ID}",
+  "exerciseType": "TABLETOP",
+  "title": "Validate command handoff",
+  "description": "Exercise should be rejected before improvement completion.",
+  "owner": "Preparedness Office",
+  "scheduledAt": "2030-01-02T10:00:00Z"
 }
 JSON
 
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step17-in-progress.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/status" \
-  >/tmp/terrascope-step17-in-progress-response.json
+INCOMPLETE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step18-incomplete-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step18-incomplete-exercise.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises"
+)"
 
-python3 - <<'PY'
-import json
+echo "INCOMPLETE_IMPROVEMENT_EXERCISE_HTTP=${INCOMPLETE_HTTP}"
 
-with open(
-    "/tmp/terrascope-step17-in-progress-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
+[[ "${INCOMPLETE_HTTP}" == "409" ]]
 
-assert payload["openCount"] == 0
-assert payload["inProgressCount"] == 1
-assert payload["overdueCount"] == 1
-
-action = payload["actions"][0]
-
-assert action["status"] == "IN_PROGRESS"
-assert action["completedAt"] is None
-
-print(
-    "[PASS] IMPROVEMENT_STATUS_IN_PROGRESS"
-)
-PY
-
-echo
-echo "===== UPDATE PRIORITY ====="
-
-cat > \
-  /tmp/terrascope-step17-priority.json \
-<<'JSON'
-{
-  "priority": "CRITICAL"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step17-priority.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/priority" \
-  >/tmp/terrascope-step17-priority-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step17-priority-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert (
-    payload["actions"][0]["priority"]
-    == "CRITICAL"
-)
-
-print(
-    "[PASS] IMPROVEMENT_PRIORITY_UPDATE"
-)
-PY
-
-echo
-echo "===== UPDATE OWNER ====="
-
-cat > \
-  /tmp/terrascope-step17-owner.json \
-<<'JSON'
-{
-  "owner": "Preparedness Office"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step17-owner.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/owner" \
-  >/tmp/terrascope-step17-owner-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step17-owner-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert (
-    payload["actions"][0]["owner"]
-    == "Preparedness Office"
-)
-
-print(
-    "[PASS] IMPROVEMENT_OWNER_UPDATE"
-)
-PY
-
-echo
-echo "===== UPDATE DUE DATE ====="
-
-cat > \
-  /tmp/terrascope-step17-due.json \
-<<'JSON'
-{
-  "dueAt": "2035-01-01T00:00:00Z"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request PATCH \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step17-due.json \
-  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/due-at" \
-  >/tmp/terrascope-step17-due-response.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step17-due-response.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["overdueCount"] == 0
-
-assert (
-    payload["actions"][0]["dueAt"]
-    == "2035-01-01T00:00:00Z"
-)
-
-print(
-    "[PASS] IMPROVEMENT_DUE_UPDATE"
-)
-PY
+echo "[PASS] COMPLETED_IMPROVEMENT_VALIDATION_GUARD"
 
 echo
 echo "===== COMPLETE IMPROVEMENT ACTION ====="
 
 cat > \
-  /tmp/terrascope-step17-completed.json \
+  /tmp/terrascope-step18-improvement-completed.json \
 <<'JSON'
 {
   "status": "COMPLETED"
@@ -656,48 +463,374 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step17-completed.json \
+  --data @/tmp/terrascope-step18-improvement-completed.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/status" \
-  >/tmp/terrascope-step17-completed-response.json
+  >/tmp/terrascope-step18-improvement-completed-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-completed-response.json",
+    "/tmp/terrascope-step18-improvement-completed-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["openCount"] == 0
-assert payload["inProgressCount"] == 0
 assert payload["completedCount"] == 1
-assert payload["overdueCount"] == 0
-
-action = payload["actions"][0]
-
-assert action["status"] == "COMPLETED"
-assert action["completedAt"] is not None
+assert payload["actions"][0]["status"] == "COMPLETED"
+assert payload["actions"][0]["completedAt"] is not None
 
 print(
-    "[PASS] IMPROVEMENT_COMPLETION"
+    "[PASS] PREPAREDNESS_IMPROVEMENT_COMPLETED"
 )
 PY
 
 echo
-echo "===== TIMELINE EVIDENCE ====="
+echo "===== CREATE OVERDUE PREPAREDNESS EXERCISE ====="
+
+cat > \
+  /tmp/terrascope-step18-exercise.json \
+<<JSON
+{
+  "improvementActionId": "${IMPROVEMENT_ID}",
+  "exerciseType": "TABLETOP",
+  "title": "Validate incident command handoff",
+  "description": "Exercise the improved command handoff process under a simulated escalation.",
+  "owner": "Preparedness Office",
+  "scheduledAt": "2020-01-01T00:00:00Z"
+}
+JSON
+
+CREATE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step18-create-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step18-exercise.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises"
+)"
+
+echo "PREPAREDNESS_CREATE_HTTP=${CREATE_HTTP}"
+
+[[ "${CREATE_HTTP}" == "200" ]]
+
+EXERCISE_ID="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step18-create-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["totalCount"] == 1
+assert payload["plannedCount"] == 1
+assert payload["inProgressCount"] == 0
+assert payload["completedCount"] == 0
+assert payload["overdueCount"] == 1
+assert payload["averageReadinessScore"] == 0.0
+
+exercise = payload["exercises"][0]
+
+assert exercise["improvementActionId"] is not None
+assert exercise["exerciseType"] == "TABLETOP"
+assert exercise["status"] == "PLANNED"
+assert exercise["validationResult"] == "NOT_ASSESSED"
+assert exercise["readinessScore"] is None
+assert exercise["owner"] == "Preparedness Office"
+assert exercise["scheduledAt"] == "2020-01-01T00:00:00Z"
+
+print(
+    exercise["id"]
+)
+PY
+)"
+
+echo "EXERCISE_ID=${EXERCISE_ID}"
+
+echo "[PASS] PREPAREDNESS_EXERCISE_CREATE"
+echo "[PASS] PREPAREDNESS_OVERDUE_INTELLIGENCE"
+
+echo
+echo "===== UPDATE OWNER ====="
+
+cat > \
+  /tmp/terrascope-step18-owner.json \
+<<'JSON'
+{
+  "owner": "Training and Exercise Office"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step18-owner.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/owner" \
+  >/tmp/terrascope-step18-owner-response.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step18-owner-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert (
+    payload["exercises"][0]["owner"]
+    == "Training and Exercise Office"
+)
+
+print(
+    "[PASS] PREPAREDNESS_OWNER_UPDATE"
+)
+PY
+
+echo
+echo "===== RESCHEDULE EXERCISE ====="
+
+cat > \
+  /tmp/terrascope-step18-schedule.json \
+<<'JSON'
+{
+  "scheduledAt": "2035-01-01T10:00:00Z"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step18-schedule.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/schedule" \
+  >/tmp/terrascope-step18-schedule-response.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step18-schedule-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["overdueCount"] == 0
+
+assert (
+    payload["exercises"][0]["scheduledAt"]
+    == "2035-01-01T10:00:00Z"
+)
+
+print(
+    "[PASS] PREPAREDNESS_SCHEDULE_UPDATE"
+)
+PY
+
+echo
+echo "===== START EXERCISE ====="
+
+cat > \
+  /tmp/terrascope-step18-progress.json \
+<<'JSON'
+{
+  "status": "IN_PROGRESS"
+}
+JSON
+
+curl \
+  --fail \
+  --silent \
+  --request PATCH \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step18-progress.json \
+  "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/status" \
+  >/tmp/terrascope-step18-progress-response.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step18-progress-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["plannedCount"] == 0
+assert payload["inProgressCount"] == 1
+
+assert (
+    payload["exercises"][0]["status"]
+    == "IN_PROGRESS"
+)
+
+print(
+    "[PASS] PREPAREDNESS_STATUS_IN_PROGRESS"
+)
+PY
+
+echo
+echo "===== DIRECT COMPLETION GUARD ====="
+
+cat > \
+  /tmp/terrascope-step18-direct-completed.json \
+<<'JSON'
+{
+  "status": "COMPLETED"
+}
+JSON
+
+DIRECT_COMPLETE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step18-direct-completed-response.json \
+    --write-out '%{http_code}' \
+    --request PATCH \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step18-direct-completed.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/status"
+)"
+
+echo "DIRECT_COMPLETE_HTTP=${DIRECT_COMPLETE_HTTP}"
+
+[[ "${DIRECT_COMPLETE_HTTP}" == "400" ]]
+
+echo "[PASS] PREPAREDNESS_ASSESSMENT_REQUIRED_GUARD"
+
+echo
+echo "===== ASSESS PREPAREDNESS EXERCISE ====="
+
+cat > \
+  /tmp/terrascope-step18-assessment.json \
+<<'JSON'
+{
+  "result": "PASSED",
+  "readinessScore": 92,
+  "performedAt": "2030-01-02T12:00:00Z",
+  "evidenceSummary": "Observers confirmed successful command transfer using the new checklist.",
+  "findings": "All critical handoff fields were transferred. Minor timing variance remained.",
+  "correctiveAction": "Update exercise guidance with a five-minute target for command transfer."
+}
+JSON
+
+ASSESS_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step18-assessment-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step18-assessment.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/assess"
+)"
+
+echo "PREPAREDNESS_ASSESS_HTTP=${ASSESS_HTTP}"
+
+[[ "${ASSESS_HTTP}" == "200" ]]
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step18-assessment-response.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["plannedCount"] == 0
+assert payload["inProgressCount"] == 0
+assert payload["completedCount"] == 1
+assert payload["cancelledCount"] == 0
+
+assert payload["passedCount"] == 1
+assert payload["partialCount"] == 0
+assert payload["failedCount"] == 0
+
+assert payload["overdueCount"] == 0
+assert payload["averageReadinessScore"] == 92.0
+
+exercise = payload["exercises"][0]
+
+assert exercise["status"] == "COMPLETED"
+assert exercise["validationResult"] == "PASSED"
+assert exercise["readinessScore"] == 92
+
+assert (
+    exercise["performedAt"]
+    == "2030-01-02T12:00:00Z"
+)
+
+assert exercise["completedAt"] is not None
+
+assert (
+    "successful command transfer"
+    in exercise["evidenceSummary"]
+)
+
+assert (
+    "Minor timing variance"
+    in exercise["findings"]
+)
+
+assert (
+    "five-minute target"
+    in exercise["correctiveAction"]
+)
+
+print(
+    "[PASS] PREPAREDNESS_ASSESSMENT"
+)
+
+print(
+    "[PASS] PREPAREDNESS_READINESS_SCORING"
+)
+
+print(
+    "[PASS] PREPAREDNESS_EVIDENCE_CAPTURE"
+)
+PY
+
+echo
+echo "===== COMPLETED EXERCISE IMMUTABILITY ====="
+
+IMMUTABLE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step18-immutable-response.json \
+    --write-out '%{http_code}' \
+    --request PATCH \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step18-owner.json \
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/owner"
+)"
+
+echo "COMPLETED_EXERCISE_MUTATION_HTTP=${IMMUTABLE_HTTP}"
+
+[[ "${IMMUTABLE_HTTP}" == "409" ]]
+
+echo "[PASS] COMPLETED_EXERCISE_IMMUTABILITY"
+
+echo
+echo "===== PREPAREDNESS TIMELINE ====="
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step17-detail.json
+  >/tmp/terrascope-step18-detail.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-detail.json",
+    "/tmp/terrascope-step18-detail.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -709,27 +842,23 @@ types = [
 
 assert "AFTER_ACTION_REVIEW_CREATED" in types
 assert "IMPROVEMENT_ACTION_CREATED" in types
+assert "IMPROVEMENT_STATUS_CHANGED" in types
 
-assert (
-    types.count(
-        "IMPROVEMENT_STATUS_CHANGED"
-    )
-    == 2
-)
-
-assert "IMPROVEMENT_PRIORITY_CHANGED" in types
-assert "IMPROVEMENT_OWNER_CHANGED" in types
-assert "IMPROVEMENT_DUE_CHANGED" in types
+assert "PREPAREDNESS_EXERCISE_CREATED" in types
+assert "PREPAREDNESS_EXERCISE_OWNER_CHANGED" in types
+assert "PREPAREDNESS_EXERCISE_SCHEDULE_CHANGED" in types
+assert "PREPAREDNESS_EXERCISE_STATUS_CHANGED" in types
+assert "PREPAREDNESS_EXERCISE_ASSESSED" in types
 
 print(
-    "[PASS] IMPROVEMENT_TIMELINE_CONTRACT"
+    "[PASS] PREPAREDNESS_TIMELINE_CONTRACT"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-IMPROVEMENT_COLUMNS="$(
+PREPAREDNESS_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -740,12 +869,12 @@ IMPROVEMENT_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name =
-            'incident_improvement_actions';
+            'incident_preparedness_exercises';
       " \
     | tr -d '[:space:]'
 )"
 
-IMPROVEMENT_ROW_COUNT="$(
+PREPAREDNESS_ROW_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -753,14 +882,14 @@ IMPROVEMENT_ROW_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_improvement_actions
+      FROM incident_preparedness_exercises
       WHERE incident_id =
             '${INCIDENT_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
 
-REVIEW_FK_COUNT="$(
+IMPROVEMENT_FK_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -770,10 +899,10 @@ REVIEW_FK_COUNT="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conrelid =
-            'incident_improvement_actions'::regclass
+            'incident_preparedness_exercises'::regclass
         AND contype = 'f'
         AND pg_get_constraintdef(oid)
-            LIKE '%incident_after_action_reviews%';
+            LIKE '%incident_improvement_actions%';
       " \
     | tr -d '[:space:]'
 )"
@@ -792,38 +921,40 @@ TIMELINE_CONSTRAINT_COUNT="$(
         AND conname =
             'ck_incident_timeline_type'
         AND pg_get_constraintdef(oid)
-            LIKE '%IMPROVEMENT_ACTION_CREATED%'
+            LIKE '%PREPAREDNESS_EXERCISE_CREATED%'
         AND pg_get_constraintdef(oid)
-            LIKE '%IMPROVEMENT_ACTION_DELETED%';
+            LIKE '%PREPAREDNESS_EXERCISE_ASSESSED%'
+        AND pg_get_constraintdef(oid)
+            LIKE '%PREPAREDNESS_EXERCISE_DELETED%';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "IMPROVEMENT_COLUMN_COUNT=${IMPROVEMENT_COLUMNS}"
-echo "IMPROVEMENT_ROW_COUNT=${IMPROVEMENT_ROW_COUNT}"
-echo "IMPROVEMENT_REVIEW_FK_COUNT=${REVIEW_FK_COUNT}"
-echo "IMPROVEMENT_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT_COUNT}"
+echo "PREPAREDNESS_COLUMN_COUNT=${PREPAREDNESS_COLUMNS}"
+echo "PREPAREDNESS_ROW_COUNT=${PREPAREDNESS_ROW_COUNT}"
+echo "PREPAREDNESS_IMPROVEMENT_FK_COUNT=${IMPROVEMENT_FK_COUNT}"
+echo "PREPAREDNESS_TIMELINE_CONSTRAINT_COUNT=${TIMELINE_CONSTRAINT_COUNT}"
 
-[[ "${IMPROVEMENT_COLUMNS}" == "13" ]]
-[[ "${IMPROVEMENT_ROW_COUNT}" == "1" ]]
-[[ "${REVIEW_FK_COUNT}" == "1" ]]
+[[ "${PREPAREDNESS_COLUMNS}" == "18" ]]
+[[ "${PREPAREDNESS_ROW_COUNT}" == "1" ]]
+[[ "${IMPROVEMENT_FK_COUNT}" == "1" ]]
 [[ "${TIMELINE_CONSTRAINT_COUNT}" == "1" ]]
 
-echo "[PASS] IMPROVEMENT_DATABASE_CONTRACT"
+echo "[PASS] PREPAREDNESS_DATABASE_CONTRACT"
 
 echo
-echo "===== DELETE IMPROVEMENT ACTION ====="
+echo "===== DELETE PREPAREDNESS EXERCISE ====="
 
 DELETE_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step17-delete-response.json \
+    --output /tmp/terrascope-step18-delete-response.json \
     --write-out '%{http_code}' \
     --request DELETE \
-    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}"
+    "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}"
 )"
 
-echo "IMPROVEMENT_DELETE_HTTP=${DELETE_HTTP}"
+echo "PREPAREDNESS_DELETE_HTTP=${DELETE_HTTP}"
 
 [[ "${DELETE_HTTP}" == "200" ]]
 
@@ -831,16 +962,16 @@ python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-delete-response.json",
+    "/tmp/terrascope-step18-delete-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["totalCount"] == 0
-assert payload["actions"] == []
+assert payload["exercises"] == []
 
 print(
-    "[PASS] IMPROVEMENT_ACTION_DELETE"
+    "[PASS] PREPAREDNESS_EXERCISE_DELETE"
 )
 PY
 
@@ -848,13 +979,13 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}" \
-  >/tmp/terrascope-step17-detail-after-delete.json
+  >/tmp/terrascope-step18-detail-after-delete.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step17-detail-after-delete.json",
+    "/tmp/terrascope-step18-detail-after-delete.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -864,15 +995,15 @@ types = [
     for event in payload["timeline"]
 ]
 
-assert "IMPROVEMENT_ACTION_DELETED" in types
+assert "PREPAREDNESS_EXERCISE_DELETED" in types
 
 print(
-    "[PASS] IMPROVEMENT_DELETE_TIMELINE"
+    "[PASS] PREPAREDNESS_DELETE_TIMELINE"
 )
 PY
 
 echo
-echo "===== CLEAN STEP 17 FIXTURE ====="
+echo "===== CLEAN STEP 18 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -882,7 +1013,7 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step17-incident';
+            'verification-step18-incident';
     " \
   >/dev/null
 
@@ -896,12 +1027,12 @@ VERIFY_INCIDENT_COUNT="$(
       SELECT COUNT(*)
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step17-incident';
+            'verification-step18-incident';
       " \
     | tr -d '[:space:]'
 )"
 
-ORPHAN_IMPROVEMENT_COUNT="$(
+ORPHAN_PREPAREDNESS_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -909,26 +1040,26 @@ ORPHAN_IMPROVEMENT_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_improvement_actions improvement
+      FROM incident_preparedness_exercises exercise
       WHERE NOT EXISTS (
           SELECT 1
           FROM incident_cases incident
           WHERE incident.id =
-                improvement.incident_id
+                exercise.incident_id
       );
       " \
     | tr -d '[:space:]'
 )"
 
 echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
-echo "ORPHAN_IMPROVEMENT_COUNT=${ORPHAN_IMPROVEMENT_COUNT}"
+echo "ORPHAN_PREPAREDNESS_COUNT=${ORPHAN_PREPAREDNESS_COUNT}"
 
 [[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
-[[ "${ORPHAN_IMPROVEMENT_COUNT}" == "0" ]]
+[[ "${ORPHAN_PREPAREDNESS_COUNT}" == "0" ]]
 
-echo "[PASS] IMPROVEMENT_CLEANUP"
+echo "[PASS] PREPAREDNESS_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 17 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 18 VERIFICATION PASSED"
 echo "========================================================================"
