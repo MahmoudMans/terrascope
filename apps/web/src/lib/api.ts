@@ -13,6 +13,13 @@ import type {
   VolcanoQuery,
 } from "@/types/volcano";
 
+import type {
+  WatchlistEntry,
+  WatchlistFeedResponse,
+  WatchPriority,
+  SaveWatchlistEventRequest,
+} from "@/types/watchlist";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -124,4 +131,96 @@ export async function fetchNaturalHazards(
   }
 
   return response.json() as Promise<NaturalHazardFeedResponse>;
+}
+
+export async function fetchWatchlist(
+  signal?: AbortSignal,
+): Promise<WatchlistFeedResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/watchlist`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `TerraScope watchlist API returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<WatchlistFeedResponse>;
+}
+
+export async function saveWatchlistEvent(
+  request: SaveWatchlistEventRequest,
+): Promise<WatchlistEntry> {
+  const response = await fetch(
+    `${API_BASE_URL}/watchlist`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to save event. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<WatchlistEntry>;
+}
+
+export async function updateWatchlistPriority(
+  id: string,
+  priority: WatchPriority,
+): Promise<WatchlistEntry> {
+  const response = await fetch(
+    `${API_BASE_URL}/watchlist/${id}/priority`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        priority,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update watch priority. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<WatchlistEntry>;
+}
+
+export async function deleteWatchlistEntry(
+  id: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/watchlist/${id}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to delete watchlist entry. HTTP ${response.status}`,
+    );
+  }
 }

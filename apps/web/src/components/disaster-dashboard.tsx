@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Bell,
   Bookmark,
+  BookmarkPlus,
   CircleDot,
   Clock3,
   CloudLightning,
@@ -55,9 +56,14 @@ import {
 } from "@/components/volcano-list";
 
 import {
+  WatchlistPanel,
+} from "@/components/watchlist-panel";
+
+import {
   fetchEarthquakes,
   fetchNaturalHazards,
   fetchVolcanoes,
+  saveWatchlistEvent,
 } from "@/lib/api";
 
 import {
@@ -84,6 +90,10 @@ import type {
   VolcanoEvent,
   VolcanoFeedResponse,
 } from "@/types/volcano";
+
+import type {
+  SaveWatchlistEventRequest,
+} from "@/types/watchlist";
 
 const periodOptions: Array<{
   value: EarthquakePeriod;
@@ -131,7 +141,7 @@ const navItems = [
   {
     label: "Saved",
     icon: Bookmark,
-    active: false,
+    active: true,
   },
 ];
 
@@ -295,6 +305,32 @@ export function DisasterDashboard() {
     setRefreshCounter,
   ] =
     useState(0);
+
+  const [
+    watchlistOpen,
+    setWatchlistOpen,
+  ] =
+    useState(false);
+
+  const [
+    watchlistRefreshCounter,
+    setWatchlistRefreshCounter,
+  ] =
+    useState(0);
+
+  const [
+    savingSelected,
+    setSavingSelected,
+  ] =
+    useState(false);
+
+  const [
+    watchlistMessage,
+    setWatchlistMessage,
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   useEffect(() => {
     const controller =
@@ -514,6 +550,155 @@ export function DisasterDashboard() {
     );
   };
 
+  const buildWatchlistRequest =
+    (): SaveWatchlistEventRequest | null => {
+      if (selectedEarthquake !== null) {
+        return {
+          sourceEventId:
+            selectedEarthquake.id,
+          hazardType:
+            "earthquakes",
+          title:
+            selectedEarthquake.place,
+          description:
+            `Magnitude ${selectedEarthquake.magnitude.toFixed(1)} earthquake`,
+          latitude:
+            selectedEarthquake.latitude,
+          longitude:
+            selectedEarthquake.longitude,
+          observedAt:
+            selectedEarthquake.occurredAt,
+          sourceProvider:
+            "USGS",
+          sourceUrl:
+            selectedEarthquake.detailUrl,
+          magnitudeValue:
+            selectedEarthquake.magnitude,
+          magnitudeUnit:
+            "M",
+          priority:
+            selectedEarthquake.magnitude >= 7
+              ? "CRITICAL"
+              : selectedEarthquake.magnitude >= 6
+                ? "HIGH"
+                : "MEDIUM",
+          notes: "",
+        };
+      }
+
+      if (selectedVolcano !== null) {
+        return {
+          sourceEventId:
+            selectedVolcano.id,
+          hazardType:
+            "volcanoes",
+          title:
+            selectedVolcano.title,
+          description:
+            selectedVolcano.description,
+          latitude:
+            selectedVolcano.latitude,
+          longitude:
+            selectedVolcano.longitude,
+          observedAt:
+            selectedVolcano.observedAt,
+          sourceProvider:
+            selectedVolcano.primarySource,
+          sourceUrl:
+            selectedVolcano.sourceUrl
+            || selectedVolcano.detailUrl,
+          magnitudeValue:
+            null,
+          magnitudeUnit:
+            "",
+          priority:
+            "MEDIUM",
+          notes: "",
+        };
+      }
+
+      if (
+        selectedNaturalHazard
+        !== null
+      ) {
+        return {
+          sourceEventId:
+            selectedNaturalHazard.id,
+          hazardType:
+            selectedNaturalHazard.hazardType,
+          title:
+            selectedNaturalHazard.title,
+          description:
+            selectedNaturalHazard.description,
+          latitude:
+            selectedNaturalHazard.latitude,
+          longitude:
+            selectedNaturalHazard.longitude,
+          observedAt:
+            selectedNaturalHazard.observedAt,
+          sourceProvider:
+            selectedNaturalHazard.primarySource,
+          sourceUrl:
+            selectedNaturalHazard.sourceUrl
+            || selectedNaturalHazard.detailUrl,
+          magnitudeValue:
+            selectedNaturalHazard.magnitudeValue,
+          magnitudeUnit:
+            selectedNaturalHazard.magnitudeUnit,
+          priority:
+            selectedNaturalHazard.hazardType
+              === "severe-storms"
+              && (
+                selectedNaturalHazard.magnitudeValue
+                ?? 0
+              ) >= 64
+                ? "HIGH"
+                : "MEDIUM",
+          notes: "",
+        };
+      }
+
+      return null;
+    };
+
+  const handleSaveSelected = () => {
+    const request =
+      buildWatchlistRequest();
+
+    if (request === null) {
+      return;
+    }
+
+    setSavingSelected(true);
+    setWatchlistMessage(null);
+
+    void saveWatchlistEvent(
+      request,
+    )
+      .then(() => {
+        setWatchlistMessage(
+          "Event saved to watchlist.",
+        );
+
+        setWatchlistRefreshCounter(
+          (value) => value + 1,
+        );
+      })
+      .catch(
+        (caughtError: unknown) => {
+          setWatchlistMessage(
+            caughtError
+              instanceof Error
+              ? caughtError.message
+              : "Unable to save event.",
+          );
+        },
+      )
+      .finally(() => {
+        setSavingSelected(false);
+      });
+  };
+
   const handleSelectEarthquake = (
     event: EarthquakeEvent,
   ) => {
@@ -703,13 +888,18 @@ export function DisasterDashboard() {
             }) => (
               <button
                 className={
-                  active
+                  label === "Monitor"
                     ? "sidebar-link sidebar-link--active"
                     : "sidebar-link"
                 }
                 key={label}
                 type="button"
                 disabled={!active}
+                onClick={() => {
+                  if (label === "Saved") {
+                    setWatchlistOpen(true);
+                  }
+                }}
               >
                 <Icon size={18} />
 
@@ -804,6 +994,30 @@ export function DisasterDashboard() {
               <Bell size={18} />
 
               <span className="notification-dot" />
+            </button>
+
+            <button
+              className="save-event-button"
+              type="button"
+              onClick={handleSaveSelected}
+              disabled={
+                savingSelected
+                || (
+                  selectedEarthquake === null
+                  && selectedVolcano === null
+                  && selectedNaturalHazard === null
+                )
+              }
+            >
+              <BookmarkPlus
+                size={16}
+              />
+
+              <span>
+                {savingSelected
+                  ? "Saving"
+                  : "Save event"}
+              </span>
             </button>
 
             <button
@@ -2030,6 +2244,36 @@ export function DisasterDashboard() {
             }
           </div>
         </section>
+
+        <WatchlistPanel
+          open={watchlistOpen}
+          refreshToken={
+            watchlistRefreshCounter
+          }
+          onClose={() =>
+            setWatchlistOpen(false)
+          }
+        />
+
+        {watchlistMessage !== null && (
+          <div className="watchlist-toast">
+            <BookmarkPlus size={15} />
+
+            <span>
+              {watchlistMessage}
+            </span>
+
+            <button
+              type="button"
+              aria-label="Dismiss message"
+              onClick={() =>
+                setWatchlistMessage(null)
+              }
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         <footer className="application-footer">
           <div>
