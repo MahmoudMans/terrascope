@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Sparkles,
+  Radar,
   Waves,
 } from "lucide-react";
 
@@ -54,6 +55,10 @@ import {
 import {
   SimulationPanel,
 } from "@/components/simulation-panel";
+
+import {
+  RegionalIntelligencePanel,
+} from "@/components/regional-intelligence-panel";
 
 import {
   VolcanoList,
@@ -140,6 +145,11 @@ const navItems = [
   {
     label: "Simulations",
     icon: Sparkles,
+    active: true,
+  },
+  {
+    label: "Regional",
+    icon: Radar,
     active: true,
   },
   {
@@ -319,6 +329,12 @@ export function DisasterDashboard() {
   const [
     simulationOpen,
     setSimulationOpen,
+  ] =
+    useState(false);
+
+  const [
+    regionalOpen,
+    setRegionalOpen,
   ] =
     useState(false);
 
@@ -911,6 +927,15 @@ export function DisasterDashboard() {
                     === "Simulations"
                   ) {
                     setSimulationOpen(
+                      true,
+                    );
+                  }
+
+                  if (
+                    label
+                    === "Regional"
+                  ) {
+                    setRegionalOpen(
                       true,
                     );
                   }
@@ -2268,6 +2293,13 @@ export function DisasterDashboard() {
           open={simulationOpen}
           onClose={() =>
             setSimulationOpen(false)
+          }
+        />
+
+        <RegionalIntelligencePanel
+          open={regionalOpen}
+          onClose={() =>
+            setRegionalOpen(false)
           }
         />
 

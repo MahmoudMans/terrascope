@@ -26,6 +26,12 @@ import type {
   SimulationHistoryResponse,
 } from "@/types/simulation";
 
+import type {
+  RegionalAnalysisHistoryResponse,
+  RegionalAnalysisRequest,
+  RegionalAnalysisResult,
+} from "@/types/regional-intelligence";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -277,4 +283,52 @@ export async function runImpactSimulation(
   }
 
   return response.json() as Promise<ImpactSimulationRunResponse>;
+}
+
+export async function analyzeRegionalIntelligence(
+  request: RegionalAnalysisRequest,
+): Promise<RegionalAnalysisResult> {
+  const response = await fetch(
+    `${API_BASE_URL}/regional-intelligence/analyze`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Regional analysis returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<RegionalAnalysisResult>;
+}
+
+export async function fetchRegionalAnalysisHistory(
+  signal?: AbortSignal,
+): Promise<RegionalAnalysisHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/regional-intelligence/history`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Regional history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<RegionalAnalysisHistoryResponse>;
 }

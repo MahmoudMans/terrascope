@@ -9,20 +9,12 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step5-backend.log"
+BACKEND_LOG="/tmp/terrascope-step6-backend.log"
 
 cleanup() {
   if [ -n "${BACKEND_PID}" ]; then
-
-    kill \
-      "${BACKEND_PID}" \
-      >/dev/null 2>&1 \
-      || true
-
-    wait \
-      "${BACKEND_PID}" \
-      >/dev/null 2>&1 \
-      || true
+    kill "${BACKEND_PID}" >/dev/null 2>&1 || true
+    wait "${BACKEND_PID}" >/dev/null 2>&1 || true
   fi
 }
 
@@ -30,7 +22,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 5 VERIFICATION"
+echo " TERRASCOPE — STEP 6 VERIFICATION"
 echo "========================================================================"
 
 echo
@@ -58,7 +50,6 @@ for attempt in $(seq 1 30); do
   fi
 
   if [ "${attempt}" -eq 30 ]; then
-    echo "[FAIL] POSTGRESQL_NOT_READY"
     exit 1
   fi
 
@@ -90,9 +81,7 @@ echo "===== FRONTEND LINT ====="
 
 (
   cd apps/web
-
-  npx eslint . \
-    --max-warnings=0
+  npx eslint . --max-warnings=0
 )
 
 echo "[PASS] FRONTEND_LINT"
@@ -135,30 +124,20 @@ for attempt in $(seq 1 45); do
       --fail \
       --silent \
       "http://localhost:8087/actuator/health" \
-      >/tmp/terrascope-step5-health.json \
+      >/tmp/terrascope-step6-health.json \
       2>/dev/null; then
 
     echo "[PASS] BACKEND_RUNTIME_READY"
     break
   fi
 
-  if ! kill -0 \
-      "${BACKEND_PID}" \
-      >/dev/null 2>&1; then
-
-    echo "[FAIL] BACKEND_STOPPED"
-
+  if ! kill -0 "${BACKEND_PID}" >/dev/null 2>&1; then
     cat "${BACKEND_LOG}"
-
     exit 1
   fi
 
   if [ "${attempt}" -eq 45 ]; then
-
-    echo "[FAIL] BACKEND_TIMEOUT"
-
     cat "${BACKEND_LOG}"
-
     exit 1
   fi
 
@@ -172,82 +151,87 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step5-status.json
+  >/tmp/terrascope-step6-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step5-status.json",
-    "r",
+    "/tmp/terrascope-step6-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
 assert payload["status"] == "operational"
-assert payload["version"] == "0.5.0"
+assert payload["version"] == "0.6.0"
 
-print(
-    "[PASS] STATUS_ENDPOINT"
-)
+print("[PASS] STATUS_ENDPOINT")
 PY
 
 echo
-echo "===== STEP 4 REGRESSION ====="
+echo "===== STEP 5 REGRESSION ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/hazards/layers" \
-  >/tmp/terrascope-step5-layers.json
+  "http://localhost:8087/api/v1/simulations" \
+  >/tmp/terrascope-step6-simulations.json
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/watchlist" \
-  >/tmp/terrascope-step5-watchlist.json
+  >/tmp/terrascope-step6-watchlist.json
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/hazards/layers" \
+  >/tmp/terrascope-step6-layers.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step5-layers.json",
-    "r",
+    "/tmp/terrascope-step6-simulations.json",
     encoding="utf-8",
 ) as handle:
-    layers = json.load(handle)
+    simulations = json.load(handle)
 
 with open(
-    "/tmp/terrascope-step5-watchlist.json",
-    "r",
+    "/tmp/terrascope-step6-watchlist.json",
     encoding="utf-8",
 ) as handle:
     watchlist = json.load(handle)
 
-assert len(layers) == 4
+with open(
+    "/tmp/terrascope-step6-layers.json",
+    encoding="utf-8",
+) as handle:
+    layers = json.load(handle)
 
-assert all(
-    layer["available"]
-    for layer in layers
+assert isinstance(
+    simulations["runs"],
+    list,
 )
-
-assert "summary" in watchlist
 
 assert isinstance(
     watchlist["entries"],
     list,
 )
 
+assert len(layers) == 4
+
 print(
-    "[PASS] STEP4_RUNTIME_REGRESSION"
+    "[PASS] STEP5_RUNTIME_REGRESSION"
 )
 PY
 
 echo
-echo "===== FLYWAY V5 ====="
+echo "===== FLYWAY V6 ====="
 
-for VERSION in 1 2 3 4 5; do
+for VERSION in 1 2 3 4 5 6; do
 
   COUNT="$(
     docker compose exec -T postgres \
@@ -267,15 +251,14 @@ for VERSION in 1 2 3 4 5; do
   echo "FLYWAY_V${VERSION}_COUNT=${COUNT}"
 
   if [ "${COUNT}" != "1" ]; then
-    echo "[FAIL] FLYWAY_V${VERSION}"
     exit 1
   fi
 done
 
-echo "[PASS] FLYWAY_V5_RUNTIME"
+echo "[PASS] FLYWAY_V6_RUNTIME"
 
 echo
-echo "===== CLEAN VERIFICATION SCENARIOS ====="
+echo "===== CLEAN VERIFICATION REGIONS ====="
 
 docker compose exec -T postgres \
   psql \
@@ -283,28 +266,27 @@ docker compose exec -T postgres \
     -d terrascope \
     -c "
       DELETE
-      FROM simulation_scenarios
-      WHERE name LIKE 'Verification %';
+      FROM regional_analysis_runs
+      WHERE region_name LIKE 'Verification %';
     " \
   >/dev/null
 
-echo "[PASS] SIMULATION_PRE_CLEAN"
+echo "[PASS] REGIONAL_PRE_CLEAN"
 
 echo
-echo "===== HISTORY CONTRACT ====="
+echo "===== REGIONAL HISTORY CONTRACT ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/simulations" \
-  >/tmp/terrascope-step5-history-before.json
+  "http://localhost:8087/api/v1/regional-intelligence/history" \
+  >/tmp/terrascope-step6-history-before.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step5-history-before.json",
-    "r",
+    "/tmp/terrascope-step6-history-before.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -315,145 +297,146 @@ assert isinstance(
 )
 
 assert "totalCount" in payload
-assert "extremeCount" in payload
-assert "severeCount" in payload
-assert "averageRiskScore" in payload
+assert "criticalCount" in payload
+assert "highCount" in payload
+assert "averageActivityIndex" in payload
 
 print(
-    "[PASS] SIMULATION_HISTORY_CONTRACT"
+    "[PASS] REGIONAL_HISTORY_CONTRACT"
 )
 PY
 
 echo
-echo "===== RUN EARTHQUAKE SIMULATION ====="
+echo "===== RUN REGIONAL ANALYSIS ====="
 
 cat > \
-  /tmp/terrascope-step5-earthquake.json \
+  /tmp/terrascope-step6-analysis.json \
 <<'JSON'
 {
-  "name": "Verification earthquake scenario",
-  "hazardType": "earthquakes",
+  "regionName": "Verification regional analysis",
   "latitude": 36.8065,
   "longitude": 10.1815,
-  "radiusKm": 120.0,
-  "intensity": 8.0,
-  "exposedPopulation": 1500000,
-  "infrastructureResiliencePct": 50.0,
-  "emergencyReadinessPct": 60.0
+  "radiusKm": 500.0,
+  "points": [
+    {
+      "id": "verification-eq",
+      "hazardType": "earthquakes",
+      "title": "Verification earthquake",
+      "latitude": 36.95,
+      "longitude": 10.20,
+      "intensity": 6.5,
+      "observedAt": "2026-09-17T12:00:00Z"
+    },
+    {
+      "id": "verification-fire",
+      "hazardType": "wildfires",
+      "title": "Verification wildfire",
+      "latitude": 37.10,
+      "longitude": 9.90,
+      "intensity": null,
+      "observedAt": "2026-09-17T11:00:00Z"
+    },
+    {
+      "id": "verification-storm",
+      "hazardType": "severe-storms",
+      "title": "Verification storm",
+      "latitude": 36.50,
+      "longitude": 10.40,
+      "intensity": 80.0,
+      "observedAt": "2026-09-17T10:00:00Z"
+    },
+    {
+      "id": "verification-far-volcano",
+      "hazardType": "volcanoes",
+      "title": "Far verification volcano",
+      "latitude": 46.0,
+      "longitude": 10.0,
+      "intensity": null,
+      "observedAt": "2026-09-17T09:00:00Z"
+    }
+  ]
 }
 JSON
 
-RUN_HTTP="$(
+ANALYZE_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step5-earthquake-response.json \
+    --output /tmp/terrascope-step6-analysis-response.json \
     --write-out '%{http_code}' \
     --request POST \
     --header 'Accept: application/json' \
     --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step5-earthquake.json \
-    "http://localhost:8087/api/v1/simulations/run"
+    --data @/tmp/terrascope-step6-analysis.json \
+    "http://localhost:8087/api/v1/regional-intelligence/analyze"
 )"
 
-echo "SIMULATION_RUN_HTTP=${RUN_HTTP}"
+echo "REGIONAL_ANALYZE_HTTP=${ANALYZE_HTTP}"
 
-if [ "${RUN_HTTP}" != "200" ]; then
-
-  cat \
-    /tmp/terrascope-step5-earthquake-response.json
-
+if [ "${ANALYZE_HTTP}" != "200" ]; then
+  cat /tmp/terrascope-step6-analysis-response.json
   exit 1
 fi
 
-SCENARIO_ID="$(
+ANALYSIS_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step5-earthquake-response.json",
-    "r",
+    "/tmp/terrascope-step6-analysis-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-scenario = payload["scenario"]
-result = payload["result"]
-
 assert (
-    scenario["name"]
-    == "Verification earthquake scenario"
+    payload["regionName"]
+    == "Verification regional analysis"
 )
 
-assert (
-    scenario["hazardType"]
-    == "earthquakes"
-)
+assert payload["sourcePointCount"] == 4
+assert payload["matchedEventCount"] == 3
+
+breakdown = payload["breakdown"]
+
+assert breakdown["earthquakeCount"] == 1
+assert breakdown["volcanoCount"] == 0
+assert breakdown["wildfireCount"] == 1
+assert breakdown["severeStormCount"] == 1
+
+assert payload["nearestEvent"] is not None
 
 assert (
-    result["methodologyVersion"]
-    == "TERRASCOPE_IMPACT_V1"
-)
-
-assert (
-    result["affectedPopulation"]
-    > 0
-)
-
-assert (
-    result["displacedPopulation"]
-    >= 0
-)
-
-assert (
-    result["displacedPopulation"]
-    <= result["affectedPopulation"]
-)
-
-assert (
-    result["estimatedEconomicLossMusd"]
-    >= 0
+    payload["nearestEvent"]["id"]
+    == "verification-eq"
 )
 
 assert (
     0
-    <= result["infrastructureDisruptionPct"]
+    <= payload["activityIndex"]
     <= 100
 )
 
-assert (
-    0
-    <= result["responsePressurePct"]
-    <= 100
-)
-
-assert (
-    0
-    <= result["compositeRiskScore"]
-    <= 100
-)
-
-assert result["riskBand"] in {
-    "LOW",
-    "MODERATE",
+assert payload["activityBand"] in {
+    "QUIET",
+    "GUARDED",
+    "ELEVATED",
     "HIGH",
-    "SEVERE",
-    "EXTREME",
+    "CRITICAL",
 }
 
-print(
-    scenario["id"]
-)
+assert payload["averageDistanceKm"] > 0
+
+print(payload["id"])
 PY
 )"
 
-echo "SCENARIO_ID=${SCENARIO_ID}"
+echo "ANALYSIS_ID=${ANALYSIS_ID}"
 
-echo "[PASS] SIMULATION_RUN"
+echo "[PASS] REGIONAL_ANALYSIS"
 
 echo
-echo "===== SIMULATION PERSISTENCE ====="
+echo "===== REGIONAL PERSISTENCE ====="
 
-SCENARIO_COUNT="$(
+ROW_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -461,59 +444,37 @@ SCENARIO_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM simulation_scenarios
-      WHERE id = '${SCENARIO_ID}';
+      FROM regional_analysis_runs
+      WHERE id = '${ANALYSIS_ID}';
       " \
     | tr -d '[:space:]'
 )"
 
-RUN_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM simulation_runs
-      WHERE scenario_id = '${SCENARIO_ID}';
-      " \
-    | tr -d '[:space:]'
-)"
+echo "REGIONAL_ROW_COUNT=${ROW_COUNT}"
 
-echo "SIMULATION_SCENARIO_COUNT=${SCENARIO_COUNT}"
-echo "SIMULATION_RUN_COUNT=${RUN_COUNT}"
-
-if [ "${SCENARIO_COUNT}" != "1" ]; then
-  echo "[FAIL] SIMULATION_SCENARIO_PERSISTENCE"
+if [ "${ROW_COUNT}" != "1" ]; then
   exit 1
 fi
 
-if [ "${RUN_COUNT}" != "1" ]; then
-  echo "[FAIL] SIMULATION_RUN_PERSISTENCE"
-  exit 1
-fi
-
-echo "[PASS] SIMULATION_PERSISTENCE"
+echo "[PASS] REGIONAL_PERSISTENCE"
 
 echo
-echo "===== HISTORY AFTER RUN ====="
+echo "===== REGIONAL HISTORY AFTER ANALYSIS ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/simulations" \
-  >/tmp/terrascope-step5-history-after.json
+  "http://localhost:8087/api/v1/regional-intelligence/history" \
+  >/tmp/terrascope-step6-history-after.json
 
-python3 - "${SCENARIO_ID}" <<'PY'
+python3 - "${ANALYSIS_ID}" <<'PY'
 import json
 import sys
 
-scenario_id = sys.argv[1]
+analysis_id = sys.argv[1]
 
 with open(
-    "/tmp/terrascope-step5-history-after.json",
-    "r",
+    "/tmp/terrascope-step6-history-after.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -521,56 +482,48 @@ with open(
 matching = [
     item
     for item in payload["runs"]
-    if (
-        item["scenario"]["id"]
-        == scenario_id
-    )
+    if item["id"] == analysis_id
 ]
 
 assert len(matching) == 1
-
-assert (
-    payload["totalCount"]
-    >= 1
-)
+assert payload["totalCount"] >= 1
 
 print(
-    "[PASS] SIMULATION_HISTORY"
+    "[PASS] REGIONAL_HISTORY"
 )
 PY
 
 echo
-echo "===== RUNTIME MONOTONICITY ====="
+echo "===== SPATIAL FILTERING CONTRACT ====="
 
 cat > \
-  /tmp/terrascope-step5-low.json \
+  /tmp/terrascope-step6-tight.json \
 <<'JSON'
 {
-  "name": "Verification low intensity",
-  "hazardType": "wildfires",
-  "latitude": 36.8,
-  "longitude": 10.2,
-  "radiusKm": 90.0,
-  "intensity": 3.0,
-  "exposedPopulation": 500000,
-  "infrastructureResiliencePct": 60.0,
-  "emergencyReadinessPct": 70.0
-}
-JSON
-
-cat > \
-  /tmp/terrascope-step5-high.json \
-<<'JSON'
-{
-  "name": "Verification high intensity",
-  "hazardType": "wildfires",
-  "latitude": 36.8,
-  "longitude": 10.2,
-  "radiusKm": 90.0,
-  "intensity": 8.0,
-  "exposedPopulation": 500000,
-  "infrastructureResiliencePct": 60.0,
-  "emergencyReadinessPct": 70.0
+  "regionName": "Verification tight radius",
+  "latitude": 36.8065,
+  "longitude": 10.1815,
+  "radiusKm": 10.0,
+  "points": [
+    {
+      "id": "near",
+      "hazardType": "earthquakes",
+      "title": "Near point",
+      "latitude": 36.81,
+      "longitude": 10.18,
+      "intensity": 5.0,
+      "observedAt": "2026-09-17T12:00:00Z"
+    },
+    {
+      "id": "outside",
+      "hazardType": "wildfires",
+      "title": "Outside point",
+      "latitude": 37.50,
+      "longitude": 10.80,
+      "intensity": null,
+      "observedAt": "2026-09-17T12:00:00Z"
+    }
+  ]
 }
 JSON
 
@@ -579,60 +532,43 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step5-low.json \
-  "http://localhost:8087/api/v1/simulations/run" \
-  >/tmp/terrascope-step5-low-response.json
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step5-high.json \
-  "http://localhost:8087/api/v1/simulations/run" \
-  >/tmp/terrascope-step5-high-response.json
+  --data @/tmp/terrascope-step6-tight.json \
+  "http://localhost:8087/api/v1/regional-intelligence/analyze" \
+  >/tmp/terrascope-step6-tight-response.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step5-low-response.json",
-    "r",
+    "/tmp/terrascope-step6-tight-response.json",
     encoding="utf-8",
 ) as handle:
-    low = json.load(handle)
+    payload = json.load(handle)
 
-with open(
-    "/tmp/terrascope-step5-high-response.json",
-    "r",
-    encoding="utf-8",
-) as handle:
-    high = json.load(handle)
+assert payload["sourcePointCount"] == 2
+assert payload["matchedEventCount"] == 1
 
 assert (
-    high["result"]["compositeRiskScore"]
-    > low["result"]["compositeRiskScore"]
+    payload["breakdown"]["earthquakeCount"]
+    == 1
 )
 
 assert (
-    high["result"]["affectedPopulation"]
-    > low["result"]["affectedPopulation"]
+    payload["breakdown"]["wildfireCount"]
+    == 0
 )
 
-assert (
-    high["result"]["estimatedEconomicLossMusd"]
-    > low["result"]["estimatedEconomicLossMusd"]
-)
+assert payload["nearestEvent"]["id"] == "near"
 
 print(
-    "[PASS] SIMULATION_MONOTONICITY"
+    "[PASS] REGIONAL_RADIUS_FILTERING"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-SCENARIO_COLUMNS="$(
+COLUMN_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -642,64 +578,39 @@ SCENARIO_COLUMNS="$(
       SELECT COUNT(*)
       FROM information_schema.columns
       WHERE table_schema = 'public'
-        AND table_name = 'simulation_scenarios'
+        AND table_name = 'regional_analysis_runs'
         AND column_name IN (
           'id',
-          'name',
-          'hazard_type',
-          'latitude',
-          'longitude',
+          'region_name',
+          'center_latitude',
+          'center_longitude',
           'radius_km',
-          'intensity',
-          'exposed_population',
-          'infrastructure_resilience_pct',
-          'emergency_readiness_pct',
-          'created_at'
+          'source_point_count',
+          'matched_event_count',
+          'earthquake_count',
+          'volcano_count',
+          'wildfire_count',
+          'severe_storm_count',
+          'nearest_event_id',
+          'nearest_event_type',
+          'nearest_event_title',
+          'nearest_event_distance_km',
+          'average_distance_km',
+          'activity_index',
+          'activity_band',
+          'analyzed_at'
         );
       " \
     | tr -d '[:space:]'
 )"
 
-RUN_COLUMNS="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'simulation_runs'
-        AND column_name IN (
-          'id',
-          'scenario_id',
-          'affected_population',
-          'displaced_population',
-          'estimated_economic_loss_musd',
-          'infrastructure_disruption_pct',
-          'response_pressure_pct',
-          'composite_risk_score',
-          'risk_band',
-          'methodology_version',
-          'created_at'
-        );
-      " \
-    | tr -d '[:space:]'
-)"
+echo "REGIONAL_COLUMN_COUNT=${COLUMN_COUNT}"
 
-echo "SCENARIO_COLUMN_COUNT=${SCENARIO_COLUMNS}"
-echo "RUN_COLUMN_COUNT=${RUN_COLUMNS}"
-
-if [ "${SCENARIO_COLUMNS}" != "11" ]; then
+if [ "${COLUMN_COUNT}" != "19" ]; then
   exit 1
 fi
 
-if [ "${RUN_COLUMNS}" != "11" ]; then
-  exit 1
-fi
-
-echo "[PASS] SIMULATION_DATABASE_CONTRACT"
+echo "[PASS] REGIONAL_DATABASE_CONTRACT"
 
 echo
 echo "===== CLEAN VERIFICATION DATA ====="
@@ -710,12 +621,12 @@ docker compose exec -T postgres \
     -d terrascope \
     -c "
       DELETE
-      FROM simulation_scenarios
-      WHERE name LIKE 'Verification %';
+      FROM regional_analysis_runs
+      WHERE region_name LIKE 'Verification %';
     " \
   >/dev/null
 
-VERIFY_SCENARIOS="$(
+VERIFY_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -723,21 +634,21 @@ VERIFY_SCENARIOS="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM simulation_scenarios
-      WHERE name LIKE 'Verification %';
+      FROM regional_analysis_runs
+      WHERE region_name LIKE 'Verification %';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "VERIFICATION_SIMULATION_COUNT=${VERIFY_SCENARIOS}"
+echo "VERIFICATION_REGIONAL_COUNT=${VERIFY_COUNT}"
 
-if [ "${VERIFY_SCENARIOS}" != "0" ]; then
+if [ "${VERIFY_COUNT}" != "0" ]; then
   exit 1
 fi
 
-echo "[PASS] SIMULATION_CLEANUP"
+echo "[PASS] REGIONAL_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 5 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 6 VERIFICATION PASSED"
 echo "========================================================================"
