@@ -20,6 +20,12 @@ import type {
   SaveWatchlistEventRequest,
 } from "@/types/watchlist";
 
+import type {
+  ImpactSimulationRequest,
+  ImpactSimulationRunResponse,
+  SimulationHistoryResponse,
+} from "@/types/simulation";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -223,4 +229,52 @@ export async function deleteWatchlistEntry(
       `Unable to delete watchlist entry. HTTP ${response.status}`,
     );
   }
+}
+
+export async function fetchSimulationHistory(
+  signal?: AbortSignal,
+): Promise<SimulationHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/simulations`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `TerraScope simulation history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<SimulationHistoryResponse>;
+}
+
+export async function runImpactSimulation(
+  request: ImpactSimulationRequest,
+): Promise<ImpactSimulationRunResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/simulations/run`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to run simulation. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImpactSimulationRunResponse>;
 }

@@ -52,6 +52,10 @@ import {
 } from "@/components/stat-card";
 
 import {
+  SimulationPanel,
+} from "@/components/simulation-panel";
+
+import {
   VolcanoList,
 } from "@/components/volcano-list";
 
@@ -136,7 +140,7 @@ const navItems = [
   {
     label: "Simulations",
     icon: Sparkles,
-    active: false,
+    active: true,
   },
   {
     label: "Saved",
@@ -309,6 +313,12 @@ export function DisasterDashboard() {
   const [
     watchlistOpen,
     setWatchlistOpen,
+  ] =
+    useState(false);
+
+  const [
+    simulationOpen,
+    setSimulationOpen,
   ] =
     useState(false);
 
@@ -896,6 +906,15 @@ export function DisasterDashboard() {
                 type="button"
                 disabled={!active}
                 onClick={() => {
+                  if (
+                    label
+                    === "Simulations"
+                  ) {
+                    setSimulationOpen(
+                      true,
+                    );
+                  }
+
                   if (label === "Saved") {
                     setWatchlistOpen(true);
                   }
@@ -2244,6 +2263,13 @@ export function DisasterDashboard() {
             }
           </div>
         </section>
+
+        <SimulationPanel
+          open={simulationOpen}
+          onClose={() =>
+            setSimulationOpen(false)
+          }
+        />
 
         <WatchlistPanel
           open={watchlistOpen}
