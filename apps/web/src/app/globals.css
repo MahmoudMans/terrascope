@@ -12744,3 +12744,252 @@ a:focus-visible {
       1fr 1fr;
   }
 }
+
+.governance-airgap {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(86, 177, 166, 0.13);
+  border-radius: 10px;
+}
+
+.governance-airgap-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.governance-airgap-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.governance-airgap-heading strong {
+  color: #aec2c2;
+  font-size: 10px;
+}
+
+.governance-airgap-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.governance-airgap-actions button {
+  display: flex;
+  min-height: 29px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #84ada6;
+  border: 1px solid rgba(88, 177, 163, 0.13);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 7px;
+  cursor: pointer;
+}
+
+.governance-airgap-error {
+  padding: 8px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.governance-airgap-hero {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid rgba(77, 179, 164, 0.15);
+  border-radius: 8px;
+}
+
+.governance-airgap-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #79bcad;
+  border: 1px solid rgba(79, 174, 158, 0.19);
+  border-radius: 9px;
+}
+
+.governance-airgap-hero > div:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.governance-airgap-hero span,
+.governance-airgap-import > span {
+  color: #607a7d;
+  font-size: 6px;
+}
+
+.governance-airgap-hero strong {
+  color: #b0c3c4;
+  font-size: 12px;
+}
+
+.governance-airgap-hero p {
+  margin: 0;
+  color: #657e80;
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.governance-airgap-count {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.governance-airgap-count strong {
+  color: #9dc7b7;
+  font-size: 20px;
+}
+
+.governance-airgap-import {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 6px;
+}
+
+.governance-airgap-import input {
+  color: #7f9899;
+  font-size: 7px;
+}
+
+.governance-airgap-verification {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid;
+  border-radius: 6px;
+}
+
+.governance-airgap-verification--valid {
+  color: #78c097;
+  border-color: rgba(76, 181, 111, 0.17);
+}
+
+.governance-airgap-verification--invalid {
+  color: #ed8e8e;
+  border-color: rgba(229, 90, 90, 0.19);
+}
+
+.governance-airgap-verification > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.governance-airgap-verification strong {
+  color: #a1b5b5;
+  font-size: 8px;
+}
+
+.governance-airgap-verification p {
+  margin: 0;
+  color: #718689;
+  font-size: 7px;
+}
+
+.governance-airgap-verification span {
+  color: #5b7376;
+  font-size: 6px;
+}
+
+.governance-airgap-empty {
+  padding: 18px;
+  color: #567074;
+  text-align: center;
+  font-size: 7px;
+}
+
+.governance-airgap-history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(105, 152, 157, 0.07);
+  border-radius: 7px;
+}
+
+.governance-airgap-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #70aaa4;
+}
+
+.governance-airgap-section-heading strong {
+  color: #9eb3b5;
+  font-size: 8px;
+}
+
+.governance-airgap-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.governance-airgap-history article {
+  display: grid;
+  grid-template-columns:
+    auto auto 1.2fr 1.2fr auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.06);
+  border-radius: 5px;
+}
+
+.governance-airgap-history article > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.governance-airgap-history span {
+  color: #587174;
+  font-size: 6px;
+}
+
+.governance-airgap-history strong {
+  color: #9bafb1;
+  font-size: 7px;
+}
+
+.governance-airgap-history code {
+  overflow: hidden;
+  color: #789998;
+  font-size: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.governance-airgap-history time {
+  color: #4f686a;
+  font-size: 6px;
+}
+
+@media (max-width: 760px) {
+  .governance-airgap-hero,
+  .governance-airgap-history article {
+    grid-template-columns: 1fr;
+  }
+
+  .governance-airgap-count {
+    text-align: left;
+  }
+}

@@ -198,6 +198,12 @@ import type {
   GovernanceAssuranceBundleVerificationResponse,
 } from "@/types/resilience-governance-assurance-bundles";
 
+import type {
+  GovernanceAssuranceEnvelopeVerificationResponse,
+  GovernanceAssuranceVerificationReceipt,
+  GovernanceAssuranceVerificationReceiptHistoryResponse,
+} from "@/types/resilience-governance-airgap";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3698,4 +3704,99 @@ export async function verifyGovernanceAssuranceBundle(
   }
 
   return response.json() as Promise<GovernanceAssuranceBundleVerificationResponse>;
+}
+
+export async function exportGovernanceAssuranceEnvelope(
+  bundleId: string,
+): Promise<string> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/export/${bundleId}`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to export governance assurance envelope. HTTP ${response.status}`,
+    );
+  }
+
+  return response.text();
+}
+
+export async function verifyGovernanceAssuranceEnvelope(
+  envelopeJson: string,
+): Promise<GovernanceAssuranceEnvelopeVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/verify-envelope`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: envelopeJson,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Air-gapped assurance verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceEnvelopeVerificationResponse>;
+}
+
+export async function createGovernanceAssuranceVerificationReceipt(
+  envelopeJson: string,
+): Promise<GovernanceAssuranceVerificationReceipt> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/verification-receipts`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: envelopeJson,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to persist assurance verification receipt. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceVerificationReceipt>;
+}
+
+export async function fetchGovernanceAssuranceVerificationReceipts(
+  signal?: AbortSignal,
+): Promise<GovernanceAssuranceVerificationReceiptHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/verification-receipts`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Assurance verification receipt history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceVerificationReceiptHistoryResponse>;
 }
