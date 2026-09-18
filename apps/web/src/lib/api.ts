@@ -1,4 +1,9 @@
 import type {
+  GovernanceOfflineTrustCheckpointBundle,
+  GovernanceOfflineTrustCheckpointBundleHistoryResponse,
+} from "@/types/resilience-governance-offline-trust-bundles";
+
+import type {
   GovernanceOfflineTrustReceiptCheckpoint,
   GovernanceOfflineTrustReceiptCheckpointHistoryResponse,
   GovernanceOfflineTrustReceiptCheckpointVerificationResponse,
@@ -4352,4 +4357,49 @@ export async function verifyGovernanceOfflineTrustReceiptCheckpoints(): Promise<
   }
 
   return response.json() as Promise<GovernanceOfflineTrustReceiptCheckpointVerificationResponse>;
+}
+
+export async function createGovernanceOfflineTrustCheckpointBundle(): Promise<GovernanceOfflineTrustCheckpointBundle> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoint-bundles`,
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portable checkpoint bundle creation returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustCheckpointBundle>;
+}
+
+export async function fetchGovernanceOfflineTrustCheckpointBundles(
+  signal?: AbortSignal,
+): Promise<GovernanceOfflineTrustCheckpointBundleHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoint-bundles`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portable checkpoint bundles returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustCheckpointBundleHistoryResponse>;
 }

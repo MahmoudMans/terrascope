@@ -164,6 +164,10 @@ import {
   ResilienceGovernanceOfflineTrustCheckpoints,
 } from "@/components/resilience-governance-offline-trust-checkpoints";
 
+import {
+  ResilienceGovernanceOfflineTrustBundles,
+} from "@/components/resilience-governance-offline-trust-bundles";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1326,6 +1330,8 @@ export function SituationRoomPanel({
                     <ResilienceGovernanceOfflineTrustLedger />
 
                     <ResilienceGovernanceOfflineTrustCheckpoints />
+
+                    <ResilienceGovernanceOfflineTrustBundles />
 
                     <IncidentResilienceAuditLedger
                       key={
