@@ -180,6 +180,30 @@ public class GovernanceAssuranceReceiptLedgerRepository {
         );
     }
 
+    public Optional<GovernanceAssuranceReceiptLedgerEntry> findByLedgerNumber(
+            int ledgerNumber
+    ) {
+        return jdbcClient
+                .sql("""
+                        SELECT
+                        """
+                        + COLUMNS
+                        + """
+                        FROM resilience_governance_assurance_receipt_ledger
+
+                        WHERE ledger_number =
+                              :ledgerNumber
+                        """)
+                .param(
+                        "ledgerNumber",
+                        ledgerNumber
+                )
+                .query(
+                        this::map
+                )
+                .optional();
+    }
+
     public List<GovernanceAssuranceReceiptLedgerEntry> findHistory() {
         return jdbcClient
                 .sql("""

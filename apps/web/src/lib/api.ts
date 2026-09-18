@@ -209,6 +209,12 @@ import type {
   GovernanceAssuranceReceiptLedgerVerificationResponse,
 } from "@/types/resilience-governance-receipt-ledger";
 
+import type {
+  GovernanceAssuranceReceiptCheckpoint,
+  GovernanceAssuranceReceiptCheckpointHistoryResponse,
+  GovernanceAssuranceReceiptCheckpointVerificationResponse,
+} from "@/types/resilience-governance-receipt-checkpoints";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3849,4 +3855,69 @@ export async function verifyGovernanceAssuranceReceiptLedger(): Promise<Governan
   }
 
   return response.json() as Promise<GovernanceAssuranceReceiptLedgerVerificationResponse>;
+}
+
+export async function fetchGovernanceAssuranceReceiptCheckpoints(
+  signal?: AbortSignal,
+): Promise<GovernanceAssuranceReceiptCheckpointHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Receipt-ledger checkpoints returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceReceiptCheckpointHistoryResponse>;
+}
+
+export async function createGovernanceAssuranceReceiptCheckpoint(): Promise<GovernanceAssuranceReceiptCheckpoint> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to sign receipt-ledger checkpoint. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceReceiptCheckpoint>;
+}
+
+export async function verifyGovernanceAssuranceReceiptCheckpoints(): Promise<GovernanceAssuranceReceiptCheckpointVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Receipt-ledger checkpoint verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceReceiptCheckpointVerificationResponse>;
 }

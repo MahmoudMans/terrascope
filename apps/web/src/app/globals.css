@@ -13248,3 +13248,250 @@ a:focus-visible {
     text-align: left;
   }
 }
+
+.receipt-checkpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(87, 177, 166, 0.13);
+  border-radius: 10px;
+}
+
+.receipt-checkpoints-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.receipt-checkpoints-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.receipt-checkpoints-heading strong {
+  color: #aec2c2;
+  font-size: 10px;
+}
+
+.receipt-checkpoints-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.receipt-checkpoints-actions button {
+  display: flex;
+  min-height: 29px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #84ada6;
+  border: 1px solid rgba(88, 177, 163, 0.13);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.receipt-checkpoints-error {
+  padding: 8px 9px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.receipt-checkpoints-hero {
+  display: grid;
+  grid-template-columns:
+    auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid rgba(77, 179, 164, 0.15);
+  border-radius: 8px;
+}
+
+.receipt-checkpoints-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #79bcad;
+  border: 1px solid rgba(79, 174, 158, 0.19);
+  border-radius: 9px;
+}
+
+.receipt-checkpoints-hero > div:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.receipt-checkpoints-hero span {
+  color: #607a7d;
+  font-size: 6px;
+}
+
+.receipt-checkpoints-hero > div:nth-child(2) > strong {
+  color: #b0c3c4;
+  font-size: 12px;
+}
+
+.receipt-checkpoints-hero p {
+  margin: 0;
+  color: #657e80;
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.receipt-checkpoints-count {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.receipt-checkpoints-count strong {
+  color: #9dc7b7;
+  font-size: 20px;
+}
+
+.receipt-checkpoints-latest {
+  display: grid;
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.receipt-checkpoints-latest article {
+  display: flex;
+  min-width: 0;
+  min-height: 46px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 6px;
+}
+
+.receipt-checkpoints-latest span {
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.receipt-checkpoints-latest strong {
+  color: #a5babc;
+  font-size: 9px;
+}
+
+.receipt-checkpoints-latest code,
+.receipt-checkpoints-history code {
+  overflow: hidden;
+  color: #789998;
+  font-size: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receipt-checkpoints-verification {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid;
+  border-radius: 6px;
+}
+
+.receipt-checkpoints-verification--valid {
+  color: #78c097;
+  border-color: rgba(76, 181, 111, 0.17);
+}
+
+.receipt-checkpoints-verification--invalid {
+  color: #ed8e8e;
+  border-color: rgba(229, 90, 90, 0.19);
+}
+
+.receipt-checkpoints-verification > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.receipt-checkpoints-verification strong {
+  color: #9badad;
+  font-size: 7px;
+}
+
+.receipt-checkpoints-verification span {
+  color: #5b7376;
+  font-size: 6px;
+}
+
+.receipt-checkpoints-empty {
+  padding: 18px;
+  color: #567074;
+  text-align: center;
+  font-size: 7px;
+}
+
+.receipt-checkpoints-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.receipt-checkpoints-history article {
+  display: grid;
+  grid-template-columns:
+    auto auto 1fr 1fr 1fr auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.06);
+  border-radius: 5px;
+}
+
+.receipt-checkpoints-history article > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.receipt-checkpoints-history span {
+  color: #587174;
+  font-size: 6px;
+}
+
+.receipt-checkpoints-history strong {
+  color: #9bafb1;
+  font-size: 7px;
+}
+
+.receipt-checkpoints-history time {
+  color: #4f686a;
+  font-size: 6px;
+}
+
+@media (max-width: 950px) {
+  .receipt-checkpoints-latest {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .receipt-checkpoints-hero,
+  .receipt-checkpoints-latest,
+  .receipt-checkpoints-history article {
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-checkpoints-count {
+    text-align: left;
+  }
+}

@@ -136,6 +136,10 @@ import {
   ResilienceGovernanceReceiptLedger,
 } from "@/components/resilience-governance-receipt-ledger";
 
+import {
+  ResilienceGovernanceReceiptCheckpoints,
+} from "@/components/resilience-governance-receipt-checkpoints";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1284,6 +1288,8 @@ export function SituationRoomPanel({
                     <ResilienceGovernanceAirgap />
 
                     <ResilienceGovernanceReceiptLedger />
+
+                    <ResilienceGovernanceReceiptCheckpoints />
 
                     <IncidentResilienceAuditLedger
                       key={
