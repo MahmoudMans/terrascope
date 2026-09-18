@@ -10,29 +10,38 @@ cd "${ROOT_DIR}"
 
 BACKEND_PID=""
 
-BACKEND_LOG="/tmp/terrascope-step37-backend.log"
+BACKEND_LOG="/tmp/terrascope-step38-backend.log"
 
-KEYGEN_SOURCE="/tmp/TerraScopeStep37Keygen.java"
+KEYGEN_SOURCE="/tmp/TerraScopeStep38Keygen.java"
 
-KEY1_PRIVATE_FILE="/tmp/terrascope-step37-key1-private.b64"
-KEY1_PUBLIC_FILE="/tmp/terrascope-step37-key1-public.b64"
+KEY1_PRIVATE_FILE="/tmp/terrascope-step38-key1-private.b64"
+KEY1_PUBLIC_FILE="/tmp/terrascope-step38-key1-public.b64"
 
-KEY2_PRIVATE_FILE="/tmp/terrascope-step37-key2-private.b64"
-KEY2_PUBLIC_FILE="/tmp/terrascope-step37-key2-public.b64"
+KEY2_PRIVATE_FILE="/tmp/terrascope-step38-key2-private.b64"
+KEY2_PUBLIC_FILE="/tmp/terrascope-step38-key2-public.b64"
 
-KEY3_PRIVATE_FILE="/tmp/terrascope-step37-key3-private.b64"
-KEY3_PUBLIC_FILE="/tmp/terrascope-step37-key3-public.b64"
+KEY3_PRIVATE_FILE="/tmp/terrascope-step38-key3-private.b64"
+KEY3_PUBLIC_FILE="/tmp/terrascope-step38-key3-public.b64"
 
-LINEAGE_ENVELOPE="/tmp/terrascope-step37-lineage-envelope.json"
-TAMPERED_ENVELOPE="/tmp/terrascope-step37-lineage-tampered.json"
+ENVELOPE="/tmp/terrascope-step38-lineage-envelope.json"
+TAMPERED_ENVELOPE="/tmp/terrascope-step38-lineage-tampered.json"
 
-CORRECT_PIN_REQUEST="/tmp/terrascope-step37-correct-pin-request.json"
-WRONG_PIN_REQUEST="/tmp/terrascope-step37-wrong-pin-request.json"
-TAMPER_PIN_REQUEST="/tmp/terrascope-step37-tamper-pin-request.json"
+ROOT_PIN_FILE="/tmp/terrascope-step38-root.sha256"
+WRONG_PIN_FILE="/tmp/terrascope-step38-wrong-root.sha256"
 
-KEY1_ID="verification-step37-ed25519-v1"
-KEY2_ID="verification-step37-ed25519-v2"
-KEY3_ID="verification-step37-ed25519-v3"
+VALID_RECEIPT="/tmp/terrascope-step38-offline-valid-receipt.json"
+WRONG_PIN_RECEIPT="/tmp/terrascope-step38-offline-wrong-pin-receipt.json"
+TAMPER_RECEIPT="/tmp/terrascope-step38-offline-tamper-receipt.json"
+
+VALID_IMPORT_REQUEST="/tmp/terrascope-step38-valid-import-request.json"
+INVALID_IMPORT_REQUEST="/tmp/terrascope-step38-invalid-import-request.json"
+TAMPERED_RECEIPT_IMPORT_REQUEST="/tmp/terrascope-step38-tampered-receipt-import-request.json"
+
+STANDALONE_JAR="/tmp/terrascope-trust-verifier.jar"
+
+KEY1_ID="verification-step38-ed25519-v1"
+KEY2_ID="verification-step38-ed25519-v2"
+KEY3_ID="verification-step38-ed25519-v3"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -48,11 +57,17 @@ cleanup() {
     "${KEY2_PUBLIC_FILE}" \
     "${KEY3_PRIVATE_FILE}" \
     "${KEY3_PUBLIC_FILE}" \
-    "${LINEAGE_ENVELOPE}" \
+    "${ENVELOPE}" \
     "${TAMPERED_ENVELOPE}" \
-    "${CORRECT_PIN_REQUEST}" \
-    "${WRONG_PIN_REQUEST}" \
-    "${TAMPER_PIN_REQUEST}"
+    "${ROOT_PIN_FILE}" \
+    "${WRONG_PIN_FILE}" \
+    "${VALID_RECEIPT}" \
+    "${WRONG_PIN_RECEIPT}" \
+    "${TAMPER_RECEIPT}" \
+    "${VALID_IMPORT_REQUEST}" \
+    "${INVALID_IMPORT_REQUEST}" \
+    "${TAMPERED_RECEIPT_IMPORT_REQUEST}" \
+    "${STANDALONE_JAR}"
 }
 
 trap cleanup EXIT
@@ -134,7 +149,7 @@ start_without_key() {
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 37 VERIFICATION"
+echo " TERRASCOPE — STEP 38 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -171,6 +186,17 @@ echo "[PASS] BACKEND_TESTS"
 echo "[PASS] BUILD_QUALITY"
 
 echo
+echo "===== BUILD STANDALONE VERIFIER ====="
+
+bash \
+  tools/trust-verifier/build.sh \
+  "${STANDALONE_JAR}"
+
+[[ -s "${STANDALONE_JAR}" ]]
+
+echo "[PASS] STANDALONE_VERIFIER_JAR_READY"
+
+echo
 echo "===== GENERATE THREE ED25519 KEYPAIRS ====="
 
 cat > "${KEYGEN_SOURCE}" <<'JAVA'
@@ -180,7 +206,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 
-public class TerraScopeStep37Keygen {
+public class TerraScopeStep38Keygen {
 
     public static void main(
             String[] args
@@ -267,26 +293,26 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step37-status.json
+  >/tmp/terrascope-step38-status.json
 
 python3 - <<'PY'
 import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step37-status.json",
+        "/tmp/terrascope-step38-status.json",
         encoding="utf-8",
     )
 )
 
-assert payload["version"] == "0.37.0"
+assert payload["version"] == "0.38.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in $(seq 1 37); do
+for VERSION in $(seq 1 38); do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -307,7 +333,7 @@ for VERSION in $(seq 1 37); do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V37_RUNTIME"
+echo "[PASS] FLYWAY_V38_RUNTIME"
 
 echo
 echo "===== PRE-CLEAN ====="
@@ -317,6 +343,9 @@ docker compose exec -T postgres \
     -U terrascope \
     -d terrascope \
     -c "
+      DELETE
+      FROM resilience_governance_offline_trust_verification_receipts;
+
       DELETE
       FROM resilience_governance_trust_lineage_pin_receipts;
 
@@ -358,10 +387,8 @@ docker compose exec -T postgres \
       );
 
       UPDATE resilience_governance_trust_anchors
-
       SET superseded_by_key_id =
           NULL
-
       WHERE key_id IN (
           '${KEY1_ID}',
           '${KEY2_ID}',
@@ -378,59 +405,12 @@ docker compose exec -T postgres \
     " \
   >/dev/null
 
-BASE_TRANSITION_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM resilience_governance_trust_anchor_transitions;
-      " \
-    | tr -d '[:space:]'
-)"
-
-BASE_PACKAGE_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM resilience_governance_trust_lineage_packages;
-      " \
-    | tr -d '[:space:]'
-)"
-
-BASE_PIN_RECEIPT_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM resilience_governance_trust_lineage_pin_receipts;
-      " \
-    | tr -d '[:space:]'
-)"
-
-echo "BASE_TRANSITION_COUNT=${BASE_TRANSITION_COUNT}"
-echo "BASE_LINEAGE_PACKAGE_COUNT=${BASE_PACKAGE_COUNT}"
-echo "BASE_PIN_RECEIPT_COUNT=${BASE_PIN_RECEIPT_COUNT}"
-
-[[ "${BASE_TRANSITION_COUNT}" == "0" ]]
-[[ "${BASE_PACKAGE_COUNT}" == "0" ]]
-[[ "${BASE_PIN_RECEIPT_COUNT}" == "0" ]]
-
-echo "[PASS] STEP37_PRE_CLEAN"
+echo "[PASS] STEP38_PRE_CLEAN"
 
 echo
 echo "===== REGISTER ROOT KEY ====="
 
-cat > /tmp/terrascope-step37-register-key1.json <<JSON
+cat > /tmp/terrascope-step38-register-key1.json <<JSON
 {
   "keyId": "${KEY1_ID}",
   "publicKeyX509Base64": "${KEY1_PUBLIC}"
@@ -440,11 +420,11 @@ JSON
 REGISTER_ROOT_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step37-root-anchor.json \
+    --output /tmp/terrascope-step38-root-anchor.json \
     --write-out '%{http_code}' \
     --request POST \
     --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step37-register-key1.json \
+    --data @/tmp/terrascope-step38-register-key1.json \
     "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors"
 )"
 
@@ -457,22 +437,22 @@ echo "[PASS] ROOT_TRUST_ANCHOR_REGISTERED"
 echo
 echo "===== ROTATE ROOT -> KEY2 ====="
 
-cat > /tmp/terrascope-step37-transition1-request.json <<JSON
+cat > /tmp/terrascope-step38-transition1-request.json <<JSON
 {
   "replacementKeyId": "${KEY2_ID}",
   "replacementPublicKeyX509Base64": "${KEY2_PUBLIC}",
-  "reason": "Step 37 externally pinned trust-root transition one."
+  "reason": "Step 38 offline verifier transition one."
 }
 JSON
 
 TRANSITION1_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step37-transition1.json \
+    --output /tmp/terrascope-step38-transition1.json \
     --write-out '%{http_code}' \
     --request POST \
     --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step37-transition1-request.json \
+    --data @/tmp/terrascope-step38-transition1-request.json \
     "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate"
 )"
 
@@ -497,22 +477,22 @@ echo "[PASS] KEY2_RUNTIME_READY"
 echo
 echo "===== ROTATE KEY2 -> KEY3 ====="
 
-cat > /tmp/terrascope-step37-transition2-request.json <<JSON
+cat > /tmp/terrascope-step38-transition2-request.json <<JSON
 {
   "replacementKeyId": "${KEY3_ID}",
   "replacementPublicKeyX509Base64": "${KEY3_PUBLIC}",
-  "reason": "Step 37 externally pinned trust-root transition two."
+  "reason": "Step 38 offline verifier transition two."
 }
 JSON
 
 TRANSITION2_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step37-transition2.json \
+    --output /tmp/terrascope-step38-transition2.json \
     --write-out '%{http_code}' \
     --request POST \
     --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step37-transition2-request.json \
+    --data @/tmp/terrascope-step38-transition2-request.json \
     "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate"
 )"
 
@@ -528,7 +508,7 @@ echo "===== CREATE PORTABLE LINEAGE PACKAGE ====="
 PACKAGE_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step37-package.json \
+    --output /tmp/terrascope-step38-package.json \
     --write-out '%{http_code}' \
     --request POST \
     "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/packages"
@@ -544,7 +524,7 @@ import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step37-package.json",
+        "/tmp/terrascope-step38-package.json",
         encoding="utf-8",
     )
 )
@@ -564,18 +544,18 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/packages/export/${PACKAGE_ID}" \
-  --output "${LINEAGE_ENVELOPE}"
+  --output "${ENVELOPE}"
 
-[[ -s "${LINEAGE_ENVELOPE}" ]]
+[[ -s "${ENVELOPE}" ]]
 
-echo "[PASS] PORTABLE_LINEAGE_EXPORTED"
+echo "[PASS] OFFLINE_TEST_LINEAGE_EXPORTED"
 
 echo
-echo "===== EXTRACT EXTERNAL ROOT PIN ====="
+echo "===== CAPTURE INDEPENDENT ROOT PIN FILE ====="
 
 ROOT_PIN="$(
   python3 \
-    - "${LINEAGE_ENVELOPE}" \
+    - "${ENVELOPE}" \
     "${KEY1_ID}" \
 <<'PY'
 import json
@@ -583,7 +563,7 @@ import re
 import sys
 
 file_name = sys.argv[1]
-expected_root_key = sys.argv[2]
+root_key = sys.argv[2]
 
 envelope = json.load(
     open(
@@ -596,7 +576,7 @@ payload = json.loads(
     envelope["payloadJson"]
 )
 
-assert payload["rootKeyId"] == expected_root_key
+assert payload["rootKeyId"] == root_key
 
 fingerprint = payload[
     "rootPublicKeyFingerprint"
@@ -619,78 +599,21 @@ if [[ "${WRONG_PIN}" == "${ROOT_PIN}" ]]; then
   WRONG_PIN="0000000000000000000000000000000000000000000000000000000000000000"
 fi
 
-[[ "${WRONG_PIN}" != "${ROOT_PIN}" ]]
-
-echo "EXTERNAL_ROOT_PIN=${ROOT_PIN}"
-echo "WRONG_ROOT_PIN=${WRONG_PIN}"
-
-echo "[PASS] EXTERNAL_ROOT_PIN_CAPTURED"
-
-echo
-echo "===== BUILD PIN VERIFICATION REQUESTS ====="
-
-python3 \
-  - \
-  "${LINEAGE_ENVELOPE}" \
+printf '%s\n' \
   "${ROOT_PIN}" \
+  > "${ROOT_PIN_FILE}"
+
+printf '%s\n' \
   "${WRONG_PIN}" \
-  "${CORRECT_PIN_REQUEST}" \
-  "${WRONG_PIN_REQUEST}" \
-<<'PY'
-import json
-import sys
+  > "${WRONG_PIN_FILE}"
 
-envelope_file = sys.argv[1]
-root_pin = sys.argv[2]
-wrong_pin = sys.argv[3]
+echo "ROOT_PIN=${ROOT_PIN}"
+echo "WRONG_PIN=${WRONG_PIN}"
 
-correct_file = sys.argv[4]
-wrong_file = sys.argv[5]
-
-envelope_json = open(
-    envelope_file,
-    encoding="utf-8",
-).read()
-
-with open(
-    correct_file,
-    "w",
-    encoding="utf-8",
-) as handle:
-    json.dump(
-        {
-            "envelopeJson":
-                envelope_json,
-
-            "trustedRootFingerprint":
-                root_pin,
-        },
-        handle,
-        separators=(",", ":"),
-    )
-
-with open(
-    wrong_file,
-    "w",
-    encoding="utf-8",
-) as handle:
-    json.dump(
-        {
-            "envelopeJson":
-                envelope_json,
-
-            "trustedRootFingerprint":
-                wrong_pin,
-        },
-        handle,
-        separators=(",", ":"),
-    )
-PY
-
-echo "[PASS] PIN_VERIFICATION_REQUESTS_CREATED"
+echo "[PASS] INDEPENDENT_ROOT_PIN_FILES_READY"
 
 echo
-echo "===== REMOVE ALL LINEAGE SOURCE STATE ====="
+echo "===== REMOVE ALL SOURCE STATE BEFORE OFFLINE VERIFICATION ====="
 
 docker compose exec -T postgres \
   psql \
@@ -811,42 +734,129 @@ echo "SOURCE_ANCHOR_COUNT=${SOURCE_ANCHOR_COUNT}"
 [[ "${SOURCE_TRANSITION_COUNT}" == "0" ]]
 [[ "${SOURCE_ANCHOR_COUNT}" == "0" ]]
 
-echo "[PASS] PINNED_VERIFICATION_SOURCE_STATE_REMOVED"
+echo "[PASS] OFFLINE_SOURCE_STATE_REMOVED"
 
 echo
-echo "===== RESTART WITHOUT ANY PRIVATE KEY ====="
+echo "===== SHUT DOWN TERRASCOPE + POSTGRES ====="
 
 stop_backend
 
-start_without_key
+docker compose stop postgres >/dev/null
 
-echo "[PASS] KEYLESS_PINNED_VERIFICATION_RUNTIME_READY"
+sleep 1
+
+if curl \
+    --silent \
+    --fail \
+    "http://localhost:8087/actuator/health" \
+    >/dev/null 2>&1; then
+
+  echo "[FAIL] Backend is unexpectedly reachable"
+  exit 1
+fi
+
+RUNNING_POSTGRES="$(
+  docker compose ps \
+    --status running \
+    --services \
+    | grep -c '^postgres$' \
+    || true
+)"
+
+echo "RUNNING_POSTGRES_COUNT=${RUNNING_POSTGRES}"
+
+[[ "${RUNNING_POSTGRES}" == "0" ]]
+
+echo "[PASS] BACKEND_OFFLINE"
+echo "[PASS] POSTGRES_OFFLINE"
 
 echo
-echo "===== VERIFY WITH CORRECT EXTERNAL ROOT PIN ====="
+echo "===== PURE-JDK VALID OFFLINE VERIFICATION ====="
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @${CORRECT_PIN_REQUEST} \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/pinning/verify" \
-  >/tmp/terrascope-step37-correct-pin-response.json
+set +e
+
+java \
+  -jar "${STANDALONE_JAR}" \
+  --envelope "${ENVELOPE}" \
+  --root-pin "${ROOT_PIN_FILE}" \
+  --receipt "${VALID_RECEIPT}" \
+  >/tmp/terrascope-step38-offline-valid.log
+
+VALID_VERIFIER_EXIT=$?
+
+set -e
+
+cat /tmp/terrascope-step38-offline-valid.log
+
+echo "VALID_VERIFIER_EXIT=${VALID_VERIFIER_EXIT}"
+
+[[ "${VALID_VERIFIER_EXIT}" == "0" ]]
 
 python3 \
-  - "${ROOT_PIN}" \
+  - "${VALID_RECEIPT}" \
+  "${ROOT_PIN}" \
+  "${KEY1_ID}" \
+  "${KEY3_ID}" \
 <<'PY'
+import hashlib
 import json
+import re
 import sys
 
-root_pin = sys.argv[1]
+receipt_file = sys.argv[1]
+root_pin = sys.argv[2]
+key1 = sys.argv[3]
+key3 = sys.argv[4]
 
-payload = json.load(
-    open(
-        "/tmp/terrascope-step37-correct-pin-response.json",
-        encoding="utf-8",
-    )
+text = open(
+    receipt_file,
+    encoding="utf-8",
+).read()
+
+payload = json.loads(
+    text
+)
+
+expected_document_keys = [
+    "verifierVersion",
+
+    "sourcePackageId",
+    "sourcePackageNumber",
+
+    "envelopeJson",
+    "envelopeHash",
+    "packageHash",
+
+    "trustedRootFingerprint",
+    "presentedRootFingerprint",
+
+    "valid",
+
+    "packageHashValid",
+    "canonicalPayloadValid",
+    "lineageValid",
+    "rootPinValid",
+
+    "transitionCount",
+    "verifiedTransitionCount",
+    "trustAnchorCount",
+
+    "rootKeyId",
+    "terminalKeyId",
+
+    "message",
+    "verifiedAt",
+
+    "receiptHash",
+]
+
+assert list(
+    payload.keys()
+) == expected_document_keys
+
+assert (
+    payload["verifierVersion"]
+    == "TS-STANDALONE-TRUST-VERIFIER-V1"
 )
 
 assert payload["valid"] is True
@@ -863,44 +873,124 @@ assert payload["trustAnchorCount"] == 3
 assert payload["trustedRootFingerprint"] == root_pin
 assert payload["presentedRootFingerprint"] == root_pin
 
+assert payload["rootKeyId"] == key1
+assert payload["terminalKeyId"] == key3
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["receiptHash"],
+)
+
+material = dict(
+    payload
+)
+
+receipt_hash = material.pop(
+    "receiptHash"
+)
+
+expected_material_keys = (
+    expected_document_keys[
+        :-1
+    ]
+)
+
+assert list(
+    material.keys()
+) == expected_material_keys
+
+# Python dictionaries preserve insertion order.
+#
+# This intentionally mirrors the declaration/creator
+# order used by:
+#
+# GovernanceOfflineTrustVerificationReceiptMaterial
+#
+# and by the standalone verifier's LinkedHashMap.
+canonical_material = json.dumps(
+    material,
+    separators=(",", ":"),
+    ensure_ascii=False,
+)
+
+calculated = hashlib.sha256(
+    canonical_material.encode(
+        "utf-8"
+    )
+).hexdigest()
+
 print(
-    "[PASS] EXTERNALLY_PINNED_ROOT_VERIFICATION"
+    f"OFFLINE_RECEIPT_EXPECTED_HASH={receipt_hash}"
 )
 
 print(
-    "[PASS] SOURCE_FREE_PINNED_VERIFICATION"
+    f"OFFLINE_RECEIPT_CALCULATED_HASH={calculated}"
+)
+
+assert calculated == receipt_hash
+
+canonical_document = json.dumps(
+    payload,
+    separators=(",", ":"),
+    ensure_ascii=False,
+)
+
+assert text == canonical_document
+
+print(
+    "[PASS] STANDALONE_RECEIPT_DECLARATION_ORDER"
 )
 
 print(
-    "[PASS] PRIVATE_KEY_FREE_PINNED_VERIFICATION"
+    "[PASS] STANDALONE_VALID_RECEIPT_AUTHORITY"
+)
+
+print(
+    "[PASS] STANDALONE_RECEIPT_HASH_AUTHORITY"
 )
 PY
 
-echo
-echo "===== VERIFY WITH WRONG EXTERNAL ROOT PIN ====="
+echo "[PASS] SERVER_FREE_VALID_VERIFICATION"
+echo "[PASS] DATABASE_FREE_VALID_VERIFICATION"
+echo "[PASS] PRIVATE_KEY_FREE_VALID_VERIFICATION"
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @${WRONG_PIN_REQUEST} \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/pinning/verify" \
-  >/tmp/terrascope-step37-wrong-pin-response.json
+echo
+echo "===== PURE-JDK WRONG-PIN OFFLINE VERIFICATION ====="
+
+set +e
+
+java \
+  -jar "${STANDALONE_JAR}" \
+  --envelope "${ENVELOPE}" \
+  --root-pin "${WRONG_PIN_FILE}" \
+  --receipt "${WRONG_PIN_RECEIPT}" \
+  >/tmp/terrascope-step38-offline-wrong-pin.log
+
+WRONG_PIN_EXIT=$?
+
+set -e
+
+cat /tmp/terrascope-step38-offline-wrong-pin.log
+
+echo "WRONG_PIN_VERIFIER_EXIT=${WRONG_PIN_EXIT}"
+
+[[ "${WRONG_PIN_EXIT}" == "2" ]]
 
 python3 \
-  - "${ROOT_PIN}" \
+  - "${WRONG_PIN_RECEIPT}" \
+  "${ROOT_PIN}" \
   "${WRONG_PIN}" \
 <<'PY'
 import json
 import sys
 
-correct_pin = sys.argv[1]
-wrong_pin = sys.argv[2]
+file_name = sys.argv[1]
+correct_pin = sys.argv[2]
+wrong_pin = sys.argv[3]
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step37-wrong-pin-response.json",
+        file_name,
         encoding="utf-8",
     )
 )
@@ -921,150 +1011,7 @@ assert (
 )
 
 print(
-    "[PASS] WRONG_ROOT_PIN_REJECTION"
-)
-PY
-
-echo
-echo "===== RECORD VALID PIN RECEIPT ====="
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @${CORRECT_PIN_REQUEST} \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/pinning/receipts" \
-  >/tmp/terrascope-step37-valid-receipt.json
-
-VALID_RECEIPT_ID="$(
-  python3 \
-    - "${ROOT_PIN}" \
-<<'PY'
-import json
-import sys
-
-root_pin = sys.argv[1]
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step37-valid-receipt.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["receiptNumber"] == 1
-
-assert payload["verificationResult"] == "VALID"
-
-assert payload["rootPinValid"] is True
-assert payload["lineageValid"] is True
-
-assert payload["trustedRootFingerprint"] == root_pin
-assert payload["presentedRootFingerprint"] == root_pin
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-echo "VALID_PIN_RECEIPT_ID=${VALID_RECEIPT_ID}"
-
-echo "[PASS] VALID_PIN_VERIFICATION_RECEIPT"
-
-echo
-echo "===== RECORD WRONG-PIN RECEIPT ====="
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @${WRONG_PIN_REQUEST} \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/pinning/receipts" \
-  >/tmp/terrascope-step37-invalid-receipt.json
-
-INVALID_RECEIPT_ID="$(
-  python3 \
-    - "${ROOT_PIN}" \
-    "${WRONG_PIN}" \
-<<'PY'
-import json
-import sys
-
-correct_pin = sys.argv[1]
-wrong_pin = sys.argv[2]
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step37-invalid-receipt.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["receiptNumber"] == 2
-
-assert payload["verificationResult"] == "INVALID"
-
-assert payload["packageHashValid"] is True
-assert payload["canonicalPayloadValid"] is True
-assert payload["lineageValid"] is True
-assert payload["rootPinValid"] is False
-
-assert payload["trustedRootFingerprint"] == wrong_pin
-assert payload["presentedRootFingerprint"] == correct_pin
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-echo "INVALID_PIN_RECEIPT_ID=${INVALID_RECEIPT_ID}"
-
-echo "[PASS] INVALID_PIN_VERIFICATION_RECEIPT"
-
-echo
-echo "===== PIN RECEIPT HISTORY ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/pinning/receipts" \
-  >/tmp/terrascope-step37-pin-history.json
-
-python3 \
-  - "${VALID_RECEIPT_ID}" \
-  "${INVALID_RECEIPT_ID}" \
-<<'PY'
-import json
-import sys
-
-valid_id = sys.argv[1]
-invalid_id = sys.argv[2]
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step37-pin-history.json",
-        encoding="utf-8",
-    )
-)
-
-receipts = payload[
-    "receipts"
-]
-
-assert len(receipts) == 2
-
-assert receipts[0]["id"] == invalid_id
-assert receipts[0]["verificationResult"] == "INVALID"
-
-assert receipts[1]["id"] == valid_id
-assert receipts[1]["verificationResult"] == "VALID"
-
-print(
-    "[PASS] PIN_VERIFICATION_RECEIPT_HISTORY"
+    "[PASS] STANDALONE_WRONG_ROOT_PIN_REJECTION"
 )
 PY
 
@@ -1073,7 +1020,7 @@ echo "===== BUILD SIGNATURE-TAMPERED ENVELOPE ====="
 
 python3 \
   - \
-  "${LINEAGE_ENVELOPE}" \
+  "${ENVELOPE}" \
   "${TAMPERED_ENVELOPE}" \
 <<'PY'
 import base64
@@ -1096,11 +1043,9 @@ payload_json = envelope[
     "payloadJson"
 ]
 
-zero_signature = (
-    base64.b64encode(
-        bytes(64)
-    ).decode()
-)
+zero_signature = base64.b64encode(
+    bytes(64)
+).decode()
 
 tampered_payload_json, count = re.subn(
     r'("signatureBase64":")[^"]+(")',
@@ -1145,62 +1090,43 @@ PY
 
 [[ -s "${TAMPERED_ENVELOPE}" ]]
 
+echo "[PASS] OFFLINE_TAMPERED_ENVELOPE_CREATED"
+
+echo
+echo "===== PURE-JDK SIGNATURE-TAMPER OFFLINE VERIFICATION ====="
+
+set +e
+
+java \
+  -jar "${STANDALONE_JAR}" \
+  --envelope "${TAMPERED_ENVELOPE}" \
+  --root-pin "${ROOT_PIN_FILE}" \
+  --receipt "${TAMPER_RECEIPT}" \
+  >/tmp/terrascope-step38-offline-tamper.log
+
+TAMPER_EXIT=$?
+
+set -e
+
+cat /tmp/terrascope-step38-offline-tamper.log
+
+echo "TAMPER_VERIFIER_EXIT=${TAMPER_EXIT}"
+
+[[ "${TAMPER_EXIT}" == "2" ]]
+
 python3 \
-  - \
-  "${TAMPERED_ENVELOPE}" \
+  - "${TAMPER_RECEIPT}" \
   "${ROOT_PIN}" \
-  "${TAMPER_PIN_REQUEST}" \
 <<'PY'
 import json
 import sys
 
-envelope_file = sys.argv[1]
+file_name = sys.argv[1]
 root_pin = sys.argv[2]
-request_file = sys.argv[3]
-
-envelope_json = open(
-    envelope_file,
-    encoding="utf-8",
-).read()
-
-with open(
-    request_file,
-    "w",
-    encoding="utf-8",
-) as handle:
-    json.dump(
-        {
-            "envelopeJson":
-                envelope_json,
-
-            "trustedRootFingerprint":
-                root_pin,
-        },
-        handle,
-        separators=(",", ":"),
-    )
-PY
-
-echo "[PASS] PINNED_TAMPER_FIXTURE_CREATED"
-
-echo
-echo "===== CORRECT PIN CANNOT OVERRIDE CRYPTOGRAPHIC FAILURE ====="
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @${TAMPER_PIN_REQUEST} \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/pinning/verify" \
-  >/tmp/terrascope-step37-tamper-response.json
-
-python3 - <<'PY'
-import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step37-tamper-response.json",
+        file_name,
         encoding="utf-8",
     )
 )
@@ -1213,20 +1139,376 @@ assert payload["canonicalPayloadValid"] is True
 assert payload["lineageValid"] is False
 assert payload["rootPinValid"] is True
 
+assert payload["trustedRootFingerprint"] == root_pin
+assert payload["presentedRootFingerprint"] == root_pin
+
 assert (
     "signature verification failed"
     in payload["message"].lower()
 )
 
 print(
-    "[PASS] PINNED_SIGNATURE_TAMPER_DETECTION"
+    "[PASS] STANDALONE_SIGNATURE_TAMPER_DETECTION"
+)
+PY
+
+echo
+echo "===== PROVE VERIFICATION OCCURRED WITH PLATFORM OFFLINE ====="
+
+if curl \
+    --silent \
+    --fail \
+    "http://localhost:8087/actuator/health" \
+    >/dev/null 2>&1; then
+
+  echo "[FAIL] Backend became reachable during offline verification"
+  exit 1
+fi
+
+RUNNING_POSTGRES="$(
+  docker compose ps \
+    --status running \
+    --services \
+    | grep -c '^postgres$' \
+    || true
+)"
+
+echo "RUNNING_POSTGRES_COUNT_AFTER_OFFLINE_VERIFY=${RUNNING_POSTGRES}"
+
+[[ "${RUNNING_POSTGRES}" == "0" ]]
+
+echo "[PASS] TRUE_AIR_GAPPED_RUNTIME_PROOF"
+
+echo
+echo "===== RESTART DATABASE + BACKEND WITHOUT PRIVATE KEY ====="
+
+docker compose up -d postgres
+
+for attempt in $(seq 1 30); do
+  if docker compose exec -T postgres \
+      pg_isready \
+      -U terrascope \
+      -d terrascope \
+      >/dev/null 2>&1; then
+
+    break
+  fi
+
+  [[ "${attempt}" -lt 30 ]]
+
+  sleep 1
+done
+
+start_without_key
+
+echo "[PASS] KEYLESS_IMPORT_RUNTIME_READY"
+
+echo
+echo "===== BUILD IMPORT REQUESTS ====="
+
+python3 \
+  - \
+  "${VALID_RECEIPT}" \
+  "${WRONG_PIN_RECEIPT}" \
+  "${VALID_IMPORT_REQUEST}" \
+  "${INVALID_IMPORT_REQUEST}" \
+<<'PY'
+import json
+import sys
+
+valid_receipt_file = sys.argv[1]
+invalid_receipt_file = sys.argv[2]
+
+valid_request_file = sys.argv[3]
+invalid_request_file = sys.argv[4]
+
+valid_json = open(
+    valid_receipt_file,
+    encoding="utf-8",
+).read()
+
+invalid_json = open(
+    invalid_receipt_file,
+    encoding="utf-8",
+).read()
+
+with open(
+    valid_request_file,
+    "w",
+    encoding="utf-8",
+) as handle:
+    json.dump(
+        {
+            "receiptJson":
+                valid_json,
+        },
+        handle,
+        separators=(",", ":"),
+    )
+
+with open(
+    invalid_request_file,
+    "w",
+    encoding="utf-8",
+) as handle:
+    json.dump(
+        {
+            "receiptJson":
+                invalid_json,
+        },
+        handle,
+        separators=(",", ":"),
+    )
+PY
+
+echo "[PASS] OFFLINE_IMPORT_REQUESTS_READY"
+
+echo
+echo "===== IMPORT VALID OFFLINE RECEIPT ====="
+
+VALID_IMPORT_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step38-valid-import-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @"${VALID_IMPORT_REQUEST}" \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports"
+)"
+
+echo "VALID_OFFLINE_IMPORT_HTTP=${VALID_IMPORT_HTTP}"
+
+if [[ "${VALID_IMPORT_HTTP}" != "200" ]]; then
+  cat /tmp/terrascope-step38-valid-import-response.json
+  exit 1
+fi
+
+VALID_IMPORT_ID="$(
+  python3 - <<'PY'
+import json
+
+payload = json.load(
+    open(
+        "/tmp/terrascope-step38-valid-import-response.json",
+        encoding="utf-8",
+    )
+)
+
+assert payload["importNumber"] == 1
+assert payload["verificationResult"] == "VALID"
+
+assert payload["packageHashValid"] is True
+assert payload["canonicalPayloadValid"] is True
+assert payload["lineageValid"] is True
+assert payload["rootPinValid"] is True
+
+print(
+    payload["id"]
+)
+PY
+)"
+
+echo "VALID_OFFLINE_IMPORT_ID=${VALID_IMPORT_ID}"
+
+echo "[PASS] VALID_OFFLINE_RECEIPT_REVERIFIED_AND_IMPORTED"
+
+echo
+echo "===== IMPORT WRONG-PIN OFFLINE RECEIPT ====="
+
+INVALID_IMPORT_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step38-invalid-import-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @"${INVALID_IMPORT_REQUEST}" \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports"
+)"
+
+echo "INVALID_OFFLINE_IMPORT_HTTP=${INVALID_IMPORT_HTTP}"
+
+if [[ "${INVALID_IMPORT_HTTP}" != "200" ]]; then
+  cat /tmp/terrascope-step38-invalid-import-response.json
+  exit 1
+fi
+
+INVALID_IMPORT_ID="$(
+  python3 - <<'PY'
+import json
+
+payload = json.load(
+    open(
+        "/tmp/terrascope-step38-invalid-import-response.json",
+        encoding="utf-8",
+    )
+)
+
+assert payload["importNumber"] == 2
+assert payload["verificationResult"] == "INVALID"
+
+assert payload["packageHashValid"] is True
+assert payload["canonicalPayloadValid"] is True
+assert payload["lineageValid"] is True
+assert payload["rootPinValid"] is False
+
+print(
+    payload["id"]
+)
+PY
+)"
+
+echo "INVALID_OFFLINE_IMPORT_ID=${INVALID_IMPORT_ID}"
+
+echo "[PASS] INVALID_OFFLINE_RECEIPT_REVERIFIED_AND_IMPORTED"
+
+echo
+echo "===== IDEMPOTENT OFFLINE RECEIPT IMPORT ====="
+
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @"${VALID_IMPORT_REQUEST}" \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
+  >/tmp/terrascope-step38-valid-import-repeat.json
+
+python3 \
+  - "${VALID_IMPORT_ID}" \
+<<'PY'
+import json
+import sys
+
+expected_id = sys.argv[1]
+
+payload = json.load(
+    open(
+        "/tmp/terrascope-step38-valid-import-repeat.json",
+        encoding="utf-8",
+    )
+)
+
+assert payload["id"] == expected_id
+assert payload["importNumber"] == 1
+
+print(
+    "[PASS] OFFLINE_RECEIPT_IMPORT_IDEMPOTENCY"
+)
+PY
+
+echo
+echo "===== TAMPER OFFLINE RECEIPT DOCUMENT ====="
+
+python3 \
+  - \
+  "${VALID_RECEIPT}" \
+  "${TAMPERED_RECEIPT_IMPORT_REQUEST}" \
+<<'PY'
+import json
+import sys
+
+receipt_file = sys.argv[1]
+request_file = sys.argv[2]
+
+receipt = json.load(
+    open(
+        receipt_file,
+        encoding="utf-8",
+    )
+)
+
+receipt[
+    "valid"
+] = False
+
+tampered_json = json.dumps(
+    receipt,
+    sort_keys=True,
+    separators=(",", ":"),
+    ensure_ascii=False,
+)
+
+with open(
+    request_file,
+    "w",
+    encoding="utf-8",
+) as handle:
+    json.dump(
+        {
+            "receiptJson":
+                tampered_json,
+        },
+        handle,
+        separators=(",", ":"),
+    )
+PY
+
+TAMPERED_RECEIPT_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step38-tampered-import-response.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @"${TAMPERED_RECEIPT_IMPORT_REQUEST}" \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports"
+)"
+
+echo "TAMPERED_OFFLINE_RECEIPT_IMPORT_HTTP=${TAMPERED_RECEIPT_HTTP}"
+
+[[ "${TAMPERED_RECEIPT_HTTP}" == "409" ]]
+
+echo "[PASS] OFFLINE_RECEIPT_TAMPER_REJECTION"
+
+echo
+echo "===== IMPORT HISTORY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
+  >/tmp/terrascope-step38-import-history.json
+
+python3 \
+  - "${VALID_IMPORT_ID}" \
+  "${INVALID_IMPORT_ID}" \
+<<'PY'
+import json
+import sys
+
+valid_id = sys.argv[1]
+invalid_id = sys.argv[2]
+
+payload = json.load(
+    open(
+        "/tmp/terrascope-step38-import-history.json",
+        encoding="utf-8",
+    )
+)
+
+receipts = payload[
+    "receipts"
+]
+
+assert len(receipts) == 2
+
+assert receipts[0]["id"] == invalid_id
+assert receipts[0]["verificationResult"] == "INVALID"
+
+assert receipts[1]["id"] == valid_id
+assert receipts[1]["verificationResult"] == "VALID"
+
+print(
+    "[PASS] OFFLINE_RECEIPT_IMPORT_HISTORY"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-PIN_RECEIPT_COLUMNS="$(
+COLUMN_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1237,12 +1519,12 @@ PIN_RECEIPT_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema='public'
         AND table_name=
-            'resilience_governance_trust_lineage_pin_receipts';
+            'resilience_governance_offline_trust_verification_receipts';
       " \
     | tr -d '[:space:]'
 )"
 
-PIN_RECEIPT_ROWS="$(
+ROW_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1250,16 +1532,16 @@ PIN_RECEIPT_ROWS="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_governance_trust_lineage_pin_receipts
+      FROM resilience_governance_offline_trust_verification_receipts
       WHERE id IN (
-          '${VALID_RECEIPT_ID}'::uuid,
-          '${INVALID_RECEIPT_ID}'::uuid
+          '${VALID_IMPORT_ID}'::uuid,
+          '${INVALID_IMPORT_ID}'::uuid
       );
       " \
     | tr -d '[:space:]'
 )"
 
-PIN_RECEIPT_FKS="$(
+FK_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1269,13 +1551,13 @@ PIN_RECEIPT_FKS="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conrelid=
-            'resilience_governance_trust_lineage_pin_receipts'::regclass
+            'resilience_governance_offline_trust_verification_receipts'::regclass
         AND contype='f';
       " \
     | tr -d '[:space:]'
 )"
 
-PIN_RECEIPT_NUMBER_UNIQUE="$(
+RECEIPT_HASH_UNIQUE="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1285,41 +1567,12 @@ PIN_RECEIPT_NUMBER_UNIQUE="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conname=
-            'uq_trust_lineage_pin_receipt_number';
+            'uq_offline_trust_receipt_hash';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "PIN_RECEIPT_COLUMN_COUNT=${PIN_RECEIPT_COLUMNS}"
-echo "PIN_RECEIPT_ROW_COUNT=${PIN_RECEIPT_ROWS}"
-echo "PIN_RECEIPT_SOURCE_FK_COUNT=${PIN_RECEIPT_FKS}"
-echo "PIN_RECEIPT_NUMBER_UNIQUE_COUNT=${PIN_RECEIPT_NUMBER_UNIQUE}"
-
-[[ "${PIN_RECEIPT_COLUMNS}" == "18" ]]
-[[ "${PIN_RECEIPT_ROWS}" == "2" ]]
-[[ "${PIN_RECEIPT_FKS}" == "0" ]]
-[[ "${PIN_RECEIPT_NUMBER_UNIQUE}" == "1" ]]
-
-echo "[PASS] PIN_RECEIPT_DATABASE_CONTRACT"
-
-echo
-echo "===== CLEAN STEP 37 FIXTURE ====="
-
-docker compose exec -T postgres \
-  psql \
-    -U terrascope \
-    -d terrascope \
-    -c "
-      DELETE
-      FROM resilience_governance_trust_lineage_pin_receipts
-      WHERE id IN (
-          '${VALID_RECEIPT_ID}'::uuid,
-          '${INVALID_RECEIPT_ID}'::uuid
-      );
-    " \
-  >/dev/null
-
-FINAL_PIN_RECEIPT_COUNT="$(
+IMPORT_NUMBER_UNIQUE="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1327,7 +1580,53 @@ FINAL_PIN_RECEIPT_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_governance_trust_lineage_pin_receipts;
+      FROM pg_constraint
+      WHERE conname=
+            'uq_offline_trust_receipt_import_number';
+      " \
+    | tr -d '[:space:]'
+)"
+
+echo "OFFLINE_RECEIPT_COLUMN_COUNT=${COLUMN_COUNT}"
+echo "OFFLINE_RECEIPT_ROW_COUNT=${ROW_COUNT}"
+echo "OFFLINE_RECEIPT_SOURCE_FK_COUNT=${FK_COUNT}"
+echo "OFFLINE_RECEIPT_HASH_UNIQUE_COUNT=${RECEIPT_HASH_UNIQUE}"
+echo "OFFLINE_RECEIPT_IMPORT_NUMBER_UNIQUE_COUNT=${IMPORT_NUMBER_UNIQUE}"
+
+[[ "${COLUMN_COUNT}" == "22" ]]
+[[ "${ROW_COUNT}" == "2" ]]
+[[ "${FK_COUNT}" == "0" ]]
+[[ "${RECEIPT_HASH_UNIQUE}" == "1" ]]
+[[ "${IMPORT_NUMBER_UNIQUE}" == "1" ]]
+
+echo "[PASS] OFFLINE_RECEIPT_DATABASE_CONTRACT"
+
+echo
+echo "===== CLEAN STEP 38 FIXTURE ====="
+
+docker compose exec -T postgres \
+  psql \
+    -U terrascope \
+    -d terrascope \
+    -c "
+      DELETE
+      FROM resilience_governance_offline_trust_verification_receipts
+      WHERE id IN (
+          '${VALID_IMPORT_ID}'::uuid,
+          '${INVALID_IMPORT_ID}'::uuid
+      );
+    " \
+  >/dev/null
+
+FINAL_OFFLINE_RECEIPT_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_governance_offline_trust_verification_receipts;
       " \
     | tr -d '[:space:]'
 )"
@@ -1358,17 +1657,17 @@ FINAL_TRANSITION_COUNT="$(
     | tr -d '[:space:]'
 )"
 
-echo "FINAL_PIN_RECEIPT_COUNT=${FINAL_PIN_RECEIPT_COUNT}"
+echo "FINAL_OFFLINE_RECEIPT_COUNT=${FINAL_OFFLINE_RECEIPT_COUNT}"
 echo "FINAL_PACKAGE_COUNT=${FINAL_PACKAGE_COUNT}"
 echo "FINAL_TRANSITION_COUNT=${FINAL_TRANSITION_COUNT}"
 
-[[ "${FINAL_PIN_RECEIPT_COUNT}" == "0" ]]
+[[ "${FINAL_OFFLINE_RECEIPT_COUNT}" == "0" ]]
 [[ "${FINAL_PACKAGE_COUNT}" == "0" ]]
 [[ "${FINAL_TRANSITION_COUNT}" == "0" ]]
 
-echo "[PASS] STEP37_CLEANUP"
+echo "[PASS] STEP38_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 37 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 38 VERIFICATION PASSED"
 echo "========================================================================"

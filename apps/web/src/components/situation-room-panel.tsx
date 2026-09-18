@@ -152,6 +152,10 @@ import {
   ResilienceGovernanceTrustRootPin,
 } from "@/components/resilience-governance-trust-root-pin";
 
+import {
+  ResilienceGovernanceOfflineVerifier,
+} from "@/components/resilience-governance-offline-verifier";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1308,6 +1312,8 @@ export function SituationRoomPanel({
                     <ResilienceGovernanceTrustLineage />
 
                     <ResilienceGovernanceTrustRootPin />
+
+                    <ResilienceGovernanceOfflineVerifier />
 
                     <IncidentResilienceAuditLedger
                       key={

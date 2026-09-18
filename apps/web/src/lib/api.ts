@@ -235,6 +235,11 @@ import type {
   GovernanceTrustLineagePinnedVerificationResponse,
 } from "@/types/resilience-governance-trust-root-pin";
 
+import type {
+  GovernanceOfflineTrustVerificationReceipt,
+  GovernanceOfflineTrustVerificationReceiptHistoryResponse,
+} from "@/types/resilience-governance-offline-trust-verification";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -4174,4 +4179,55 @@ export async function fetchGovernanceTrustLineagePinReceipts(
   }
 
   return response.json() as Promise<GovernanceTrustLineagePinReceiptHistoryResponse>;
+}
+
+export async function importGovernanceOfflineTrustVerificationReceipt(
+  receiptJson: string,
+): Promise<GovernanceOfflineTrustVerificationReceipt> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports`,
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        receiptJson,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Offline trust receipt import returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustVerificationReceipt>;
+}
+
+export async function fetchGovernanceOfflineTrustVerificationReceipts(
+  signal?: AbortSignal,
+): Promise<GovernanceOfflineTrustVerificationReceiptHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Offline trust receipt history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustVerificationReceiptHistoryResponse>;
 }
