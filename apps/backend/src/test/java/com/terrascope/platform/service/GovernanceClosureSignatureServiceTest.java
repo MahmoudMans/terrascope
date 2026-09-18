@@ -77,7 +77,8 @@ class GovernanceClosureSignatureServiceTest {
                         closureService,
                         configuration,
                         crypto,
-                        payloadBuilder
+                        payloadBuilder,
+                        new GovernanceTrustAnchorLifecyclePolicy()
                 );
 
         KeyPair pair =
@@ -156,8 +157,9 @@ class GovernanceClosureSignatureServiceTest {
         );
 
         when(
-                repository.signatureExistsForCertificate(
-                        target.certificateId()
+                repository.signatureExistsForCertificateAndKey(
+                        target.certificateId(),
+                        "test-key"
                 )
         ).thenReturn(
                 false
@@ -267,8 +269,9 @@ class GovernanceClosureSignatureServiceTest {
         );
 
         when(
-                repository.signatureExistsForCertificate(
-                        target.certificateId()
+                repository.signatureExistsForCertificateAndKey(
+                        target.certificateId(),
+                        "test-key"
                 )
         ).thenReturn(
                 true

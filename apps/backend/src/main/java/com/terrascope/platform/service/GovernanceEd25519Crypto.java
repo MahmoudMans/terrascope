@@ -2,7 +2,6 @@ package com.terrascope.platform.service;
 
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
@@ -30,6 +29,16 @@ public class GovernanceEd25519Crypto {
                                     publicKeyX509Base64
                             );
 
+            KeyFactory
+                    .getInstance(
+                            "Ed25519"
+                    )
+                    .generatePublic(
+                            new X509EncodedKeySpec(
+                                    encoded
+                            )
+                    );
+
             MessageDigest digest =
                     MessageDigest.getInstance(
                             "SHA-256"
@@ -47,7 +56,7 @@ public class GovernanceEd25519Crypto {
                 Exception exception
         ) {
             throw new IllegalArgumentException(
-                    "Unable to fingerprint Ed25519 public key.",
+                    "Unable to parse or fingerprint Ed25519 public key.",
                     exception
             );
         }

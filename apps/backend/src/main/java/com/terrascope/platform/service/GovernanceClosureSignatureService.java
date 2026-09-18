@@ -5,6 +5,10 @@ import com.terrascope.platform.api.model.GovernanceClosureSignatureHistoryRespon
 import com.terrascope.platform.api.model.GovernanceClosureVerificationResponse;
 import com.terrascope.platform.api.model.GovernanceSignatureVerificationResponse;
 import com.terrascope.platform.api.model.GovernanceSigningReadinessResponse;
+import com.terrascope.platform.api.model.GovernanceTrustAnchorHistoryResponse;
+import com.terrascope.platform.api.model.GovernanceTrustAnchorView;
+import com.terrascope.platform.api.model.RegisterGovernanceTrustAnchorRequest;
+import com.terrascope.platform.api.model.RetireGovernanceTrustAnchorRequest;
 import com.terrascope.platform.domain.GovernanceSignatureMaterial;
 import com.terrascope.platform.domain.GovernanceSignatureTarget;
 import com.terrascope.platform.domain.GovernanceTrustAnchor;
@@ -32,18 +36,22 @@ public class GovernanceClosureSignatureService {
 
     private final GovernanceSignaturePayloadBuilder payloadBuilder;
 
+    private final GovernanceTrustAnchorLifecyclePolicy lifecyclePolicy;
+
     public GovernanceClosureSignatureService(
             GovernanceClosureSignatureRepository repository,
             GovernanceClosureCertificateService closureService,
             GovernanceSigningConfiguration configuration,
             GovernanceEd25519Crypto crypto,
-            GovernanceSignaturePayloadBuilder payloadBuilder
+            GovernanceSignaturePayloadBuilder payloadBuilder,
+            GovernanceTrustAnchorLifecyclePolicy lifecyclePolicy
     ) {
         this.repository = repository;
         this.closureService = closureService;
         this.configuration = configuration;
         this.crypto = crypto;
         this.payloadBuilder = payloadBuilder;
+        this.lifecyclePolicy = lifecyclePolicy;
     }
 
     public GovernanceSigningReadinessResponse readiness() {
@@ -107,40 +115,60 @@ public class GovernanceClosureSignatureService {
 
         if (
                 existing != null
-                && (
+        ) {
+            if (
                     !GovernanceEd25519Crypto.ALGORITHM
                             .equals(
                                     existing.algorithm()
                             )
-                    || !"ACTIVE"
-                            .equals(
-                                    existing.status()
-                            )
+
                     || !fingerprint
                             .equals(
                                     existing.publicKeyFingerprint()
                             )
+
                     || !configuration
                             .publicKeyX509Base64()
                             .equals(
                                     existing.publicKeyX509Base64()
                             )
-                )
-        ) {
-            return new GovernanceSigningReadinessResponse(
-                    false,
+            ) {
+                return new GovernanceSigningReadinessResponse(
+                        false,
 
-                    GovernanceEd25519Crypto.ALGORITHM,
+                        GovernanceEd25519Crypto.ALGORITHM,
 
-                    keyId,
-                    fingerprint,
+                        keyId,
+                        fingerprint,
 
-                    true,
+                        true,
 
-                    "Configured key conflicts with the registered governance trust anchor.",
+                        "Configured key conflicts with the registered governance trust anchor.",
 
-                    Instant.now()
-            );
+                        Instant.now()
+                );
+            }
+
+            if (
+                    !lifecyclePolicy.canSign(
+                            existing
+                    )
+            ) {
+                return new GovernanceSigningReadinessResponse(
+                        false,
+
+                        GovernanceEd25519Crypto.ALGORITHM,
+
+                        keyId,
+                        fingerprint,
+
+                        true,
+
+                        "Configured governance signing key is retired and cannot issue new signatures.",
+
+                        Instant.now()
+                );
+            }
         }
 
         return new GovernanceSigningReadinessResponse(
@@ -155,7 +183,7 @@ public class GovernanceClosureSignatureService {
 
                 existing == null
                         ? "Ed25519 signing key is ready. Trust anchor will be registered on first signature."
-                        : "Ed25519 signing key matches the registered governance trust anchor.",
+                        : "Ed25519 signing key matches the active governance trust anchor.",
 
                 Instant.now()
         );
@@ -165,6 +193,177 @@ public class GovernanceClosureSignatureService {
         return new GovernanceClosureSignatureHistoryResponse(
                 repository.findHistory()
         );
+    }
+
+    public GovernanceTrustAnchorHistoryResponse trustAnchorHistory() {
+        return new GovernanceTrustAnchorHistoryResponse(
+                repository.findTrustAnchorViews(),
+                repository.findTrustAnchorEvents()
+        );
+    }
+
+    @Transactional
+    public GovernanceTrustAnchorView registerTrustAnchor(
+            RegisterGovernanceTrustAnchorRequest request
+    ) {
+        String keyId =
+                request.keyId()
+                        .trim();
+
+        if (
+                repository
+                        .findTrustAnchor(
+                                keyId
+                        )
+                        .isPresent()
+        ) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Governance trust anchor key ID already exists."
+            );
+        }
+
+        String publicKey =
+                request.publicKeyX509Base64()
+                        .trim();
+
+        String fingerprint;
+
+        try {
+            fingerprint =
+                    crypto.publicKeyFingerprint(
+                            publicKey
+                    );
+
+        } catch (
+                IllegalArgumentException exception
+        ) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Public key is not a valid Ed25519 X.509 key."
+            );
+        }
+
+        GovernanceTrustAnchor anchor =
+                repository.registerTrustAnchor(
+                        keyId,
+                        publicKey,
+                        fingerprint
+                );
+
+        repository.appendTrustAnchorEvent(
+                UUID.randomUUID(),
+
+                anchor.keyId(),
+
+                "REGISTERED",
+
+                null,
+
+                "Ed25519 governance trust anchor registered with fingerprint "
+                        + anchor.publicKeyFingerprint()
+                        + "."
+        );
+
+        return repository.requireTrustAnchorView(
+                anchor.keyId()
+        );
+    }
+
+    @Transactional
+    public GovernanceTrustAnchorView retireTrustAnchor(
+            String keyId,
+            RetireGovernanceTrustAnchorRequest request
+    ) {
+        GovernanceTrustAnchor current =
+                repository
+                        .findTrustAnchor(
+                                keyId
+                        )
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Governance trust anchor was not found."
+                                )
+                        );
+
+        if (
+                !lifecyclePolicy.canSign(
+                        current
+                )
+        ) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Governance trust anchor is already retired."
+            );
+        }
+
+        String replacementKeyId =
+                request.replacementKeyId()
+                        .trim();
+
+        if (
+                current.keyId()
+                        .equals(
+                                replacementKeyId
+                        )
+        ) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Replacement governance key must be different from the retired key."
+            );
+        }
+
+        GovernanceTrustAnchor replacement =
+                repository
+                        .findTrustAnchor(
+                                replacementKeyId
+                        )
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Replacement governance trust anchor does not exist."
+                                )
+                        );
+
+        if (
+                !lifecyclePolicy.canSign(
+                        replacement
+                )
+        ) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Replacement governance trust anchor must be ACTIVE."
+            );
+        }
+
+        String reason =
+                request.reason()
+                        .trim();
+
+        GovernanceTrustAnchorView retired =
+                repository.retireTrustAnchor(
+                        current.keyId(),
+                        replacement.keyId(),
+                        reason
+                );
+
+        repository.appendTrustAnchorEvent(
+                UUID.randomUUID(),
+
+                current.keyId(),
+
+                "RETIRED",
+
+                replacement.keyId(),
+
+                "Governance trust anchor retired. Replacement key: "
+                        + replacement.keyId()
+                        + ". Reason: "
+                        + reason
+        );
+
+        return retired;
     }
 
     @Transactional
@@ -208,13 +407,15 @@ public class GovernanceClosureSignatureService {
                         );
 
         if (
-                repository.signatureExistsForCertificate(
-                        certificateId
-                )
+                repository
+                        .signatureExistsForCertificateAndKey(
+                                certificateId,
+                                readiness.keyId()
+                        )
         ) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Governance closure certificate already has an Ed25519 signature."
+                    "Governance closure certificate already has a signature from this trust anchor."
             );
         }
 
@@ -223,15 +424,30 @@ public class GovernanceClosureSignatureService {
                         .findTrustAnchor(
                                 readiness.keyId()
                         )
-                        .orElseGet(() ->
-                                repository.registerTrustAnchor(
-                                        readiness.keyId(),
-                                        configuration.publicKeyX509Base64(),
-                                        readiness.publicKeyFingerprint()
-                                )
-                        );
+                        .orElseGet(() -> {
+                            GovernanceTrustAnchor registered =
+                                    repository.registerTrustAnchor(
+                                            readiness.keyId(),
+                                            configuration.publicKeyX509Base64(),
+                                            readiness.publicKeyFingerprint()
+                                    );
 
-        requireCompatibleAnchor(
+                            repository.appendTrustAnchorEvent(
+                                    UUID.randomUUID(),
+
+                                    registered.keyId(),
+
+                                    "REGISTERED",
+
+                                    null,
+
+                                    "Ed25519 governance trust anchor automatically registered during first signature issuance."
+                            );
+
+                            return registered;
+                        });
+
+        requireCompatibleActiveAnchor(
                 anchor,
                 readiness
         );
@@ -280,6 +496,20 @@ public class GovernanceClosureSignatureService {
 
         repository.touchTrustAnchor(
                 anchor.keyId()
+        );
+
+        repository.appendTrustAnchorEvent(
+                UUID.randomUUID(),
+
+                anchor.keyId(),
+
+                "SIGNATURE_ISSUED",
+
+                null,
+
+                "Ed25519 governance signature issued for closure certificate #"
+                        + saved.certificateNumber()
+                        + "."
         );
 
         return saved;
@@ -382,12 +612,7 @@ public class GovernanceClosureSignatureService {
             }
 
             if (
-                    !"ACTIVE"
-                            .equals(
-                                    anchor.status()
-                            )
-
-                    || !GovernanceEd25519Crypto.ALGORITHM
+                    !GovernanceEd25519Crypto.ALGORITHM
                             .equals(
                                     anchor.algorithm()
                             )
@@ -407,6 +632,21 @@ public class GovernanceClosureSignatureService {
                         verifiedCount,
                         signature,
                         "Governance trust anchor metadata does not match the stored signature."
+                );
+            }
+
+            if (
+                    !lifecyclePolicy
+                            .canVerifyHistoricalSignature(
+                                    anchor,
+                                    signature.createdAt()
+                            )
+            ) {
+                return invalid(
+                        signatures.size(),
+                        verifiedCount,
+                        signature,
+                        "Governance signature falls outside the trust anchor validity period."
                 );
             }
 
@@ -506,7 +746,7 @@ public class GovernanceClosureSignatureService {
 
                 signatures.isEmpty()
                         ? "No Ed25519 governance signatures have been issued."
-                        : "All Ed25519 governance signatures verified against registered trust anchors.",
+                        : "All Ed25519 governance signatures verified against their trust-anchor validity periods.",
 
                 Instant.now()
         );
@@ -529,7 +769,7 @@ public class GovernanceClosureSignatureService {
         );
     }
 
-    private void requireCompatibleAnchor(
+    private void requireCompatibleActiveAnchor(
             GovernanceTrustAnchor anchor,
             GovernanceSigningReadinessResponse readiness
     ) {
@@ -539,10 +779,9 @@ public class GovernanceClosureSignatureService {
                                 anchor.algorithm()
                         )
 
-                || !"ACTIVE"
-                        .equals(
-                                anchor.status()
-                        )
+                || !lifecyclePolicy.canSign(
+                        anchor
+                )
 
                 || !readiness
                         .publicKeyFingerprint()
@@ -558,7 +797,7 @@ public class GovernanceClosureSignatureService {
         ) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Configured signing key does not match the registered governance trust anchor."
+                    "Configured signing key does not match an ACTIVE registered governance trust anchor."
             );
         }
     }

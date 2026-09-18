@@ -120,6 +120,10 @@ import {
   ResilienceGovernanceSignatures,
 } from "@/components/resilience-governance-signatures";
 
+import {
+  ResilienceGovernanceTrustLifecycle,
+} from "@/components/resilience-governance-trust-lifecycle";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1260,6 +1264,8 @@ export function SituationRoomPanel({
                     <ResilienceGovernanceClosure />
 
                     <ResilienceGovernanceSignatures />
+
+                    <ResilienceGovernanceTrustLifecycle />
 
                     <IncidentResilienceAuditLedger
                       key={

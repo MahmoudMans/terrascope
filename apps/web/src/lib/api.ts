@@ -184,6 +184,13 @@ import type {
   GovernanceSigningReadinessResponse,
 } from "@/types/resilience-governance-signatures";
 
+import type {
+  GovernanceTrustAnchorHistoryResponse,
+  GovernanceTrustAnchorView,
+  RegisterGovernanceTrustAnchorRequest,
+  RetireGovernanceTrustAnchorRequest,
+} from "@/types/resilience-governance-trust-lifecycle";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3517,4 +3524,77 @@ export async function verifyGovernanceClosureSignatures(): Promise<GovernanceSig
   }
 
   return response.json() as Promise<GovernanceSignatureVerificationResponse>;
+}
+
+export async function fetchGovernanceTrustAnchorHistory(
+  signal?: AbortSignal,
+): Promise<GovernanceTrustAnchorHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-anchors`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Governance trust-anchor history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustAnchorHistoryResponse>;
+}
+
+export async function registerGovernanceTrustAnchor(
+  request: RegisterGovernanceTrustAnchorRequest,
+): Promise<GovernanceTrustAnchorView> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-anchors`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to register governance trust anchor. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustAnchorView>;
+}
+
+export async function retireGovernanceTrustAnchor(
+  keyId: string,
+  request: RetireGovernanceTrustAnchorRequest,
+): Promise<GovernanceTrustAnchorView> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-anchors/${encodeURIComponent(keyId)}/retire`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to retire governance trust anchor. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustAnchorView>;
 }

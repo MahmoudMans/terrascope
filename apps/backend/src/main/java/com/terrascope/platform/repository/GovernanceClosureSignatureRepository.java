@@ -1,6 +1,8 @@
 package com.terrascope.platform.repository;
 
 import com.terrascope.platform.api.model.GovernanceClosureSignature;
+import com.terrascope.platform.api.model.GovernanceTrustAnchorEvent;
+import com.terrascope.platform.api.model.GovernanceTrustAnchorView;
 import com.terrascope.platform.domain.GovernanceSignatureTarget;
 import com.terrascope.platform.domain.GovernanceTrustAnchor;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -84,18 +86,29 @@ public class GovernanceClosureSignatureRepository {
                 .optional();
     }
 
-    public boolean signatureExistsForCertificate(
-            UUID certificateId
+    public boolean signatureExistsForCertificateAndKey(
+            UUID certificateId,
+            String keyId
     ) {
         return jdbcClient
                 .sql("""
                         SELECT COUNT(*)
+
                         FROM resilience_governance_closure_signatures
-                        WHERE certificate_id = :certificateId
+
+                        WHERE certificate_id =
+                              :certificateId
+
+                          AND key_id =
+                              :keyId
                         """)
                 .param(
                         "certificateId",
                         certificateId
+                )
+                .param(
+                        "keyId",
+                        keyId
                 )
                 .query(
                         Integer.class
@@ -181,14 +194,35 @@ public class GovernanceClosureSignatureRepository {
         );
     }
 
-    public void touchTrustAnchor(
+    public GovernanceTrustAnchorView requireTrustAnchorView(
             String keyId
     ) {
-        jdbcClient
-                .sql("""
-                        UPDATE resilience_governance_trust_anchors
+        return findTrustAnchorView(
+                keyId
+        ).orElseThrow(() ->
+                new IllegalStateException(
+                        "Trust anchor view disappeared."
+                )
+        );
+    }
 
-                        SET last_used_at = NOW()
+    public Optional<GovernanceTrustAnchorView> findTrustAnchorView(
+            String keyId
+    ) {
+        return jdbcClient
+                .sql("""
+                        SELECT
+                            key_id,
+                            algorithm,
+                            public_key_fingerprint,
+                            status,
+                            superseded_by_key_id,
+                            retirement_reason,
+                            created_at,
+                            last_used_at,
+                            retired_at
+
+                        FROM resilience_governance_trust_anchors
 
                         WHERE key_id = :keyId
                         """)
@@ -196,7 +230,181 @@ public class GovernanceClosureSignatureRepository {
                         "keyId",
                         keyId
                 )
+                .query(
+                        this::mapTrustAnchorView
+                )
+                .optional();
+    }
+
+    public List<GovernanceTrustAnchorView> findTrustAnchorViews() {
+        return jdbcClient
+                .sql("""
+                        SELECT
+                            key_id,
+                            algorithm,
+                            public_key_fingerprint,
+                            status,
+                            superseded_by_key_id,
+                            retirement_reason,
+                            created_at,
+                            last_used_at,
+                            retired_at
+
+                        FROM resilience_governance_trust_anchors
+
+                        ORDER BY
+                            created_at DESC,
+                            key_id DESC
+                        """)
+                .query(
+                        this::mapTrustAnchorView
+                )
+                .list();
+    }
+
+    public GovernanceTrustAnchorView retireTrustAnchor(
+            String keyId,
+            String replacementKeyId,
+            String reason
+    ) {
+        String updatedKeyId =
+                jdbcClient
+                        .sql("""
+                                UPDATE resilience_governance_trust_anchors
+
+                                SET
+                                    status = 'RETIRED',
+
+                                    superseded_by_key_id =
+                                        :replacementKeyId,
+
+                                    retirement_reason =
+                                        :reason,
+
+                                    retired_at =
+                                        NOW()
+
+                                WHERE key_id =
+                                      :keyId
+
+                                RETURNING key_id
+                                """)
+                        .param(
+                                "replacementKeyId",
+                                replacementKeyId
+                        )
+                        .param(
+                                "reason",
+                                reason
+                        )
+                        .param(
+                                "keyId",
+                                keyId
+                        )
+                        .query(
+                                String.class
+                        )
+                        .optional()
+                        .orElseThrow(() ->
+                                new IllegalStateException(
+                                        "Trust anchor retirement returned no row."
+                                )
+                        );
+
+        return requireTrustAnchorView(
+                updatedKeyId
+        );
+    }
+
+    public void touchTrustAnchor(
+            String keyId
+    ) {
+        jdbcClient
+                .sql("""
+                        UPDATE resilience_governance_trust_anchors
+
+                        SET last_used_at =
+                            NOW()
+
+                        WHERE key_id =
+                              :keyId
+                        """)
+                .param(
+                        "keyId",
+                        keyId
+                )
                 .update();
+    }
+
+    public void appendTrustAnchorEvent(
+            UUID id,
+            String keyId,
+            String eventType,
+            String replacementKeyId,
+            String detail
+    ) {
+        jdbcClient
+                .sql("""
+                        INSERT INTO resilience_governance_trust_anchor_events (
+                            id,
+                            key_id,
+                            event_type,
+                            replacement_key_id,
+                            detail
+                        )
+                        VALUES (
+                            :id,
+                            :keyId,
+                            :eventType,
+                            :replacementKeyId,
+                            :detail
+                        )
+                        """)
+                .param(
+                        "id",
+                        id
+                )
+                .param(
+                        "keyId",
+                        keyId
+                )
+                .param(
+                        "eventType",
+                        eventType
+                )
+                .param(
+                        "replacementKeyId",
+                        replacementKeyId,
+                        java.sql.Types.VARCHAR
+                )
+                .param(
+                        "detail",
+                        detail
+                )
+                .update();
+    }
+
+    public List<GovernanceTrustAnchorEvent> findTrustAnchorEvents() {
+        return jdbcClient
+                .sql("""
+                        SELECT
+                            id,
+                            key_id,
+                            event_type,
+                            replacement_key_id,
+                            detail,
+                            created_at
+
+                        FROM resilience_governance_trust_anchor_events
+
+                        ORDER BY
+                            created_at DESC,
+                            id DESC
+                        """)
+                .query(
+                        this::mapTrustAnchorEvent
+                )
+                .list();
     }
 
     public GovernanceClosureSignature saveSignature(
@@ -336,7 +544,8 @@ public class GovernanceClosureSignatureRepository {
                         + """
                         FROM resilience_governance_closure_signatures
 
-                        WHERE id = :signatureId
+                        WHERE id =
+                              :signatureId
                         """)
                 .param(
                         "signatureId",
@@ -452,6 +661,96 @@ public class GovernanceClosureSignatureRepository {
                 retiredAt == null
                         ? null
                         : retiredAt.toInstant()
+        );
+    }
+
+    private GovernanceTrustAnchorView mapTrustAnchorView(
+            ResultSet resultSet,
+            int rowNumber
+    ) throws SQLException {
+        OffsetDateTime retiredAt =
+                resultSet.getObject(
+                        "retired_at",
+                        OffsetDateTime.class
+                );
+
+        return new GovernanceTrustAnchorView(
+                resultSet.getString(
+                        "key_id"
+                ),
+
+                resultSet.getString(
+                        "algorithm"
+                ),
+
+                resultSet.getString(
+                        "public_key_fingerprint"
+                ),
+
+                resultSet.getString(
+                        "status"
+                ),
+
+                resultSet.getString(
+                        "superseded_by_key_id"
+                ),
+
+                resultSet.getString(
+                        "retirement_reason"
+                ),
+
+                resultSet
+                        .getObject(
+                                "created_at",
+                                OffsetDateTime.class
+                        )
+                        .toInstant(),
+
+                resultSet
+                        .getObject(
+                                "last_used_at",
+                                OffsetDateTime.class
+                        )
+                        .toInstant(),
+
+                retiredAt == null
+                        ? null
+                        : retiredAt.toInstant()
+        );
+    }
+
+    private GovernanceTrustAnchorEvent mapTrustAnchorEvent(
+            ResultSet resultSet,
+            int rowNumber
+    ) throws SQLException {
+        return new GovernanceTrustAnchorEvent(
+                resultSet.getObject(
+                        "id",
+                        UUID.class
+                ),
+
+                resultSet.getString(
+                        "key_id"
+                ),
+
+                resultSet.getString(
+                        "event_type"
+                ),
+
+                resultSet.getString(
+                        "replacement_key_id"
+                ),
+
+                resultSet.getString(
+                        "detail"
+                ),
+
+                resultSet
+                        .getObject(
+                                "created_at",
+                                OffsetDateTime.class
+                        )
+                        .toInstant()
         );
     }
 }
