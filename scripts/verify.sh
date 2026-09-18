@@ -18,13 +18,14 @@ fi
 
 BACKEND_PID=""
 
-BACKEND_LOG="/tmp/terrascope-step47-backend.log"
+BACKEND_LOG="/tmp/terrascope-step48-backend.log"
 
-WORK="/tmp/terrascope-step47"
+WORK="/tmp/terrascope-step48"
+
+TOOLS="${WORK}/tools"
 
 OLD_DIR="${WORK}/old"
 CURRENT_DIR="${WORK}/current"
-TOOLS_DIR="${WORK}/tools"
 
 ARTIFACT_NAME="terrascope-checkpoint-bundle-verifier.jar"
 
@@ -34,42 +35,53 @@ CURRENT_ARTIFACT="${CURRENT_DIR}/${ARTIFACT_NAME}"
 OLD_MANIFEST="${OLD_DIR}/release.manifest"
 CURRENT_MANIFEST="${CURRENT_DIR}/release.manifest"
 
-ROOT_PRIVATE="${WORK}/release-root-private.b64"
-ROOT_PUBLIC="${WORK}/release-root-public.b64"
-ROOT_PIN="${WORK}/release-root.sha256"
+ROOT_PRIVATE="${WORK}/root-private.b64"
+ROOT_PUBLIC="${WORK}/root-public.b64"
+ROOT_PIN="${WORK}/root.sha256"
 
-SUCCESSOR_PRIVATE="${WORK}/release-successor-private.b64"
-SUCCESSOR_PUBLIC="${WORK}/release-successor-public.b64"
-SUCCESSOR_DIRECT_PIN="${WORK}/release-successor-direct.sha256"
+INTERMEDIATE_PRIVATE="${WORK}/intermediate-private.b64"
+INTERMEDIATE_PUBLIC="${WORK}/intermediate-public.b64"
+INTERMEDIATE_DIRECT_PIN="${WORK}/intermediate-direct.sha256"
+
+TERMINAL_PRIVATE="${WORK}/terminal-private.b64"
+TERMINAL_PUBLIC="${WORK}/terminal-public.b64"
+TERMINAL_DIRECT_PIN="${WORK}/terminal-direct.sha256"
 
 TRANSPARENCY_PRIVATE="${WORK}/transparency-private.b64"
 TRANSPARENCY_PUBLIC="${WORK}/transparency-public.b64"
 TRANSPARENCY_PIN="${WORK}/transparency.sha256"
 
-DERIVED_TERMINAL_PIN="${WORK}/release-terminal-derived.sha256"
-DERIVED_TERMINAL_PIN_OFFLINE="${WORK}/release-terminal-derived-offline.sha256"
+FULL_LINEAGE="${WORK}/release-authority.lineage"
+STALE_LINEAGE="${WORK}/release-authority-stale.lineage"
 
+STALE_HEAD_PIN="${WORK}/stale-lineage-head.sha256"
+CURRENT_HEAD_PIN="${WORK}/current-lineage-head.sha256"
+WRONG_HEAD_PIN="${WORK}/wrong-lineage-head.sha256"
 WRONG_ROOT_PIN="${WORK}/wrong-root.sha256"
 
-LINEAGE="${WORK}/release-authority.lineage"
-TAMPERED_LINEAGE="${WORK}/release-authority-tampered.lineage"
-SIGNATURE_TAMPERED_LINEAGE="${WORK}/release-authority-signature-tampered.lineage"
-TRUNCATED_LINEAGE="${WORK}/release-authority-truncated.lineage"
+STALE_DERIVED_PIN="${WORK}/stale-derived-release.sha256"
+CURRENT_DERIVED_PIN="${WORK}/current-derived-release.sha256"
+OFFLINE_CURRENT_DERIVED_PIN="${WORK}/offline-current-derived-release.sha256"
+
+SHOULD_NOT_EXIST_PIN="${WORK}/should-not-exist.sha256"
+
+SIGNATURE_TAMPER_LINEAGE="${WORK}/signature-tampered.lineage"
 
 TRANSPARENCY_LEDGER="${WORK}/release-transparency.log"
 TRANSPARENCY_HEAD_PIN="${WORK}/transparency-head.sha256"
 
-SIGNER_JAR="${TOOLS_DIR}/terrascope-verifier-release-signer.jar"
-RELEASE_VERIFIER_JAR="${TOOLS_DIR}/terrascope-verifier-release-verifier.jar"
-TRANSPARENCY_JAR="${TOOLS_DIR}/terrascope-verifier-release-transparency.jar"
-AUTHORITY_JAR="${TOOLS_DIR}/terrascope-verifier-release-authority-lineage.jar"
+SIGNER_JAR="${TOOLS}/terrascope-verifier-release-signer.jar"
+RELEASE_VERIFIER_JAR="${TOOLS}/terrascope-verifier-release-verifier.jar"
+TRANSPARENCY_JAR="${TOOLS}/terrascope-verifier-release-transparency.jar"
+AUTHORITY_JAR="${TOOLS}/terrascope-verifier-release-authority-lineage.jar"
 
-KEYGEN_SOURCE="${WORK}/TerraScopeStep47Keygen.java"
+KEYGEN_SOURCE="${WORK}/TerraScopeStep48Keygen.java"
 
 ROOT_KEY_ID="terrascope-release-authority-v1"
-SUCCESSOR_KEY_ID="terrascope-release-authority-v2"
+INTERMEDIATE_KEY_ID="terrascope-release-authority-v2"
+TERMINAL_KEY_ID="terrascope-release-authority-v3"
 
-TRANSPARENCY_KEY_ID="terrascope-transparency-step47-v1"
+TRANSPARENCY_KEY_ID="terrascope-transparency-step48-v1"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -139,7 +151,7 @@ stop_backend() {
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 47 VERIFICATION"
+echo " TERRASCOPE — STEP 48 VERIFICATION"
 echo "========================================================================"
 
 docker compose up -d postgres
@@ -194,26 +206,27 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  > /tmp/terrascope-step47-status.json
+  > /tmp/terrascope-step48-status.json
 
 python3 - <<'PY'
 import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step47-status.json",
+        "/tmp/terrascope-step48-status.json",
         encoding="utf-8",
     )
 )
 
-assert payload["version"] == "0.47.0"
+assert payload["version"] == "0.48.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in $(seq 1 43); do
+for VERSION in $(seq 1 43)
+do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -232,7 +245,8 @@ for VERSION in $(seq 1 43); do
   [[ "${COUNT}" == "1" ]]
 done
 
-for VERSION in 44 45 46 47; do
+for VERSION in 44 45 46 47 48
+do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -260,18 +274,18 @@ echo "===== CLEAN FIXTURE ====="
 rm -rf "${WORK}"
 
 mkdir -p \
+  "${TOOLS}" \
   "${OLD_DIR}" \
-  "${CURRENT_DIR}" \
-  "${TOOLS_DIR}"
+  "${CURRENT_DIR}"
 
 echo "[PASS] FIXTURE_READY"
 
 echo
-echo "===== BUILD RELEASE TOOLS ====="
+echo "===== BUILD FOUR RELEASE TOOLS ====="
 
 bash \
   tools/verifier-release-integrity/build.sh \
-  "${TOOLS_DIR}"
+  "${TOOLS}"
 
 [[ -s "${SIGNER_JAR}" ]]
 [[ -s "${RELEASE_VERIFIER_JAR}" ]]
@@ -281,7 +295,27 @@ bash \
 echo "[PASS] FOUR_RELEASE_TOOLS_READY"
 
 echo
-echo "===== BUILD OLD + CURRENT ARTIFACT FIXTURES ====="
+echo "===== AUTHORITY TOOL VERSION ====="
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  verify \
+  --lineage /does/not/exist \
+  --root-pin /does/not/exist \
+  --head-pin /does/not/exist \
+  >/tmp/terrascope-step48-version-probe.log \
+  2>&1 \
+  || true
+
+grep \
+  -q \
+  '^AUTHORITY_TOOL_VERSION=TS-VERIFIER-RELEASE-AUTHORITY-LINEAGE-TOOL-V2$' \
+  /tmp/terrascope-step48-version-probe.log
+
+echo "[PASS] AUTHORITY_TOOL_V2_RUNTIME"
+
+echo
+echo "===== BUILD CURRENT + OLD ARTIFACTS ====="
 
 bash \
   tools/checkpoint-bundle-verifier/build.sh \
@@ -314,7 +348,7 @@ echo "OLD_ARTIFACT_SHA256=${OLD_ARTIFACT_SHA}"
 echo "[PASS] DISTINCT_RELEASE_ARTIFACTS"
 
 echo
-echo "===== GENERATE ROOT, SUCCESSOR + TRANSPARENCY KEYS ====="
+echo "===== GENERATE FOUR KEY AUTHORITIES ====="
 
 cat > "${KEYGEN_SOURCE}" <<'JAVA'
 import java.nio.file.Files;
@@ -327,16 +361,16 @@ import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.HexFormat;
 
-public class TerraScopeStep47Keygen {
+public class TerraScopeStep48Keygen {
 
     public static void main(
             String[] args
     ) throws Exception {
         if (
-                args.length != 9
+                args.length != 12
         ) {
             throw new IllegalArgumentException(
-                    "Expected three output triplets."
+                    "Expected four private/public/fingerprint triplets."
             );
         }
 
@@ -345,14 +379,9 @@ public class TerraScopeStep47Keygen {
                         "Ed25519"
                 );
 
-        MessageDigest digest =
-                MessageDigest.getInstance(
-                        "SHA-256"
-                );
-
         for (
                 int index = 0;
-                index < 3;
+                index < 4;
                 index++
         ) {
             KeyPair pair =
@@ -367,9 +396,13 @@ public class TerraScopeStep47Keygen {
                     HexFormat
                             .of()
                             .formatHex(
-                                    digest.digest(
-                                            publicBytes
-                                    )
+                                    MessageDigest
+                                            .getInstance(
+                                                    "SHA-256"
+                                            )
+                                            .digest(
+                                                    publicBytes
+                                            )
                             );
 
             Files.writeString(
@@ -416,9 +449,12 @@ java \
   "${ROOT_PRIVATE}" \
   "${ROOT_PUBLIC}" \
   "${ROOT_PIN}" \
-  "${SUCCESSOR_PRIVATE}" \
-  "${SUCCESSOR_PUBLIC}" \
-  "${SUCCESSOR_DIRECT_PIN}" \
+  "${INTERMEDIATE_PRIVATE}" \
+  "${INTERMEDIATE_PUBLIC}" \
+  "${INTERMEDIATE_DIRECT_PIN}" \
+  "${TERMINAL_PRIVATE}" \
+  "${TERMINAL_PUBLIC}" \
+  "${TERMINAL_DIRECT_PIN}" \
   "${TRANSPARENCY_PRIVATE}" \
   "${TRANSPARENCY_PUBLIC}" \
   "${TRANSPARENCY_PIN}"
@@ -428,33 +464,232 @@ ROOT_FINGERPRINT="$(
     < "${ROOT_PIN}"
 )"
 
-SUCCESSOR_FINGERPRINT="$(
+INTERMEDIATE_FINGERPRINT="$(
   tr -d '[:space:]' \
-    < "${SUCCESSOR_DIRECT_PIN}"
+    < "${INTERMEDIATE_DIRECT_PIN}"
 )"
 
-TRANSPARENCY_FINGERPRINT="$(
+TERMINAL_FINGERPRINT="$(
   tr -d '[:space:]' \
-    < "${TRANSPARENCY_PIN}"
+    < "${TERMINAL_DIRECT_PIN}"
 )"
 
-echo "ROOT_RELEASE_KEY_FINGERPRINT=${ROOT_FINGERPRINT}"
-echo "SUCCESSOR_RELEASE_KEY_FINGERPRINT=${SUCCESSOR_FINGERPRINT}"
-echo "TRANSPARENCY_KEY_FINGERPRINT=${TRANSPARENCY_FINGERPRINT}"
+echo "ROOT_FINGERPRINT=${ROOT_FINGERPRINT}"
+echo "INTERMEDIATE_FINGERPRINT=${INTERMEDIATE_FINGERPRINT}"
+echo "TERMINAL_FINGERPRINT=${TERMINAL_FINGERPRINT}"
 
-[[ "${ROOT_FINGERPRINT}" != "${SUCCESSOR_FINGERPRINT}" ]]
+[[ "${ROOT_FINGERPRINT}" != "${INTERMEDIATE_FINGERPRINT}" ]]
+[[ "${INTERMEDIATE_FINGERPRINT}" != "${TERMINAL_FINGERPRINT}" ]]
 
-echo "[PASS] THREE_KEY_AUTHORITIES_READY"
+echo "[PASS] ROOT_INTERMEDIATE_TERMINAL_KEYS_READY"
 
 echo
-echo "===== SIGN OLD RELEASE WITH ROOT KEY ====="
+echo "===== TRANSITION 1: ROOT -> INTERMEDIATE ====="
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  append \
+  --lineage "${FULL_LINEAGE}" \
+  --root-pin "${ROOT_PIN}" \
+  --outgoing-key-id "${ROOT_KEY_ID}" \
+  --outgoing-private-key "${ROOT_PRIVATE}" \
+  --outgoing-public-key "${ROOT_PUBLIC}" \
+  --replacement-key-id "${INTERMEDIATE_KEY_ID}" \
+  --replacement-public-key "${INTERMEDIATE_PUBLIC}" \
+  | tee "${WORK}/transition-1.log"
+
+grep \
+  -q \
+  '^SEQUENCE=1$' \
+  "${WORK}/transition-1.log"
+
+HEAD_ONE="$(
+  grep \
+    '^TRANSITION_HASH=' \
+    "${WORK}/transition-1.log" \
+    | cut -d= -f2-
+)"
+
+printf '%s\n' \
+  "${HEAD_ONE}" \
+  > "${STALE_HEAD_PIN}"
+
+echo "STALE_AUTHORITY_HEAD=${HEAD_ONE}"
+
+echo "[PASS] ROOT_TO_INTERMEDIATE_TRANSITION"
+
+echo
+echo "===== TRANSITION 2: INTERMEDIATE -> TERMINAL ====="
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  append \
+  --lineage "${FULL_LINEAGE}" \
+  --root-pin "${ROOT_PIN}" \
+  --outgoing-key-id "${INTERMEDIATE_KEY_ID}" \
+  --outgoing-private-key "${INTERMEDIATE_PRIVATE}" \
+  --outgoing-public-key "${INTERMEDIATE_PUBLIC}" \
+  --replacement-key-id "${TERMINAL_KEY_ID}" \
+  --replacement-public-key "${TERMINAL_PUBLIC}" \
+  | tee "${WORK}/transition-2.log"
+
+grep \
+  -q \
+  '^SEQUENCE=2$' \
+  "${WORK}/transition-2.log"
+
+grep \
+  -q \
+  "^PREVIOUS_TRANSITION_HASH=${HEAD_ONE}$" \
+  "${WORK}/transition-2.log"
+
+HEAD_TWO="$(
+  grep \
+    '^TRANSITION_HASH=' \
+    "${WORK}/transition-2.log" \
+    | cut -d= -f2-
+)"
+
+printf '%s\n' \
+  "${HEAD_TWO}" \
+  > "${CURRENT_HEAD_PIN}"
+
+echo "CURRENT_AUTHORITY_HEAD=${HEAD_TWO}"
+
+[[ "${HEAD_ONE}" != "${HEAD_TWO}" ]]
+
+echo "[PASS] INTERMEDIATE_TO_TERMINAL_TRANSITION"
+
+echo
+echo "===== CREATE AUTHENTIC STALE PREFIX ====="
+
+python3 \
+  - \
+  "${FULL_LINEAGE}" \
+  "${STALE_LINEAGE}" \
+<<'PY'
+from pathlib import Path
+import sys
+
+source = Path(
+    sys.argv[1]
+).read_text(
+    encoding="utf-8",
+)
+
+blocks = [
+    block
+    for block in source.strip().split(
+        "\n\n"
+    )
+    if block.strip()
+]
+
+assert len(blocks) == 2
+
+Path(
+    sys.argv[2]
+).write_text(
+    blocks[0]
+    + "\n\n",
+    encoding="utf-8",
+)
+
+print(
+    "[PASS] AUTHENTIC_STALE_PREFIX_CREATED"
+)
+PY
+
+echo
+echo "===== VERIFY HISTORICAL PREFIX AGAINST ITS HISTORICAL HEAD ====="
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  verify \
+  --lineage "${STALE_LINEAGE}" \
+  --root-pin "${ROOT_PIN}" \
+  --head-pin "${STALE_HEAD_PIN}" \
+  --terminal-pin-output "${STALE_DERIVED_PIN}" \
+  | tee /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^SUCCESSOR_CONTINUITY_VALID=true$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^HEAD_PIN_VALID=true$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^LINEAGE_VALID=true$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^TRANSITION_COUNT=1$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q "^TERMINAL_KEY_ID=${INTERMEDIATE_KEY_ID}$" \
+  /tmp/terrascope-step48-stale-historical.log
+
+STALE_DERIVED="$(
+  tr -d '[:space:]' \
+    < "${STALE_DERIVED_PIN}"
+)"
+
+[[ "${STALE_DERIVED}" == "${INTERMEDIATE_FINGERPRINT}" ]]
+
+echo "[PASS] STALE_PREFIX_IS_CRYPTOGRAPHICALLY_AUTHENTIC"
+
+echo
+echo "===== VERIFY FULL CURRENT LINEAGE ====="
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  verify \
+  --lineage "${FULL_LINEAGE}" \
+  --root-pin "${ROOT_PIN}" \
+  --head-pin "${CURRENT_HEAD_PIN}" \
+  --terminal-pin-output "${CURRENT_DERIVED_PIN}" \
+  | tee /tmp/terrascope-step48-full-current.log
+
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q '^SUCCESSOR_CONTINUITY_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q '^HEAD_PIN_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q '^LINEAGE_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q '^TRANSITION_COUNT=2$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q '^VERIFIED_TRANSITION_COUNT=2$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q "^TERMINAL_KEY_ID=${TERMINAL_KEY_ID}$" \
+  /tmp/terrascope-step48-full-current.log
+
+CURRENT_DERIVED="$(
+  tr -d '[:space:]' \
+    < "${CURRENT_DERIVED_PIN}"
+)"
+
+[[ "${CURRENT_DERIVED}" == "${TERMINAL_FINGERPRINT}" ]]
+
+echo "[PASS] CURRENT_TERMINAL_PIN_DERIVED_WITH_CURRENT_HEAD"
+
+echo
+echo "===== SIGN OLD RELEASE WITH INTERMEDIATE AUTHORITY ====="
 
 java \
   -jar "${SIGNER_JAR}" \
   --artifact "${OLD_ARTIFACT}" \
-  --private-key "${ROOT_PRIVATE}" \
-  --public-key "${ROOT_PUBLIC}" \
-  --release-key-id "${ROOT_KEY_ID}" \
+  --private-key "${INTERMEDIATE_PRIVATE}" \
+  --public-key "${INTERMEDIATE_PUBLIC}" \
+  --release-key-id "${INTERMEDIATE_KEY_ID}" \
   --output "${OLD_MANIFEST}" \
   > "${WORK}/old-sign.log"
 
@@ -463,17 +698,17 @@ grep \
   '^SIGNATURE_SELF_VERIFICATION=PASS$' \
   "${WORK}/old-sign.log"
 
-echo "[PASS] ROOT_SIGNED_OLD_RELEASE"
+echo "[PASS] INTERMEDIATE_SIGNED_OLD_RELEASE"
 
 echo
-echo "===== SIGN CURRENT RELEASE WITH SUCCESSOR KEY ====="
+echo "===== SIGN CURRENT RELEASE WITH TERMINAL AUTHORITY ====="
 
 java \
   -jar "${SIGNER_JAR}" \
   --artifact "${CURRENT_ARTIFACT}" \
-  --private-key "${SUCCESSOR_PRIVATE}" \
-  --public-key "${SUCCESSOR_PUBLIC}" \
-  --release-key-id "${SUCCESSOR_KEY_ID}" \
+  --private-key "${TERMINAL_PRIVATE}" \
+  --public-key "${TERMINAL_PUBLIC}" \
+  --release-key-id "${TERMINAL_KEY_ID}" \
   --output "${CURRENT_MANIFEST}" \
   > "${WORK}/current-sign.log"
 
@@ -482,107 +717,23 @@ grep \
   '^SIGNATURE_SELF_VERIFICATION=PASS$' \
   "${WORK}/current-sign.log"
 
-echo "[PASS] SUCCESSOR_SIGNED_CURRENT_RELEASE"
+echo "[PASS] TERMINAL_SIGNED_CURRENT_RELEASE"
 
 echo
-echo "===== CREATE ROOT -> SUCCESSOR AUTHORITY TRANSITION ====="
-
-java \
-  -jar "${AUTHORITY_JAR}" \
-  append \
-  --lineage "${LINEAGE}" \
-  --root-pin "${ROOT_PIN}" \
-  --outgoing-key-id "${ROOT_KEY_ID}" \
-  --outgoing-private-key "${ROOT_PRIVATE}" \
-  --outgoing-public-key "${ROOT_PUBLIC}" \
-  --replacement-key-id "${SUCCESSOR_KEY_ID}" \
-  --replacement-public-key "${SUCCESSOR_PUBLIC}" \
-  | tee "${WORK}/authority-append.log"
-
-grep \
-  -q \
-  '^SEQUENCE=1$' \
-  "${WORK}/authority-append.log"
-
-grep \
-  -q \
-  '^PREVIOUS_TRANSITION_HASH=GENESIS$' \
-  "${WORK}/authority-append.log"
-
-grep \
-  -q \
-  '^APPEND_RESULT=PASS$' \
-  "${WORK}/authority-append.log"
-
-echo "[PASS] RELEASE_AUTHORITY_ROTATION_CREATED"
-
-echo
-echo "===== VERIFY LINEAGE + DERIVE CURRENT RELEASE PIN ====="
-
-java \
-  -jar "${AUTHORITY_JAR}" \
-  verify \
-  --lineage "${LINEAGE}" \
-  --root-pin "${ROOT_PIN}" \
-  --terminal-pin-output "${DERIVED_TERMINAL_PIN}" \
-  | tee /tmp/terrascope-step47-lineage-valid.log
-
-grep \
-  -q \
-  '^ROOT_PIN_VALID=true$' \
-  /tmp/terrascope-step47-lineage-valid.log
-
-grep \
-  -q \
-  '^SUCCESSOR_CONTINUITY_VALID=true$' \
-  /tmp/terrascope-step47-lineage-valid.log
-
-grep \
-  -q \
-  '^LINEAGE_VALID=true$' \
-  /tmp/terrascope-step47-lineage-valid.log
-
-grep \
-  -q \
-  '^TRANSITION_COUNT=1$' \
-  /tmp/terrascope-step47-lineage-valid.log
-
-grep \
-  -q \
-  '^VERIFIED_TRANSITION_COUNT=1$' \
-  /tmp/terrascope-step47-lineage-valid.log
-
-grep \
-  -q \
-  "^TERMINAL_KEY_ID=${SUCCESSOR_KEY_ID}$" \
-  /tmp/terrascope-step47-lineage-valid.log
-
-DERIVED_FINGERPRINT="$(
-  tr -d '[:space:]' \
-    < "${DERIVED_TERMINAL_PIN}"
-)"
-
-echo "DERIVED_TERMINAL_FINGERPRINT=${DERIVED_FINGERPRINT}"
-
-[[ "${DERIVED_FINGERPRINT}" == "${SUCCESSOR_FINGERPRINT}" ]]
-
-echo "[PASS] TERMINAL_RELEASE_PIN_DERIVED_FROM_ROOT_LINEAGE"
-
-echo
-echo "===== VERIFY BOTH SIGNED RELEASES BEFORE TRANSPARENCY ====="
+echo "===== VERIFY BOTH RELEASE FIXTURES ====="
 
 java \
   -jar "${RELEASE_VERIFIER_JAR}" \
   --artifact "${OLD_ARTIFACT}" \
   --manifest "${OLD_MANIFEST}" \
-  --release-key-pin "${ROOT_PIN}" \
+  --release-key-pin "${STALE_DERIVED_PIN}" \
   > "${WORK}/old-release-precheck.log"
 
 java \
   -jar "${RELEASE_VERIFIER_JAR}" \
   --artifact "${CURRENT_ARTIFACT}" \
   --manifest "${CURRENT_MANIFEST}" \
-  --release-key-pin "${DERIVED_TERMINAL_PIN}" \
+  --release-key-pin "${CURRENT_DERIVED_PIN}" \
   > "${WORK}/current-release-precheck.log"
 
 grep \
@@ -595,141 +746,52 @@ grep \
   '^VERIFICATION_RESULT=VALID$' \
   "${WORK}/current-release-precheck.log"
 
-echo "[PASS] BOTH_ROTATION_RELEASES_CRYPTOGRAPHICALLY_VALID"
+echo "[PASS] OLD_AND_CURRENT_RELEASES_AUTHENTIC"
 
 echo
-echo "===== CREATE STEP46 TRANSPARENCY HISTORY ACROSS ROTATION ====="
+echo "===== CREATE RELEASE TRANSPARENCY HISTORY ====="
 
 java \
   -jar "${TRANSPARENCY_JAR}" \
   append \
   --artifact "${OLD_ARTIFACT}" \
   --manifest "${OLD_MANIFEST}" \
-  --release-key-pin "${ROOT_PIN}" \
+  --release-key-pin "${STALE_DERIVED_PIN}" \
   --transparency-private-key "${TRANSPARENCY_PRIVATE}" \
   --transparency-public-key "${TRANSPARENCY_PUBLIC}" \
   --transparency-key-id "${TRANSPARENCY_KEY_ID}" \
   --ledger "${TRANSPARENCY_LEDGER}" \
   > "${WORK}/transparency-old.log"
 
-FIRST_HEAD="$(
-  grep \
-    '^ENTRY_HASH=' \
-    "${WORK}/transparency-old.log" \
-    | cut -d= -f2-
-)"
-
 java \
   -jar "${TRANSPARENCY_JAR}" \
   append \
   --artifact "${CURRENT_ARTIFACT}" \
   --manifest "${CURRENT_MANIFEST}" \
-  --release-key-pin "${DERIVED_TERMINAL_PIN}" \
+  --release-key-pin "${CURRENT_DERIVED_PIN}" \
   --transparency-private-key "${TRANSPARENCY_PRIVATE}" \
   --transparency-public-key "${TRANSPARENCY_PUBLIC}" \
   --transparency-key-id "${TRANSPARENCY_KEY_ID}" \
   --ledger "${TRANSPARENCY_LEDGER}" \
   > "${WORK}/transparency-current.log"
 
-CURRENT_HEAD="$(
+TRANSPARENCY_HEAD="$(
   grep \
     '^ENTRY_HASH=' \
     "${WORK}/transparency-current.log" \
     | cut -d= -f2-
 )"
 
-echo "FIRST_TRANSPARENCY_HEAD=${FIRST_HEAD}"
-echo "CURRENT_TRANSPARENCY_HEAD=${CURRENT_HEAD}"
-
-[[ "${FIRST_HEAD}" != "${CURRENT_HEAD}" ]]
-
 printf '%s\n' \
-  "${CURRENT_HEAD}" \
+  "${TRANSPARENCY_HEAD}" \
   > "${TRANSPARENCY_HEAD_PIN}"
 
-echo "[PASS] RELEASE_ROTATION_TRANSPARENCY_HISTORY_READY"
+echo "CURRENT_TRANSPARENCY_HEAD=${TRANSPARENCY_HEAD}"
+
+echo "[PASS] TRANSPARENCY_HISTORY_READY"
 
 echo
-echo "===== LINEAGE CANONICAL CONTRACT ====="
-
-python3 \
-  - \
-  "${LINEAGE}" \
-  "${ROOT_FINGERPRINT}" \
-  "${SUCCESSOR_FINGERPRINT}" \
-<<'PY'
-from pathlib import Path
-import re
-import sys
-
-lineage = Path(
-    sys.argv[1]
-).read_text(
-    encoding="utf-8",
-)
-
-root = sys.argv[2]
-successor = sys.argv[3]
-
-lines = lineage.strip().splitlines()
-
-prefixes = [
-    "lineageVersion=",
-    "sequence=",
-    "outgoingKeyId=",
-    "outgoingPublicKeyX509Base64=",
-    "outgoingKeyFingerprint=",
-    "replacementKeyId=",
-    "replacementPublicKeyX509Base64=",
-    "replacementKeyFingerprint=",
-    "previousTransitionHash=",
-    "signatureBase64=",
-    "transitionHash=",
-]
-
-assert len(lines) == len(prefixes)
-
-for line, prefix in zip(
-    lines,
-    prefixes,
-):
-    assert line.startswith(
-        prefix
-    )
-
-assert lines[0] == (
-    "lineageVersion="
-    "TS-VERIFIER-RELEASE-AUTHORITY-LINEAGE-V1"
-)
-
-assert lines[1] == "sequence=1"
-
-assert lines[4] == (
-    "outgoingKeyFingerprint="
-    + root
-)
-
-assert lines[7] == (
-    "replacementKeyFingerprint="
-    + successor
-)
-
-assert lines[8] == (
-    "previousTransitionHash=GENESIS"
-)
-
-assert re.fullmatch(
-    r"transitionHash=[0-9a-f]{64}",
-    lines[10],
-)
-
-print(
-    "[PASS] RELEASE_AUTHORITY_LINEAGE_CONTRACT"
-)
-PY
-
-echo
-echo "===== PREPARE NEGATIVE LINEAGE FIXTURES ====="
+echo "===== PREPARE NEGATIVE PINS + SIGNATURE TAMPER ====="
 
 WRONG_ROOT="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
@@ -741,79 +803,46 @@ printf '%s\n' \
   "${WRONG_ROOT}" \
   > "${WRONG_ROOT_PIN}"
 
+WRONG_HEAD="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+if [[ "${WRONG_HEAD}" == "${HEAD_TWO}" ]]; then
+  WRONG_HEAD="0000000000000000000000000000000000000000000000000000000000000000"
+fi
+
+printf '%s\n' \
+  "${WRONG_HEAD}" \
+  > "${WRONG_HEAD_PIN}"
+
 python3 \
   - \
-  "${LINEAGE}" \
-  "${TAMPERED_LINEAGE}" \
-  "${SIGNATURE_TAMPERED_LINEAGE}" \
-  "${TRUNCATED_LINEAGE}" \
+  "${FULL_LINEAGE}" \
+  "${SIGNATURE_TAMPER_LINEAGE}" \
 <<'PY'
 from pathlib import Path
 import base64
 import sys
 
-source = Path(
-    sys.argv[1]
-)
+blocks = [
+    block.splitlines()
+    for block in Path(
+        sys.argv[1]
+    ).read_text(
+        encoding="utf-8",
+    ).strip().split(
+        "\n\n"
+    )
+    if block.strip()
+]
 
-tampered = Path(
-    sys.argv[2]
-)
-
-signature_tampered = Path(
-    sys.argv[3]
-)
-
-truncated = Path(
-    sys.argv[4]
-)
-
-lines = source.read_text(
-    encoding="utf-8",
-).splitlines()
-
-replacement_lines = list(
-    lines
-)
+assert len(blocks) == 2
 
 for index, line in enumerate(
-    replacement_lines
-):
-    if line.startswith(
-        "replacementKeyFingerprint="
-    ):
-        replacement_lines[index] = (
-            "replacementKeyFingerprint="
-            + (
-                "0" * 64
-            )
-        )
-
-        break
-else:
-    raise AssertionError(
-        "replacementKeyFingerprint not found"
-    )
-
-tampered.write_text(
-    "\n".join(
-        replacement_lines
-    )
-    + "\n\n",
-    encoding="utf-8",
-)
-
-signature_lines = list(
-    lines
-)
-
-for index, line in enumerate(
-    signature_lines
+    blocks[1]
 ):
     if line.startswith(
         "signatureBase64="
     ):
-        signature_lines[index] = (
+        blocks[1][index] = (
             "signatureBase64="
             + base64.b64encode(
                 bytes(64)
@@ -826,42 +855,45 @@ else:
         "signatureBase64 not found"
     )
 
-signature_tampered.write_text(
-    "\n".join(
-        signature_lines
+Path(
+    sys.argv[2]
+).write_text(
+    "\n\n".join(
+        "\n".join(
+            block
+        )
+        for block in blocks
     )
     + "\n\n",
     encoding="utf-8",
 )
 
-truncated.write_text(
-    "",
-    encoding="utf-8",
-)
-
 print(
-    "[PASS] NEGATIVE_LINEAGE_FIXTURES_READY"
+    "[PASS] NEGATIVE_AUTHORITY_FIXTURES_READY"
 )
 PY
 
 echo
-echo "===== DESTROY ALL PRIVATE KEYS ====="
+echo "===== DESTROY PRIVATE KEYS + DIRECT SUCCESSOR PINS ====="
 
 rm -f \
   "${ROOT_PRIVATE}" \
-  "${SUCCESSOR_PRIVATE}" \
-  "${TRANSPARENCY_PRIVATE}"
-
-rm -f \
-  "${SUCCESSOR_DIRECT_PIN}"
+  "${INTERMEDIATE_PRIVATE}" \
+  "${TERMINAL_PRIVATE}" \
+  "${TRANSPARENCY_PRIVATE}" \
+  "${INTERMEDIATE_DIRECT_PIN}" \
+  "${TERMINAL_DIRECT_PIN}"
 
 [[ ! -e "${ROOT_PRIVATE}" ]]
-[[ ! -e "${SUCCESSOR_PRIVATE}" ]]
+[[ ! -e "${INTERMEDIATE_PRIVATE}" ]]
+[[ ! -e "${TERMINAL_PRIVATE}" ]]
 [[ ! -e "${TRANSPARENCY_PRIVATE}" ]]
-[[ ! -e "${SUCCESSOR_DIRECT_PIN}" ]]
 
-echo "[PASS] PRIVATE_KEYS_DESTROYED_BEFORE_VERIFICATION"
-echo "[PASS] DIRECT_SUCCESSOR_PIN_REMOVED_BEFORE_VERIFICATION"
+[[ ! -e "${INTERMEDIATE_DIRECT_PIN}" ]]
+[[ ! -e "${TERMINAL_DIRECT_PIN}" ]]
+
+echo "[PASS] PRIVATE_KEYS_DESTROYED"
+echo "[PASS] DIRECT_SUCCESSOR_PINS_REMOVED"
 
 echo
 echo "===== STOP TERRASCOPE + POSTGRES ====="
@@ -895,203 +927,255 @@ echo "[PASS] TERRASCOPE_BACKEND_OFFLINE"
 echo "[PASS] POSTGRES_OFFLINE"
 
 echo
-echo "===== RE-DERIVE SUCCESSOR PIN ENTIRELY OFFLINE ====="
+echo "===== FULL CURRENT AUTHORITY OFFLINE ====="
 
-rm -f "${DERIVED_TERMINAL_PIN_OFFLINE}"
+rm -f "${OFFLINE_CURRENT_DERIVED_PIN}"
 
 java \
   -jar "${AUTHORITY_JAR}" \
   verify \
-  --lineage "${LINEAGE}" \
+  --lineage "${FULL_LINEAGE}" \
   --root-pin "${ROOT_PIN}" \
-  --terminal-pin-output "${DERIVED_TERMINAL_PIN_OFFLINE}" \
-  | tee /tmp/terrascope-step47-lineage-valid.log
+  --head-pin "${CURRENT_HEAD_PIN}" \
+  --terminal-pin-output "${OFFLINE_CURRENT_DERIVED_PIN}" \
+  | tee /tmp/terrascope-step48-full-current.log
 
-grep \
-  -q \
-  '^ROOT_PIN_VALID=true$' \
-  /tmp/terrascope-step47-lineage-valid.log
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
 
-grep \
-  -q \
-  '^SUCCESSOR_CONTINUITY_VALID=true$' \
-  /tmp/terrascope-step47-lineage-valid.log
+grep -q '^SUCCESSOR_CONTINUITY_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
 
-grep \
-  -q \
-  '^LINEAGE_VALID=true$' \
-  /tmp/terrascope-step47-lineage-valid.log
+grep -q '^HEAD_PIN_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
 
-grep \
-  -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step47-lineage-valid.log
+grep -q '^LINEAGE_VALID=true$' \
+  /tmp/terrascope-step48-full-current.log
 
-OFFLINE_TERMINAL_PIN="$(
+grep -q '^TRANSITION_COUNT=2$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q '^VERIFIED_TRANSITION_COUNT=2$' \
+  /tmp/terrascope-step48-full-current.log
+
+grep -q '^VERIFICATION_RESULT=VALID$' \
+  /tmp/terrascope-step48-full-current.log
+
+OFFLINE_CURRENT_PIN="$(
   tr -d '[:space:]' \
-    < "${DERIVED_TERMINAL_PIN_OFFLINE}"
+    < "${OFFLINE_CURRENT_DERIVED_PIN}"
 )"
 
-echo "OFFLINE_DERIVED_TERMINAL_PIN=${OFFLINE_TERMINAL_PIN}"
+[[ "${OFFLINE_CURRENT_PIN}" == "${CURRENT_DERIVED}" ]]
 
-[[ "${OFFLINE_TERMINAL_PIN}" == "${DERIVED_FINGERPRINT}" ]]
-
-echo "[PASS] OFFLINE_ROOT_TO_SUCCESSOR_DERIVATION"
+echo "[PASS] CURRENT_AUTHORITY_HEAD_ACCEPTED_OFFLINE"
 
 echo
-echo "===== CURRENT RELEASE UNDER DERIVED SUCCESSOR AUTHORITY ====="
+echo "===== STALE PREFIX WITH ITS OLD HEAD IS INTERNALLY VALID ====="
+
+rm -f "${STALE_DERIVED_PIN}"
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  verify \
+  --lineage "${STALE_LINEAGE}" \
+  --root-pin "${ROOT_PIN}" \
+  --head-pin "${STALE_HEAD_PIN}" \
+  --terminal-pin-output "${STALE_DERIVED_PIN}" \
+  | tee /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^HEAD_PIN_VALID=true$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^LINEAGE_VALID=true$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q '^TRANSITION_COUNT=1$' \
+  /tmp/terrascope-step48-stale-historical.log
+
+grep -q "^TERMINAL_KEY_ID=${INTERMEDIATE_KEY_ID}$" \
+  /tmp/terrascope-step48-stale-historical.log
+
+echo "[PASS] HISTORICAL_PREFIX_REMAINS_CRYPTOGRAPHICALLY_VALID"
+
+echo
+echo "===== OLD RELEASE VALID UNDER STALE DERIVED AUTHORITY ====="
+
+java \
+  -jar "${RELEASE_VERIFIER_JAR}" \
+  --artifact "${OLD_ARTIFACT}" \
+  --manifest "${OLD_MANIFEST}" \
+  --release-key-pin "${STALE_DERIVED_PIN}" \
+  | tee /tmp/terrascope-step48-old-release.log
+
+grep -q '^ARTIFACT_HASH_VALID=true$' \
+  /tmp/terrascope-step48-old-release.log
+
+grep -q '^RELEASE_KEY_PIN_VALID=true$' \
+  /tmp/terrascope-step48-old-release.log
+
+grep -q '^SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step48-old-release.log
+
+grep -q '^VERIFICATION_RESULT=VALID$' \
+  /tmp/terrascope-step48-old-release.log
+
+echo "[PASS] STALE_ROLLBACK_PACKAGE_IS_INTERNALLY_AUTHENTIC"
+
+echo
+echo "===== REJECT STALE PREFIX AGAINST CURRENT HEAD ====="
+
+rm -f "${SHOULD_NOT_EXIST_PIN}"
+
+set +e
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  verify \
+  --lineage "${STALE_LINEAGE}" \
+  --root-pin "${ROOT_PIN}" \
+  --head-pin "${CURRENT_HEAD_PIN}" \
+  --terminal-pin-output "${SHOULD_NOT_EXIST_PIN}" \
+  > /tmp/terrascope-step48-stale-current-head.log \
+  2>&1
+
+STALE_CURRENT_STATUS=$?
+
+set -e
+
+cat /tmp/terrascope-step48-stale-current-head.log
+
+echo "STALE_PREFIX_CURRENT_HEAD_EXIT=${STALE_CURRENT_STATUS}"
+
+[[ "${STALE_CURRENT_STATUS}" == "2" ]]
+
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+grep -q '^SUCCESSOR_CONTINUITY_VALID=true$' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+grep -q '^HEAD_PIN_VALID=false$' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+grep -q '^LINEAGE_VALID=false$' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+grep -q '^TRANSITION_COUNT=1$' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+grep -q '^VERIFIED_TRANSITION_COUNT=1$' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+grep \
+  -q \
+  'cryptographically valid but its head does not match' \
+  /tmp/terrascope-step48-stale-current-head.log
+
+[[ ! -e "${SHOULD_NOT_EXIST_PIN}" ]]
+
+echo "[PASS] AUTHORITY_STALE_PREFIX_ROLLBACK_REJECTION"
+echo "[PASS] STALE_PREFIX_CANNOT_DERIVE_TRUSTED_TERMINAL_PIN"
+
+echo
+echo "===== REJECT CURRENT LINEAGE WITH STALE HEAD PIN ====="
+
+set +e
+
+java \
+  -jar "${AUTHORITY_JAR}" \
+  verify \
+  --lineage "${FULL_LINEAGE}" \
+  --root-pin "${ROOT_PIN}" \
+  --head-pin "${STALE_HEAD_PIN}" \
+  > /tmp/terrascope-step48-current-stale-head.log \
+  2>&1
+
+CURRENT_STALE_STATUS=$?
+
+set -e
+
+cat /tmp/terrascope-step48-current-stale-head.log
+
+[[ "${CURRENT_STALE_STATUS}" == "2" ]]
+
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step48-current-stale-head.log
+
+grep -q '^SUCCESSOR_CONTINUITY_VALID=true$' \
+  /tmp/terrascope-step48-current-stale-head.log
+
+grep -q '^HEAD_PIN_VALID=false$' \
+  /tmp/terrascope-step48-current-stale-head.log
+
+grep -q '^LINEAGE_VALID=false$' \
+  /tmp/terrascope-step48-current-stale-head.log
+
+echo "[PASS] WRONG_AUTHORITY_HEAD_PIN_REJECTION"
+
+echo
+echo "===== CURRENT RELEASE UNDER CURRENT DERIVED AUTHORITY ====="
 
 java \
   -jar "${RELEASE_VERIFIER_JAR}" \
   --artifact "${CURRENT_ARTIFACT}" \
   --manifest "${CURRENT_MANIFEST}" \
-  --release-key-pin "${DERIVED_TERMINAL_PIN_OFFLINE}" \
-  | tee /tmp/terrascope-step47-current-release.log
+  --release-key-pin "${OFFLINE_CURRENT_DERIVED_PIN}" \
+  | tee /tmp/terrascope-step48-current-release.log
 
-grep \
-  -q \
-  '^MANIFEST_SHAPE_VALID=true$' \
-  /tmp/terrascope-step47-current-release.log
+grep -q '^ARTIFACT_HASH_VALID=true$' \
+  /tmp/terrascope-step48-current-release.log
 
-grep \
-  -q \
-  '^ARTIFACT_HASH_VALID=true$' \
-  /tmp/terrascope-step47-current-release.log
+grep -q '^RELEASE_KEY_PIN_VALID=true$' \
+  /tmp/terrascope-step48-current-release.log
 
-grep \
-  -q \
-  '^RELEASE_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step47-current-release.log
+grep -q '^SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step48-current-release.log
 
-grep \
-  -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step47-current-release.log
+grep -q '^VERIFICATION_RESULT=VALID$' \
+  /tmp/terrascope-step48-current-release.log
 
-grep \
-  -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step47-current-release.log
-
-echo "[PASS] SUCCESSOR_RELEASE_ACCEPTED_FROM_ROOT_LINEAGE"
+echo "[PASS] CURRENT_RELEASE_ACCEPTED_FROM_HEAD_PINNED_AUTHORITY"
 
 echo
-echo "===== PROVE OLD RELEASE REMAINS CRYPTOGRAPHICALLY AUTHENTIC ====="
-
-java \
-  -jar "${RELEASE_VERIFIER_JAR}" \
-  --artifact "${OLD_ARTIFACT}" \
-  --manifest "${OLD_MANIFEST}" \
-  --release-key-pin "${ROOT_PIN}" \
-  | tee /tmp/terrascope-step47-old-root-release.log
-
-grep \
-  -q \
-  '^RELEASE_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step47-old-root-release.log
-
-grep \
-  -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step47-old-root-release.log
-
-grep \
-  -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step47-old-root-release.log
-
-echo "[PASS] OLD_ROOT_RELEASE_STILL_AUTHENTIC"
-
-echo
-echo "===== REJECT OLD RELEASE UNDER CURRENT AUTHORITY ====="
-
-set +e
-
-java \
-  -jar "${RELEASE_VERIFIER_JAR}" \
-  --artifact "${OLD_ARTIFACT}" \
-  --manifest "${OLD_MANIFEST}" \
-  --release-key-pin "${DERIVED_TERMINAL_PIN_OFFLINE}" \
-  > /tmp/terrascope-step47-old-current-authority.log \
-  2>&1
-
-OLD_CURRENT_STATUS=$?
-
-set -e
-
-cat /tmp/terrascope-step47-old-current-authority.log
-
-echo "OLD_RELEASE_CURRENT_AUTHORITY_EXIT=${OLD_CURRENT_STATUS}"
-
-[[ "${OLD_CURRENT_STATUS}" == "2" ]]
-
-grep \
-  -q \
-  '^ARTIFACT_HASH_VALID=true$' \
-  /tmp/terrascope-step47-old-current-authority.log
-
-grep \
-  -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step47-old-current-authority.log
-
-grep \
-  -q \
-  '^RELEASE_KEY_PIN_VALID=false$' \
-  /tmp/terrascope-step47-old-current-authority.log
-
-grep \
-  -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step47-old-current-authority.log
-
-echo "[PASS] OLD_RELEASE_REJECTED_AFTER_AUTHORITY_ROTATION"
-
-echo
-echo "===== CURRENT RELEASE + TRANSPARENCY HEAD ====="
+echo "===== CURRENT RELEASE TRANSPARENCY ====="
 
 java \
   -jar "${TRANSPARENCY_JAR}" \
   verify \
   --artifact "${CURRENT_ARTIFACT}" \
   --manifest "${CURRENT_MANIFEST}" \
-  --release-key-pin "${DERIVED_TERMINAL_PIN_OFFLINE}" \
+  --release-key-pin "${OFFLINE_CURRENT_DERIVED_PIN}" \
   --ledger "${TRANSPARENCY_LEDGER}" \
   --transparency-key-pin "${TRANSPARENCY_PIN}" \
   --head-pin "${TRANSPARENCY_HEAD_PIN}" \
-  | tee /tmp/terrascope-step47-current-transparency.log
+  | tee /tmp/terrascope-step48-transparency.log
 
-grep \
-  -q \
-  '^RELEASE_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step47-current-transparency.log
+grep -q '^RELEASE_KEY_PIN_VALID=true$' \
+  /tmp/terrascope-step48-transparency.log
 
-grep \
-  -q \
-  '^TRANSPARENCY_LEDGER_VALID=true$' \
-  /tmp/terrascope-step47-current-transparency.log
+grep -q '^TRANSPARENCY_LEDGER_VALID=true$' \
+  /tmp/terrascope-step48-transparency.log
 
-grep \
-  -q \
-  '^TRANSPARENCY_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step47-current-transparency.log
+grep -q '^TRANSPARENCY_KEY_PIN_VALID=true$' \
+  /tmp/terrascope-step48-transparency.log
 
-grep \
-  -q \
-  '^HEAD_PIN_VALID=true$' \
-  /tmp/terrascope-step47-current-transparency.log
+grep -q '^HEAD_PIN_VALID=true$' \
+  /tmp/terrascope-step48-transparency.log
 
-grep \
-  -q \
-  '^LATEST_RELEASE_BINDING_VALID=true$' \
-  /tmp/terrascope-step47-current-transparency.log
+grep -q '^LATEST_RELEASE_BINDING_VALID=true$' \
+  /tmp/terrascope-step48-transparency.log
 
-grep \
-  -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step47-current-transparency.log
+grep -q '^VERIFICATION_RESULT=VALID$' \
+  /tmp/terrascope-step48-transparency.log
 
-echo "[PASS] ROTATED_AUTHORITY_INTEGRATED_WITH_TRANSPARENCY"
+echo "[PASS] CURRENT_AUTHORITY_AND_RELEASE_TRANSPARENCY_COMPOSE"
 
 echo
 echo "===== WRONG ROOT PIN ====="
@@ -1101,68 +1185,30 @@ set +e
 java \
   -jar "${AUTHORITY_JAR}" \
   verify \
-  --lineage "${LINEAGE}" \
+  --lineage "${FULL_LINEAGE}" \
   --root-pin "${WRONG_ROOT_PIN}" \
-  > /tmp/terrascope-step47-wrong-root.log \
+  --head-pin "${CURRENT_HEAD_PIN}" \
+  > /tmp/terrascope-step48-wrong-root.log \
   2>&1
 
 WRONG_ROOT_STATUS=$?
 
 set -e
 
-cat /tmp/terrascope-step47-wrong-root.log
+cat /tmp/terrascope-step48-wrong-root.log
 
 [[ "${WRONG_ROOT_STATUS}" == "2" ]]
 
-grep \
-  -q \
-  '^ROOT_PIN_VALID=false$' \
-  /tmp/terrascope-step47-wrong-root.log
+grep -q '^ROOT_PIN_VALID=false$' \
+  /tmp/terrascope-step48-wrong-root.log
 
-grep \
-  -q \
-  '^LINEAGE_VALID=false$' \
-  /tmp/terrascope-step47-wrong-root.log
+grep -q '^LINEAGE_VALID=false$' \
+  /tmp/terrascope-step48-wrong-root.log
 
-grep \
-  -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step47-wrong-root.log
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step48-wrong-root.log
 
-echo "[PASS] WRONG_RELEASE_ROOT_PIN_REJECTION"
-
-echo
-echo "===== LINEAGE FIELD TAMPER ====="
-
-set +e
-
-java \
-  -jar "${AUTHORITY_JAR}" \
-  verify \
-  --lineage "${TAMPERED_LINEAGE}" \
-  --root-pin "${ROOT_PIN}" \
-  > /tmp/terrascope-step47-lineage-tamper.log \
-  2>&1
-
-LINEAGE_TAMPER_STATUS=$?
-
-set -e
-
-cat /tmp/terrascope-step47-lineage-tamper.log
-
-[[ "${LINEAGE_TAMPER_STATUS}" == "2" ]]
-
-grep \
-  -q \
-  '^LINEAGE_VALID=false$' \
-  /tmp/terrascope-step47-lineage-tamper.log
-
-grep \
-  -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step47-lineage-tamper.log
-
-echo "[PASS] RELEASE_AUTHORITY_LINEAGE_TAMPER_DETECTION"
+echo "[PASS] WRONG_ROOT_PIN_REJECTION"
 
 echo
 echo "===== TRANSITION SIGNATURE TAMPER ====="
@@ -1172,71 +1218,30 @@ set +e
 java \
   -jar "${AUTHORITY_JAR}" \
   verify \
-  --lineage "${SIGNATURE_TAMPERED_LINEAGE}" \
+  --lineage "${SIGNATURE_TAMPER_LINEAGE}" \
   --root-pin "${ROOT_PIN}" \
-  > /tmp/terrascope-step47-signature-tamper.log \
+  --head-pin "${CURRENT_HEAD_PIN}" \
+  > /tmp/terrascope-step48-signature-tamper.log \
   2>&1
 
 SIGNATURE_TAMPER_STATUS=$?
 
 set -e
 
-cat /tmp/terrascope-step47-signature-tamper.log
+cat /tmp/terrascope-step48-signature-tamper.log
 
 [[ "${SIGNATURE_TAMPER_STATUS}" == "2" ]]
 
-grep \
-  -q \
-  '^LINEAGE_VALID=false$' \
-  /tmp/terrascope-step47-signature-tamper.log
+grep -q '^LINEAGE_VALID=false$' \
+  /tmp/terrascope-step48-signature-tamper.log
 
-grep \
-  -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step47-signature-tamper.log
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step48-signature-tamper.log
 
-echo "[PASS] RELEASE_AUTHORITY_SIGNATURE_TAMPER_DETECTION"
+echo "[PASS] AUTHORITY_SIGNATURE_TAMPER_DETECTION"
 
 echo
-echo "===== LINEAGE TRUNCATION ====="
-
-set +e
-
-java \
-  -jar "${AUTHORITY_JAR}" \
-  verify \
-  --lineage "${TRUNCATED_LINEAGE}" \
-  --root-pin "${ROOT_PIN}" \
-  > /tmp/terrascope-step47-truncated-lineage.log \
-  2>&1
-
-TRUNCATED_STATUS=$?
-
-set -e
-
-cat /tmp/terrascope-step47-truncated-lineage.log
-
-[[ "${TRUNCATED_STATUS}" == "2" ]]
-
-grep \
-  -q \
-  '^LINEAGE_VALID=false$' \
-  /tmp/terrascope-step47-truncated-lineage.log
-
-grep \
-  -q \
-  '^TRANSITION_COUNT=0$' \
-  /tmp/terrascope-step47-truncated-lineage.log
-
-grep \
-  -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step47-truncated-lineage.log
-
-echo "[PASS] RELEASE_AUTHORITY_LINEAGE_TRUNCATION_REJECTION"
-
-echo
-echo "===== TRUE AIR-GAP AUTHORITY PROOF ====="
+echo "===== TRUE AIR-GAP PROOF ====="
 
 RUNNING_POSTGRES_AFTER="$(
   docker compose ps \
@@ -1255,18 +1260,21 @@ if curl \
     "http://localhost:8087/actuator/health" \
     >/dev/null 2>&1; then
 
-  echo "[FAIL] TerraScope backend became reachable during Step 47 verification."
+  echo "[FAIL] Backend became reachable during Step 48 verification."
   exit 1
 fi
 
 [[ ! -e "${ROOT_PRIVATE}" ]]
-[[ ! -e "${SUCCESSOR_PRIVATE}" ]]
+[[ ! -e "${INTERMEDIATE_PRIVATE}" ]]
+[[ ! -e "${TERMINAL_PRIVATE}" ]]
 [[ ! -e "${TRANSPARENCY_PRIVATE}" ]]
-[[ ! -e "${SUCCESSOR_DIRECT_PIN}" ]]
 
-echo "[PASS] TRUE_OFFLINE_RELEASE_AUTHORITY_VERIFICATION"
+[[ ! -e "${INTERMEDIATE_DIRECT_PIN}" ]]
+[[ ! -e "${TERMINAL_DIRECT_PIN}" ]]
+
+echo "[PASS] TRUE_OFFLINE_AUTHORITY_HEAD_VERIFICATION"
 echo "[PASS] PRIVATE_KEYS_REMAINED_ABSENT"
-echo "[PASS] SUCCESSOR_PIN_WAS_DERIVED_NOT_PREPINNED"
+echo "[PASS] CURRENT_TERMINAL_PIN_WAS_DERIVED"
 
 echo
 echo "===== RESTORE POSTGRES ====="
@@ -1275,7 +1283,8 @@ docker compose start postgres
 
 wait_postgres
 
-for VERSION in $(seq 1 43); do
+for VERSION in $(seq 1 43)
+do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -1298,5 +1307,5 @@ echo "[PASS] FLYWAY_V1_TO_V43_PRESERVED"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 47 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 48 VERIFICATION PASSED"
 echo "========================================================================"

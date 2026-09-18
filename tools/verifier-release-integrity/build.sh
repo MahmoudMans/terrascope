@@ -86,7 +86,7 @@ MANIFEST
 cat > "${BUILD_DIR}/AUTHORITY.MF" <<'MANIFEST'
 Manifest-Version: 1.0
 Main-Class: com.terrascope.tools.TerraScopeVerifierReleaseAuthorityLineage
-Implementation-Version: TS-VERIFIER-RELEASE-AUTHORITY-LINEAGE-TOOL-V1
+Implementation-Version: TS-VERIFIER-RELEASE-AUTHORITY-LINEAGE-TOOL-V2
 
 MANIFEST
 

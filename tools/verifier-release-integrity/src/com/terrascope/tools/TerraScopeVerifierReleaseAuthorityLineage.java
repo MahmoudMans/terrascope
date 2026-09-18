@@ -1,7 +1,6 @@
 package com.terrascope.tools;
 
 import java.nio.charset.StandardCharsets;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -27,7 +26,7 @@ import java.util.regex.Pattern;
 public final class TerraScopeVerifierReleaseAuthorityLineage {
 
     private static final String TOOL_VERSION =
-            "TS-VERIFIER-RELEASE-AUTHORITY-LINEAGE-TOOL-V1";
+            "TS-VERIFIER-RELEASE-AUTHORITY-LINEAGE-TOOL-V2";
 
     private static final String LINEAGE_VERSION =
             "TS-VERIFIER-RELEASE-AUTHORITY-LINEAGE-V1";
@@ -487,15 +486,85 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                         "release root key pin"
                 );
 
+        String expectedHead =
+                normalizeSha256File(
+                        configuration.headPin(),
+                        "release authority lineage head pin"
+                );
+
         List<Transition> transitions =
                 readLineage(
                         configuration.lineage()
                 );
 
-        Verification result =
+        Verification cryptographic =
                 verifyEntries(
                         transitions,
                         rootPin
+                );
+
+        if (
+                !cryptographic.valid()
+        ) {
+            return new Verification(
+                    false,
+
+                    cryptographic.rootPinValid(),
+
+                    cryptographic.continuityValid(),
+
+                    false,
+
+                    cryptographic.transitionCount(),
+
+                    cryptographic.verifiedTransitionCount(),
+
+                    cryptographic.terminalKeyId(),
+
+                    cryptographic.terminalKeyFingerprint(),
+
+                    cryptographic.headHash(),
+
+                    cryptographic.message()
+            );
+        }
+
+        boolean headPinValid =
+                expectedHead.equals(
+                        cryptographic.headHash()
+                );
+
+        boolean valid =
+                cryptographic.valid()
+
+                && headPinValid;
+
+        String message =
+                headPinValid
+                        ? "Release authority lineage is valid and matches the independently pinned current lineage head."
+                        : "Release authority lineage is cryptographically valid but its head does not match the independently pinned current lineage head.";
+
+        Verification result =
+                new Verification(
+                        valid,
+
+                        cryptographic.rootPinValid(),
+
+                        cryptographic.continuityValid(),
+
+                        headPinValid,
+
+                        cryptographic.transitionCount(),
+
+                        cryptographic.verifiedTransitionCount(),
+
+                        cryptographic.terminalKeyId(),
+
+                        cryptographic.terminalKeyFingerprint(),
+
+                        cryptographic.headHash(),
+
+                        message
                 );
 
         if (
@@ -584,11 +653,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         false,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Release authority lineage version is unsupported."
                 );
             }
@@ -600,11 +672,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         false,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Release authority transition sequence is not contiguous."
                 );
             }
@@ -618,17 +693,19 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         false,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Release authority previous-transition hash linkage is invalid."
                 );
             }
 
             byte[] outgoingPublicBytes;
-
             byte[] replacementPublicBytes;
 
             try {
@@ -652,17 +729,19 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         false,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Release authority lineage contains invalid public-key encoding."
                 );
             }
 
             String calculatedOutgoingFingerprint;
-
             String calculatedReplacementFingerprint;
 
             try {
@@ -682,11 +761,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         false,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Unable to fingerprint release authority public keys."
                 );
             }
@@ -703,11 +785,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         false,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Release authority public-key fingerprint verification failed."
                 );
             }
@@ -726,11 +811,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                     return invalid(
                             false,
                             false,
+
                             transitions.size(),
                             verified,
+
                             terminalKeyId,
                             terminalFingerprint,
                             headHash,
+
                             "First release authority does not match the independently trusted root pin."
                     );
                 }
@@ -753,11 +841,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                     return invalid(
                             rootPinValid,
                             false,
+
                             transitions.size(),
                             verified,
+
                             terminalKeyId,
                             terminalFingerprint,
                             headHash,
+
                             "Release authority successor continuity is invalid."
                     );
                 }
@@ -833,11 +924,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         continuityValid,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Release authority transition Ed25519 signature verification failed."
                 );
             }
@@ -860,11 +954,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         continuityValid,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Unable to calculate release authority transition hash."
                 );
             }
@@ -877,11 +974,14 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 return invalid(
                         rootPinValid,
                         continuityValid,
+
                         transitions.size(),
                         verified,
+
                         terminalKeyId,
                         terminalFingerprint,
                         headHash,
+
                         "Release authority transition SHA-256 verification failed."
                 );
             }
@@ -916,6 +1016,8 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
 
                 continuityValid,
 
+                false,
+
                 transitions.size(),
 
                 verified,
@@ -926,7 +1028,7 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
 
                 headHash,
 
-                "Release authority lineage is valid."
+                "Release authority lineage is cryptographically valid."
         );
     }
 
@@ -953,6 +1055,8 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                 rootPinValid,
 
                 continuityValid,
+
+                false,
 
                 transitionCount,
 
@@ -1253,6 +1357,11 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
         );
 
         System.out.println(
+                "HEAD_PIN_VALID="
+                + result.headPinValid()
+        );
+
+        System.out.println(
                 "LINEAGE_VALID="
                 + result.valid()
         );
@@ -1464,6 +1573,8 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
 
             boolean continuityValid,
 
+            boolean headPinValid,
+
             int transitionCount,
 
             int verifiedTransitionCount,
@@ -1483,6 +1594,7 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
             return new Verification(
                     false,
 
+                    false,
                     false,
                     false,
 
@@ -1517,26 +1629,17 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
         static AppendConfiguration parse(
                 String[] args
         ) {
-            Path lineage =
-                    null;
+            Path lineage = null;
+            Path rootPin = null;
 
-            Path rootPin =
-                    null;
+            String outgoingKeyId = null;
 
-            String outgoingKeyId =
-                    null;
+            Path outgoingPrivateKey = null;
+            Path outgoingPublicKey = null;
 
-            Path outgoingPrivateKey =
-                    null;
+            String replacementKeyId = null;
 
-            Path outgoingPublicKey =
-                    null;
-
-            String replacementKeyId =
-                    null;
-
-            Path replacementPublicKey =
-                    null;
+            Path replacementPublicKey = null;
 
             for (
                     int index = 0;
@@ -1547,38 +1650,90 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                         args[index]
                 ) {
                     case "--lineage" -> {
-                        index = valueIndex(args, index);
-                        lineage = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        lineage =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     case "--root-pin" -> {
-                        index = valueIndex(args, index);
-                        rootPin = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        rootPin =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     case "--outgoing-key-id" -> {
-                        index = valueIndex(args, index);
-                        outgoingKeyId = args[index];
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        outgoingKeyId =
+                                args[index];
                     }
 
                     case "--outgoing-private-key" -> {
-                        index = valueIndex(args, index);
-                        outgoingPrivateKey = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        outgoingPrivateKey =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     case "--outgoing-public-key" -> {
-                        index = valueIndex(args, index);
-                        outgoingPublicKey = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        outgoingPublicKey =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     case "--replacement-key-id" -> {
-                        index = valueIndex(args, index);
-                        replacementKeyId = args[index];
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        replacementKeyId =
+                                args[index];
                     }
 
                     case "--replacement-public-key" -> {
-                        index = valueIndex(args, index);
-                        replacementPublicKey = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        replacementPublicKey =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     default ->
@@ -1619,6 +1774,7 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
 
             if (
                     outgoingKeyId == null
+
                     || outgoingKeyId.isBlank()
             ) {
                 throw new IllegalArgumentException(
@@ -1628,6 +1784,7 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
 
             if (
                     replacementKeyId == null
+
                     || replacementKeyId.isBlank()
             ) {
                 throw new IllegalArgumentException(
@@ -1652,20 +1809,18 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
 
             Path rootPin,
 
+            Path headPin,
+
             Path terminalPinOutput
     ) {
 
         static VerifyConfiguration parse(
                 String[] args
         ) {
-            Path lineage =
-                    null;
-
-            Path rootPin =
-                    null;
-
-            Path terminalPinOutput =
-                    null;
+            Path lineage = null;
+            Path rootPin = null;
+            Path headPin = null;
+            Path terminalPinOutput = null;
 
             for (
                     int index = 0;
@@ -1676,18 +1831,55 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                         args[index]
                 ) {
                     case "--lineage" -> {
-                        index = valueIndex(args, index);
-                        lineage = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        lineage =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     case "--root-pin" -> {
-                        index = valueIndex(args, index);
-                        rootPin = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        rootPin =
+                                Path.of(
+                                        args[index]
+                                );
+                    }
+
+                    case "--head-pin" -> {
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        headPin =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     case "--terminal-pin-output" -> {
-                        index = valueIndex(args, index);
-                        terminalPinOutput = Path.of(args[index]);
+                        index =
+                                valueIndex(
+                                        args,
+                                        index
+                                );
+
+                        terminalPinOutput =
+                                Path.of(
+                                        args[index]
+                                );
                     }
 
                     default ->
@@ -1708,9 +1900,15 @@ public final class TerraScopeVerifierReleaseAuthorityLineage {
                     "--root-pin"
             );
 
+            requireFile(
+                    headPin,
+                    "--head-pin"
+            );
+
             return new VerifyConfiguration(
                     lineage,
                     rootPin,
+                    headPin,
                     terminalPinOutput
             );
         }
