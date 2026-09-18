@@ -10,42 +10,41 @@ cd "${ROOT_DIR}"
 
 BACKEND_PID=""
 
-BACKEND_LOG="/tmp/terrascope-step44-backend.log"
+BACKEND_LOG="/tmp/terrascope-step45-backend.log"
 
-KEYGEN_SOURCE="/tmp/TerraScopeStep44Keygen.java"
+ARTIFACT="/tmp/terrascope-step45-checkpoint-verifier.jar"
 
-KEY1_PRIVATE_FILE="/tmp/terrascope-step44-key1-private.b64"
-KEY1_PUBLIC_FILE="/tmp/terrascope-step44-key1-public.b64"
+SECOND_BUILD="/tmp/terrascope-step45-checkpoint-verifier-second.jar"
 
-KEY2_PRIVATE_FILE="/tmp/terrascope-step44-key2-private.b64"
-KEY2_PUBLIC_FILE="/tmp/terrascope-step44-key2-public.b64"
+THIRD_BUILD="/tmp/terrascope-step45-checkpoint-verifier-third.jar"
 
-KEY3_PRIVATE_FILE="/tmp/terrascope-step44-key3-private.b64"
-KEY3_PUBLIC_FILE="/tmp/terrascope-step44-key3-public.b64"
+RELEASE_TOOL_DIR="/tmp/terrascope-step45-release-tools"
 
-LINEAGE_ENVELOPE="/tmp/terrascope-step44-lineage-envelope.json"
-ROOT_PIN_FILE="/tmp/terrascope-step44-root.sha256"
+RELEASE_SIGNER_JAR="${RELEASE_TOOL_DIR}/terrascope-verifier-release-signer.jar"
 
-RECEIPT_ONE="/tmp/terrascope-step44-receipt-one.json"
-RECEIPT_TWO="/tmp/terrascope-step44-receipt-two.json"
+RELEASE_VERIFIER_JAR="${RELEASE_TOOL_DIR}/terrascope-verifier-release-verifier.jar"
 
-REQUEST_ONE="/tmp/terrascope-step44-request-one.json"
-REQUEST_TWO="/tmp/terrascope-step44-request-two.json"
+KEYGEN_SOURCE="/tmp/TerraScopeStep45ReleaseKeygen.java"
 
-CHECKPOINT_BUNDLE="/tmp/terrascope-step44-checkpoint-bundle.json"
-SIGNING_KEY_PIN_FILE="/tmp/terrascope-step44-signing-key.sha256"
-WRONG_PIN_FILE="/tmp/terrascope-step44-wrong-signing-key.sha256"
+PRIVATE_KEY="/tmp/terrascope-step45-release-private.b64"
 
-TAMPERED_BUNDLE_HASH="/tmp/terrascope-step44-bundle-hash-tampered.json"
-TAMPERED_LEDGER="/tmp/terrascope-step44-ledger-tampered.json"
-TAMPERED_SIGNATURE="/tmp/terrascope-step44-signature-tampered.json"
+PUBLIC_KEY="/tmp/terrascope-step45-release-public.b64"
 
-TRUST_VERIFIER_JAR="/tmp/terrascope-step44-trust-verifier.jar"
-CHECKPOINT_VERIFIER_JAR="/tmp/terrascope-step44-checkpoint-bundle-verifier.jar"
+RELEASE_PIN="/tmp/terrascope-step45-release-pin.sha256"
 
-KEY1_ID="verification-step44-ed25519-v1"
-KEY2_ID="verification-step44-ed25519-v2"
-KEY3_ID="verification-step44-ed25519-v3"
+WRONG_RELEASE_PIN="/tmp/terrascope-step45-wrong-release-pin.sha256"
+
+RELEASE_MANIFEST="/tmp/terrascope-step45-release.manifest"
+
+TAMPER_ARTIFACT_DIR="/tmp/terrascope-step45-tampered-artifact"
+
+TAMPER_ARTIFACT="${TAMPER_ARTIFACT_DIR}/terrascope-step45-checkpoint-verifier.jar"
+
+MANIFEST_TAMPER="/tmp/terrascope-step45-release-manifest-tampered.manifest"
+
+SIGNATURE_TAMPER="/tmp/terrascope-step45-release-signature-tampered.manifest"
+
+RELEASE_KEY_ID="terrascope-release-step45-ed25519-v1"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -56,15 +55,23 @@ cleanup() {
 
 trap cleanup EXIT
 
-stop_backend() {
-  if [[ -n "${BACKEND_PID}" ]]; then
-    kill "${BACKEND_PID}" >/dev/null 2>&1 || true
-    wait "${BACKEND_PID}" >/dev/null 2>&1 || true
+wait_postgres() {
+  for attempt in $(seq 1 30); do
+    if docker compose exec -T postgres \
+        pg_isready \
+        -U terrascope \
+        -d terrascope \
+        >/dev/null 2>&1; then
 
-    BACKEND_PID=""
-  fi
+      return 0
+    fi
 
-  sleep 1
+    [[ "${attempt}" -lt 30 ]]
+
+    sleep 1
+  done
+
+  return 1
 }
 
 wait_backend() {
@@ -96,66 +103,21 @@ wait_backend() {
   return 1
 }
 
-start_with_key() {
-  local KEY_ID="$1"
-  local PRIVATE_KEY="$2"
-  local PUBLIC_KEY="$3"
+stop_backend() {
+  if [[ -n "${BACKEND_PID}" ]]; then
+    kill "${BACKEND_PID}" >/dev/null 2>&1 || true
+    wait "${BACKEND_PID}" >/dev/null 2>&1 || true
 
-  (
-    cd apps/backend
+    BACKEND_PID=""
+  fi
 
-    TERRASCOPE_GOVERNANCE_SIGNING_KEY_ID="${KEY_ID}" \
-    TERRASCOPE_GOVERNANCE_SIGNING_PRIVATE_KEY_PKCS8_B64="${PRIVATE_KEY}" \
-    TERRASCOPE_GOVERNANCE_SIGNING_PUBLIC_KEY_X509_B64="${PUBLIC_KEY}" \
-      mvn spring-boot:run
-  ) >> "${BACKEND_LOG}" 2>&1 &
-
-  BACKEND_PID=$!
-
-  wait_backend
-}
-
-start_without_key() {
-  (
-    cd apps/backend
-
-    env \
-      -u TERRASCOPE_GOVERNANCE_SIGNING_KEY_ID \
-      -u TERRASCOPE_GOVERNANCE_SIGNING_PRIVATE_KEY_PKCS8_B64 \
-      -u TERRASCOPE_GOVERNANCE_SIGNING_PUBLIC_KEY_X509_B64 \
-      mvn spring-boot:run
-  ) >> "${BACKEND_LOG}" 2>&1 &
-
-  BACKEND_PID=$!
-
-  wait_backend
-}
-
-wait_postgres() {
-  for attempt in $(seq 1 30); do
-    if docker compose exec -T postgres \
-        pg_isready \
-        -U terrascope \
-        -d terrascope \
-        >/dev/null 2>&1; then
-
-      return 0
-    fi
-
-    [[ "${attempt}" -lt 30 ]]
-
-    sleep 1
-  done
-
-  return 1
+  sleep 1
 }
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 44 VERIFICATION"
+echo " TERRASCOPE — STEP 45 VERIFICATION"
 echo "========================================================================"
-
-docker compose config >/dev/null
 
 docker compose up -d postgres
 
@@ -190,125 +152,38 @@ echo "[PASS] BACKEND_TESTS"
 
 echo "[PASS] BUILD_QUALITY"
 
-bash \
-  tools/trust-verifier/build.sh \
-  "${TRUST_VERIFIER_JAR}"
-
-[[ -s "${TRUST_VERIFIER_JAR}" ]]
-
-bash \
-  tools/checkpoint-bundle-verifier/build.sh \
-  "${CHECKPOINT_VERIFIER_JAR}"
-
-[[ -s "${CHECKPOINT_VERIFIER_JAR}" ]]
-
-echo "[PASS] BOTH_STANDALONE_VERIFIERS_READY"
-
-cat > "${KEYGEN_SOURCE}" <<'JAVA'
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-
-import java.util.Base64;
-
-public class TerraScopeStep44Keygen {
-
-    public static void main(
-            String[] args
-    ) throws Exception {
-        KeyPairGenerator generator =
-                KeyPairGenerator.getInstance(
-                        "Ed25519"
-                );
-
-        for (
-                int index = 0;
-                index < 3;
-                index++
-        ) {
-            KeyPair pair =
-                    generator.generateKeyPair();
-
-            Files.writeString(
-                    Path.of(
-                            args[index * 2]
-                    ),
-
-                    Base64
-                            .getEncoder()
-                            .encodeToString(
-                                    pair
-                                            .getPrivate()
-                                            .getEncoded()
-                            )
-            );
-
-            Files.writeString(
-                    Path.of(
-                            args[index * 2 + 1]
-                    ),
-
-                    Base64
-                            .getEncoder()
-                            .encodeToString(
-                                    pair
-                                            .getPublic()
-                                            .getEncoded()
-                            )
-            );
-        }
-    }
-}
-JAVA
-
-java \
-  "${KEYGEN_SOURCE}" \
-  "${KEY1_PRIVATE_FILE}" \
-  "${KEY1_PUBLIC_FILE}" \
-  "${KEY2_PRIVATE_FILE}" \
-  "${KEY2_PUBLIC_FILE}" \
-  "${KEY3_PRIVATE_FILE}" \
-  "${KEY3_PUBLIC_FILE}"
-
-KEY1_PRIVATE="$(cat "${KEY1_PRIVATE_FILE}")"
-KEY1_PUBLIC="$(cat "${KEY1_PUBLIC_FILE}")"
-
-KEY2_PRIVATE="$(cat "${KEY2_PRIVATE_FILE}")"
-KEY2_PUBLIC="$(cat "${KEY2_PUBLIC_FILE}")"
-
-KEY3_PRIVATE="$(cat "${KEY3_PRIVATE_FILE}")"
-KEY3_PUBLIC="$(cat "${KEY3_PUBLIC_FILE}")"
-
-echo "[PASS] THREE_LOCAL_ED25519_KEYPAIRS"
+echo
+echo "===== SYSTEM VERSION + FLYWAY ====="
 
 rm -f "${BACKEND_LOG}"
 
-start_with_key \
-  "${KEY1_ID}" \
-  "${KEY1_PRIVATE}" \
-  "${KEY1_PUBLIC}"
+(
+  cd apps/backend
 
-echo "[PASS] KEY1_RUNTIME_READY"
+  mvn spring-boot:run
+) >> "${BACKEND_LOG}" 2>&1 &
+
+BACKEND_PID=$!
+
+wait_backend
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step44-status.json
+  >/tmp/terrascope-step45-status.json
 
 python3 - <<'PY'
 import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step44-status.json",
+        "/tmp/terrascope-step45-status.json",
         encoding="utf-8",
     )
 )
 
-assert payload["version"] == "0.44.0"
+assert payload["version"] == "0.45.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
@@ -331,584 +206,367 @@ for VERSION in $(seq 1 43); do
       | tr -d '[:space:]'
   )"
 
-  echo "FLYWAY_V${VERSION}_COUNT=${COUNT}"
-
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V1_TO_V43_RUNTIME"
-
-echo
-echo "===== STEP 44 PRE-CLEAN ====="
-
-docker compose exec -T postgres \
-  psql \
-    -U terrascope \
-    -d terrascope \
-    -c "
-      DELETE
-      FROM resilience_governance_offline_trust_checkpoint_bundles;
-
-      DELETE
-      FROM resilience_governance_offline_trust_receipt_checkpoints;
-
-      DELETE
-      FROM resilience_governance_offline_trust_receipt_ledger;
-
-      DELETE
-      FROM resilience_governance_offline_trust_verification_receipts;
-
-      DELETE
-      FROM resilience_governance_trust_lineage_pin_receipts;
-
-      DELETE
-      FROM resilience_governance_trust_lineage_packages;
-
-      DELETE
-      FROM resilience_governance_trust_anchor_transitions
-      WHERE outgoing_key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      )
-         OR replacement_key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      DELETE
-      FROM resilience_governance_trust_anchor_events
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      )
-         OR replacement_key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      DELETE
-      FROM resilience_governance_closure_signatures
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      UPDATE resilience_governance_trust_anchors
-
-      SET superseded_by_key_id =
-          NULL
-
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      DELETE
-      FROM resilience_governance_trust_anchors
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      UPDATE resilience_governance_sequence_allocators
-
-      SET
-          next_value = 1,
-          updated_at = NOW()
-
-      WHERE allocator_key IN (
-          'OFFLINE_TRUST_IMPORT_NUMBER_V1',
-          'OFFLINE_TRUST_LEDGER_NUMBER_V1',
-          'OFFLINE_TRUST_RECEIPT_CHECKPOINT_NUMBER_V1',
-          'OFFLINE_TRUST_CHECKPOINT_BUNDLE_NUMBER_V1',
-          'GOV_TRUST_ANCHOR_TRANSITIONS_TRANSITION_NUMBER_V1',
-          'GOV_TRUST_LINEAGE_PACKAGES_PACKAGE_NUMBER_V1',
-          'GOV_TRUST_LINEAGE_PIN_RECEIPTS_RECEIPT_NUMBER_V1'
-      );
-    " \
-  >/dev/null
-
-echo "[PASS] STEP44_PRE_CLEAN"
-
-echo
-echo "===== BUILD TRUST LINEAGE ====="
-
-cat > /tmp/terrascope-step44-root.json <<JSON
-{
-  "keyId": "${KEY1_ID}",
-  "publicKeyX509Base64": "${KEY1_PUBLIC}"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step44-root.json \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors" \
-  >/tmp/terrascope-step44-root-response.json
-
-echo "[PASS] ROOT_ANCHOR_REGISTERED"
-
-cat > /tmp/terrascope-step44-transition1.json <<JSON
-{
-  "replacementKeyId": "${KEY2_ID}",
-  "replacementPublicKeyX509Base64": "${KEY2_PUBLIC}",
-  "reason": "Step 44 standalone checkpoint verifier transition one."
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step44-transition1.json \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate" \
-  >/tmp/terrascope-step44-transition1-response.json
-
-echo "[PASS] ROOT_TO_KEY2_TRANSITION"
-
-stop_backend
-
-start_with_key \
-  "${KEY2_ID}" \
-  "${KEY2_PRIVATE}" \
-  "${KEY2_PUBLIC}"
-
-echo "[PASS] KEY2_RUNTIME_READY"
-
-cat > /tmp/terrascope-step44-transition2.json <<JSON
-{
-  "replacementKeyId": "${KEY3_ID}",
-  "replacementPublicKeyX509Base64": "${KEY3_PUBLIC}",
-  "reason": "Step 44 standalone checkpoint verifier transition two."
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step44-transition2.json \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate" \
-  >/tmp/terrascope-step44-transition2-response.json
-
-echo "[PASS] KEY2_TO_KEY3_TRANSITION"
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/packages" \
-  >/tmp/terrascope-step44-lineage-package.json
-
-LINEAGE_PACKAGE_ID="$(
-  python3 - <<'PY'
-import json
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step44-lineage-package.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["transitionCount"] == 2
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/packages/export/${LINEAGE_PACKAGE_ID}" \
-  --output "${LINEAGE_ENVELOPE}"
-
-ROOT_PIN="$(
-  python3 \
-    - "${LINEAGE_ENVELOPE}" \
-<<'PY'
-import json
-import sys
-
-envelope = json.load(
-    open(
-        sys.argv[1],
-        encoding="utf-8",
-    )
-)
-
-payload = json.loads(
-    envelope["payloadJson"]
-)
-
-print(
-    payload["rootPublicKeyFingerprint"]
-)
-PY
-)"
-
-printf '%s\n' \
-  "${ROOT_PIN}" \
-  > "${ROOT_PIN_FILE}"
-
-echo "[PASS] TRUST_LINEAGE_EXPORTED"
-
-echo
-echo "===== GENERATE TWO OFFLINE RECEIPTS ====="
-
-java \
-  -jar "${TRUST_VERIFIER_JAR}" \
-  --envelope "${LINEAGE_ENVELOPE}" \
-  --root-pin "${ROOT_PIN_FILE}" \
-  --receipt "${RECEIPT_ONE}" \
-  >/tmp/terrascope-step44-receipt-one.log
-
-sleep 1
-
-java \
-  -jar "${TRUST_VERIFIER_JAR}" \
-  --envelope "${LINEAGE_ENVELOPE}" \
-  --root-pin "${ROOT_PIN_FILE}" \
-  --receipt "${RECEIPT_TWO}" \
-  >/tmp/terrascope-step44-receipt-two.log
-
-grep \
-  -q \
-  'VERIFICATION_RESULT=VALID' \
-  /tmp/terrascope-step44-receipt-one.log
-
-grep \
-  -q \
-  'VERIFICATION_RESULT=VALID' \
-  /tmp/terrascope-step44-receipt-two.log
-
-python3 \
-  - \
-  "${RECEIPT_ONE}" \
-  "${RECEIPT_TWO}" \
-  "${REQUEST_ONE}" \
-  "${REQUEST_TWO}" \
-<<'PY'
-import json
-import sys
-
-for source, target in (
-    (sys.argv[1], sys.argv[3]),
-    (sys.argv[2], sys.argv[4]),
-):
-    receipt_text = open(
-        source,
-        encoding="utf-8",
-    ).read()
-
-    with open(
-        target,
-        "w",
-        encoding="utf-8",
-    ) as handle:
-        json.dump(
-            {
-                "receiptJson":
-                    receipt_text,
-            },
-            handle,
-            separators=(",", ":"),
-        )
-PY
-
-echo "[PASS] TWO_OFFLINE_RECEIPTS_READY"
-
-echo
-echo "===== IMPORT RECEIPTS KEYLESS ====="
-
-stop_backend
-
-start_without_key
-
-echo "[PASS] KEYLESS_IMPORT_RUNTIME_READY"
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @"${REQUEST_ONE}" \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
-  >/tmp/terrascope-step44-import-one.json
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @"${REQUEST_TWO}" \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
-  >/tmp/terrascope-step44-import-two.json
-
-echo "[PASS] TWO_RECEIPTS_IMPORTED"
-
-echo
-echo "===== CREATE SIGNED CHECKPOINT + PORTABLE BUNDLE ====="
-
-stop_backend
-
-start_with_key \
-  "${KEY3_ID}" \
-  "${KEY3_PRIVATE}" \
-  "${KEY3_PUBLIC}"
-
-echo "[PASS] KEY3_RUNTIME_READY"
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoints" \
-  >/tmp/terrascope-step44-checkpoint.json
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoint-bundles" \
-  >/tmp/terrascope-step44-bundle.json
-
-BUNDLE_ID="$(
-  python3 - <<'PY'
-import json
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step44-bundle.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["sourceCheckpointNumber"] == 1
-assert payload["coveredLedgerNumber"] == 2
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoint-bundles/export/${BUNDLE_ID}" \
-  --output "${CHECKPOINT_BUNDLE}"
-
-SIGNING_KEY_PIN="$(
-  python3 \
-    - "${CHECKPOINT_BUNDLE}" \
-<<'PY'
-import json
-import re
-import sys
-
-envelope = json.load(
-    open(
-        sys.argv[1],
-        encoding="utf-8",
-    )
-)
-
-payload = json.loads(
-    envelope["payloadJson"]
-)
-
-fingerprint = payload["signingPublicKeyFingerprint"]
-
-assert re.fullmatch(
-    r"[0-9a-f]{64}",
-    fingerprint,
-)
-
-print(
-    fingerprint
-)
-PY
-)"
-
-printf '%s\n' \
-  "${SIGNING_KEY_PIN}" \
-  > "${SIGNING_KEY_PIN_FILE}"
-
-WRONG_PIN="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-
-if [[ "${WRONG_PIN}" == "${SIGNING_KEY_PIN}" ]]; then
-  WRONG_PIN="0000000000000000000000000000000000000000000000000000000000000000"
-fi
-
-printf '%s\n' \
-  "${WRONG_PIN}" \
-  > "${WRONG_PIN_FILE}"
-
-echo "SIGNING_KEY_PIN=${SIGNING_KEY_PIN}"
-
-echo "[PASS] PORTABLE_CHECKPOINT_BUNDLE_EXPORTED"
-
-echo
-echo "===== DELETE ALL DATABASE EVIDENCE ====="
-
-stop_backend
-
-docker compose exec -T postgres \
-  psql \
-    -U terrascope \
-    -d terrascope \
-    -c "
-      DELETE
-      FROM resilience_governance_offline_trust_checkpoint_bundles;
-
-      DELETE
-      FROM resilience_governance_offline_trust_receipt_checkpoints;
-
-      DELETE
-      FROM resilience_governance_offline_trust_receipt_ledger;
-
-      DELETE
-      FROM resilience_governance_offline_trust_verification_receipts;
-
-      DELETE
-      FROM resilience_governance_trust_lineage_pin_receipts;
-
-      DELETE
-      FROM resilience_governance_trust_lineage_packages;
-
-      DELETE
-      FROM resilience_governance_trust_anchor_transitions
-      WHERE outgoing_key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      )
-         OR replacement_key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      DELETE
-      FROM resilience_governance_trust_anchor_events
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      )
-         OR replacement_key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      DELETE
-      FROM resilience_governance_closure_signatures
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      UPDATE resilience_governance_trust_anchors
-
-      SET superseded_by_key_id =
-          NULL
-
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      DELETE
-      FROM resilience_governance_trust_anchors
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}',
-          '${KEY3_ID}'
-      );
-
-      UPDATE resilience_governance_sequence_allocators
-
-      SET
-          next_value = 1,
-          updated_at = NOW()
-
-      WHERE allocator_key IN (
-          'OFFLINE_TRUST_IMPORT_NUMBER_V1',
-          'OFFLINE_TRUST_LEDGER_NUMBER_V1',
-          'OFFLINE_TRUST_RECEIPT_CHECKPOINT_NUMBER_V1',
-          'OFFLINE_TRUST_CHECKPOINT_BUNDLE_NUMBER_V1',
-          'GOV_TRUST_ANCHOR_TRANSITIONS_TRANSITION_NUMBER_V1',
-          'GOV_TRUST_LINEAGE_PACKAGES_PACKAGE_NUMBER_V1',
-          'GOV_TRUST_LINEAGE_PIN_RECEIPTS_RECEIPT_NUMBER_V1'
-      );
-    " \
-  >/dev/null
-
-SOURCE_TOTAL="$(
+V44_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
       -d terrascope \
       -tAc \
       "
-      SELECT
-          (SELECT COUNT(*) FROM resilience_governance_offline_trust_checkpoint_bundles)
-        + (SELECT COUNT(*) FROM resilience_governance_offline_trust_receipt_checkpoints)
-        + (SELECT COUNT(*) FROM resilience_governance_offline_trust_receipt_ledger)
-        + (SELECT COUNT(*) FROM resilience_governance_offline_trust_verification_receipts)
-        + (SELECT COUNT(*) FROM resilience_governance_trust_lineage_packages)
-        + (
-            SELECT COUNT(*)
-            FROM resilience_governance_trust_anchors
-            WHERE key_id IN (
-                '${KEY1_ID}',
-                '${KEY2_ID}',
-                '${KEY3_ID}'
-            )
-          );
+      SELECT COUNT(*)
+      FROM flyway_schema_history
+      WHERE version='44';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "SOURCE_DATABASE_EVIDENCE_COUNT=${SOURCE_TOTAL}"
+V45_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM flyway_schema_history
+      WHERE version='45';
+      " \
+    | tr -d '[:space:]'
+)"
 
-[[ "${SOURCE_TOTAL}" == "0" ]]
+echo "FLYWAY_V44_COUNT=${V44_COUNT}"
+echo "FLYWAY_V45_COUNT=${V45_COUNT}"
 
-echo "[PASS] ALL_DATABASE_EVIDENCE_REMOVED"
+[[ "${V44_COUNT}" == "0" ]]
+[[ "${V45_COUNT}" == "0" ]]
+
+echo "[PASS] FLYWAY_SCHEMA_UNCHANGED"
 
 echo
-echo "===== SHUT DOWN POSTGRES ====="
+echo "===== THREE CLEAN ARTIFACT BUILDS ====="
+
+rm -f \
+  "${ARTIFACT}" \
+  "${SECOND_BUILD}" \
+  "${THIRD_BUILD}"
+
+bash \
+  tools/checkpoint-bundle-verifier/build.sh \
+  "${ARTIFACT}"
+
+sleep 1
+
+bash \
+  tools/checkpoint-bundle-verifier/build.sh \
+  "${SECOND_BUILD}"
+
+sleep 1
+
+bash \
+  tools/checkpoint-bundle-verifier/build.sh \
+  "${THIRD_BUILD}"
+
+SHA_ONE="$(
+  shasum -a 256 \
+    "${ARTIFACT}" \
+    | awk '{print $1}'
+)"
+
+SHA_TWO="$(
+  shasum -a 256 \
+    "${SECOND_BUILD}" \
+    | awk '{print $1}'
+)"
+
+SHA_THREE="$(
+  shasum -a 256 \
+    "${THIRD_BUILD}" \
+    | awk '{print $1}'
+)"
+
+echo "ARTIFACT_BUILD_1_SHA256=${SHA_ONE}"
+echo "ARTIFACT_BUILD_2_SHA256=${SHA_TWO}"
+echo "ARTIFACT_BUILD_3_SHA256=${SHA_THREE}"
+
+[[ "${SHA_ONE}" == "${SHA_TWO}" ]]
+[[ "${SHA_TWO}" == "${SHA_THREE}" ]]
+
+echo "[PASS] DETERMINISTIC_ARTIFACT_BUILD"
+
+echo
+echo "===== BUILD RELEASE TOOLS ====="
+
+rm -rf "${RELEASE_TOOL_DIR}"
+
+bash \
+  tools/verifier-release-integrity/build.sh \
+  "${RELEASE_TOOL_DIR}"
+
+[[ -s "${RELEASE_SIGNER_JAR}" ]]
+[[ -s "${RELEASE_VERIFIER_JAR}" ]]
+
+echo "[PASS] RELEASE_TOOLS_READY"
+
+echo
+echo "===== GENERATE TEMPORARY RELEASE KEY ====="
+
+cat > "${KEYGEN_SOURCE}" <<'JAVA'
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+
+import java.util.Base64;
+
+public class TerraScopeStep45ReleaseKeygen {
+
+    public static void main(
+            String[] args
+    ) throws Exception {
+        KeyPairGenerator generator =
+                KeyPairGenerator.getInstance(
+                        "Ed25519"
+                );
+
+        KeyPair pair =
+                generator.generateKeyPair();
+
+        Files.writeString(
+                Path.of(
+                        args[0]
+                ),
+
+                Base64
+                        .getEncoder()
+                        .encodeToString(
+                                pair
+                                        .getPrivate()
+                                        .getEncoded()
+                        )
+        );
+
+        Files.writeString(
+                Path.of(
+                        args[1]
+                ),
+
+                Base64
+                        .getEncoder()
+                        .encodeToString(
+                                pair
+                                        .getPublic()
+                                        .getEncoded()
+                        )
+        );
+    }
+}
+JAVA
+
+java \
+  "${KEYGEN_SOURCE}" \
+  "${PRIVATE_KEY}" \
+  "${PUBLIC_KEY}"
+
+[[ -s "${PRIVATE_KEY}" ]]
+[[ -s "${PUBLIC_KEY}" ]]
+
+echo "[PASS] TEMPORARY_RELEASE_KEY_READY"
+
+echo
+echo "===== SIGN RELEASE MANIFEST ====="
+
+rm -f "${RELEASE_MANIFEST}"
+
+java \
+  -jar "${RELEASE_SIGNER_JAR}" \
+  --artifact "${ARTIFACT}" \
+  --private-key "${PRIVATE_KEY}" \
+  --public-key "${PUBLIC_KEY}" \
+  --release-key-id "${RELEASE_KEY_ID}" \
+  --output "${RELEASE_MANIFEST}" \
+  | tee /tmp/terrascope-step45-sign.log
+
+grep \
+  -q \
+  '^SIGNATURE_SELF_VERIFICATION=PASS$' \
+  /tmp/terrascope-step45-sign.log
+
+RELEASE_KEY_FINGERPRINT="$(
+  grep \
+    '^RELEASE_KEY_FINGERPRINT=' \
+    /tmp/terrascope-step45-sign.log \
+    | cut -d= -f2-
+)"
+
+SIGNED_ARTIFACT_SHA="$(
+  grep \
+    '^ARTIFACT_SHA256=' \
+    /tmp/terrascope-step45-sign.log \
+    | cut -d= -f2-
+)"
+
+echo "RELEASE_KEY_FINGERPRINT=${RELEASE_KEY_FINGERPRINT}"
+echo "SIGNED_ARTIFACT_SHA256=${SIGNED_ARTIFACT_SHA}"
+
+[[ "${SIGNED_ARTIFACT_SHA}" == "${SHA_ONE}" ]]
+
+printf '%s\n' \
+  "${RELEASE_KEY_FINGERPRINT}" \
+  > "${RELEASE_PIN}"
+
+WRONG_PIN="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+if [[ "${WRONG_PIN}" == "${RELEASE_KEY_FINGERPRINT}" ]]; then
+  WRONG_PIN="0000000000000000000000000000000000000000000000000000000000000000"
+fi
+
+printf '%s\n' \
+  "${WRONG_PIN}" \
+  > "${WRONG_RELEASE_PIN}"
+
+echo "[PASS] SIGNED_RELEASE_MANIFEST_READY"
+
+echo
+echo "===== RELEASE MANIFEST CONTRACT ====="
+
+python3 \
+  - \
+  "${RELEASE_MANIFEST}" \
+  "${SHA_ONE}" \
+  "${RELEASE_KEY_FINGERPRINT}" \
+<<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(
+    sys.argv[1]
+)
+
+artifact_sha = sys.argv[2]
+fingerprint = sys.argv[3]
+
+lines = path.read_text(
+    encoding="utf-8",
+).splitlines()
+
+expected_prefixes = [
+    "manifestVersion=",
+    "artifactName=",
+    "artifactVersion=",
+    "artifactSha256=",
+    "releaseKeyId=",
+    "algorithm=",
+    "releasePublicKeyX509Base64=",
+    "releasePublicKeyFingerprint=",
+    "signatureBase64=",
+]
+
+assert len(lines) == len(
+    expected_prefixes
+)
+
+for line, prefix in zip(
+    lines,
+    expected_prefixes,
+):
+    assert line.startswith(
+        prefix
+    )
+
+assert lines[0] == (
+    "manifestVersion="
+    "TS-VERIFIER-RELEASE-MANIFEST-V1"
+)
+
+assert lines[2] == (
+    "artifactVersion="
+    "TS-STANDALONE-CHECKPOINT-BUNDLE-VERIFIER-V1"
+)
+
+assert lines[3] == (
+    "artifactSha256="
+    + artifact_sha
+)
+
+assert lines[5] == (
+    "algorithm=ED25519"
+)
+
+assert lines[7] == (
+    "releasePublicKeyFingerprint="
+    + fingerprint
+)
+
+assert re.fullmatch(
+    r"signatureBase64=.+",
+    lines[8],
+)
+
+print(
+    "[PASS] RELEASE_MANIFEST_CONTRACT"
+)
+PY
+
+echo
+echo "===== PROVE PRIVATE KEY IS NOT EMBEDDED ====="
+
+PRIVATE_KEY_VALUE="$(
+  cat "${PRIVATE_KEY}"
+)"
+
+if grep \
+    -F \
+    "${PRIVATE_KEY_VALUE}" \
+    "${RELEASE_MANIFEST}" \
+    >/dev/null; then
+
+  echo "[FAIL] Private key leaked into release manifest."
+  exit 1
+fi
+
+if jar tf "${RELEASE_VERIFIER_JAR}" \
+    | grep \
+        -Ei \
+        'private.*key|pkcs8' \
+        >/dev/null; then
+
+  echo "[FAIL] Suspicious private-key resource found in release verifier JAR."
+  exit 1
+fi
+
+echo "[PASS] PRIVATE_KEY_NOT_EMBEDDED"
+
+echo
+echo "===== DELETE RELEASE PRIVATE KEY ====="
+
+rm -f "${PRIVATE_KEY}"
+
+[[ ! -e "${PRIVATE_KEY}" ]]
+
+echo "[PASS] RELEASE_PRIVATE_KEY_DESTROYED_BEFORE_VERIFICATION"
+
+echo
+echo "===== STOP TERRASCOPE + POSTGRES ====="
+
+stop_backend
 
 docker compose stop postgres
 
-RUNNING_POSTGRES_COUNT="$(
+RUNNING_POSTGRES="$(
   docker compose ps \
     --status running \
     -q postgres \
     | awk 'END { print NR + 0 }'
 )"
 
-echo "RUNNING_POSTGRES_COUNT=${RUNNING_POSTGRES_COUNT}"
+echo "RUNNING_POSTGRES_COUNT=${RUNNING_POSTGRES}"
 
-[[ "${RUNNING_POSTGRES_COUNT}" == "0" ]]
+[[ "${RUNNING_POSTGRES}" == "0" ]]
 
 if curl \
     --silent \
@@ -916,7 +574,7 @@ if curl \
     "http://localhost:8087/actuator/health" \
     >/dev/null 2>&1; then
 
-  echo "[FAIL] TerraScope backend is unexpectedly reachable."
+  echo "[FAIL] TerraScope backend remains reachable."
   exit 1
 fi
 
@@ -924,393 +582,337 @@ echo "[PASS] TERRASCOPE_BACKEND_OFFLINE"
 echo "[PASS] POSTGRES_OFFLINE"
 
 echo
-echo "===== PURE-JDK VALID CHECKPOINT BUNDLE ====="
+echo "===== VALID OFFLINE RELEASE AUTHENTICATION ====="
 
-env \
-  -u TERRASCOPE_GOVERNANCE_SIGNING_KEY_ID \
-  -u TERRASCOPE_GOVERNANCE_SIGNING_PRIVATE_KEY_PKCS8_B64 \
-  -u TERRASCOPE_GOVERNANCE_SIGNING_PUBLIC_KEY_X509_B64 \
-  java \
-    -jar "${CHECKPOINT_VERIFIER_JAR}" \
-    --bundle "${CHECKPOINT_BUNDLE}" \
-    --signing-key-pin "${SIGNING_KEY_PIN_FILE}" \
-  | tee /tmp/terrascope-step44-valid.log
+java \
+  -jar "${RELEASE_VERIFIER_JAR}" \
+  --artifact "${ARTIFACT}" \
+  --manifest "${RELEASE_MANIFEST}" \
+  --release-key-pin "${RELEASE_PIN}" \
+  | tee /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
-  '^ENVELOPE_VERSION_VALID=true$' \
-  /tmp/terrascope-step44-valid.log
+  '^MANIFEST_SHAPE_VALID=true$' \
+  /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
-  '^BUNDLE_HASH_VALID=true$' \
-  /tmp/terrascope-step44-valid.log
+  '^ARTIFACT_NAME_VALID=true$' \
+  /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
-  '^CANONICAL_PAYLOAD_VALID=true$' \
-  /tmp/terrascope-step44-valid.log
+  '^ARTIFACT_VERSION_VALID=true$' \
+  /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
-  '^LEDGER_VALID=true$' \
-  /tmp/terrascope-step44-valid.log
+  '^ARTIFACT_HASH_VALID=true$' \
+  /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
-  '^CHECKPOINT_VALID=true$' \
-  /tmp/terrascope-step44-valid.log
+  '^PUBLIC_KEY_FINGERPRINT_VALID=true$' \
+  /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
-  '^SIGNING_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step44-valid.log
+  '^RELEASE_KEY_PIN_VALID=true$' \
+  /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
-  '^LEDGER_ENTRY_COUNT=2$' \
-  /tmp/terrascope-step44-valid.log
-
-grep \
-  -q \
-  '^VERIFIED_LEDGER_ENTRY_COUNT=2$' \
-  /tmp/terrascope-step44-valid.log
+  '^SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step45-release-valid.log
 
 grep \
   -q \
   '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step44-valid.log
+  /tmp/terrascope-step45-release-valid.log
 
-echo "[PASS] TRUE_AIR_GAPPED_CHECKPOINT_BUNDLE_VERIFICATION"
-
-echo
-echo "===== PURE-JDK WRONG PIN ====="
-
-set +e
-
-env \
-  -u TERRASCOPE_GOVERNANCE_SIGNING_KEY_ID \
-  -u TERRASCOPE_GOVERNANCE_SIGNING_PRIVATE_KEY_PKCS8_B64 \
-  -u TERRASCOPE_GOVERNANCE_SIGNING_PUBLIC_KEY_X509_B64 \
-  java \
-    -jar "${CHECKPOINT_VERIFIER_JAR}" \
-    --bundle "${CHECKPOINT_BUNDLE}" \
-    --signing-key-pin "${WRONG_PIN_FILE}" \
-  > /tmp/terrascope-step44-wrong-pin.log \
-  2>&1
-
-WRONG_PIN_EXIT=$?
-
-set -e
-
-cat /tmp/terrascope-step44-wrong-pin.log
-
-echo "WRONG_PIN_EXIT=${WRONG_PIN_EXIT}"
-
-[[ "${WRONG_PIN_EXIT}" == "2" ]]
-
-grep \
-  -q \
-  '^LEDGER_VALID=true$' \
-  /tmp/terrascope-step44-wrong-pin.log
-
-grep \
-  -q \
-  '^CHECKPOINT_VALID=true$' \
-  /tmp/terrascope-step44-wrong-pin.log
-
-grep \
-  -q \
-  '^SIGNING_KEY_PIN_VALID=false$' \
-  /tmp/terrascope-step44-wrong-pin.log
-
-grep \
-  -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step44-wrong-pin.log
-
-echo "[PASS] AIR_GAPPED_WRONG_PIN_REJECTION"
+echo "[PASS] OFFLINE_RELEASE_AUTHENTICATION"
 
 echo
-echo "===== OUTER BUNDLE HASH TAMPER ====="
+echo "===== WRONG RELEASE KEY PIN ====="
 
-python3 \
-  - \
-  "${CHECKPOINT_BUNDLE}" \
-  "${TAMPERED_BUNDLE_HASH}" \
-<<'PY'
-import json
-import sys
-
-source = sys.argv[1]
-target = sys.argv[2]
-
-envelope = json.load(
-    open(
-        source,
-        encoding="utf-8",
-    )
-)
-
-envelope["bundleHash"] = (
-    "0" * 64
-)
-
-with open(
-    target,
-    "w",
-    encoding="utf-8",
-) as handle:
-    json.dump(
-        envelope,
-        handle,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    )
-PY
-
+trap - ERR
 set +e
 
 java \
-  -jar "${CHECKPOINT_VERIFIER_JAR}" \
-  --bundle "${TAMPERED_BUNDLE_HASH}" \
-  --signing-key-pin "${SIGNING_KEY_PIN_FILE}" \
-  > /tmp/terrascope-step44-bundle-hash-tamper.log \
+  -jar "${RELEASE_VERIFIER_JAR}" \
+  --artifact "${ARTIFACT}" \
+  --manifest "${RELEASE_MANIFEST}" \
+  --release-key-pin "${WRONG_RELEASE_PIN}" \
+  > /tmp/terrascope-step45-release-wrong-pin.log \
   2>&1
 
-BUNDLE_HASH_TAMPER_EXIT=$?
+WRONG_PIN_STATUS=$?
 
 set -e
+trap cleanup EXIT
 
-cat /tmp/terrascope-step44-bundle-hash-tamper.log
+cat /tmp/terrascope-step45-release-wrong-pin.log
 
-[[ "${BUNDLE_HASH_TAMPER_EXIT}" == "2" ]]
+echo "WRONG_RELEASE_PIN_EXIT=${WRONG_PIN_STATUS}"
+
+[[ "${WRONG_PIN_STATUS}" == "2" ]]
 
 grep \
   -q \
-  '^BUNDLE_HASH_VALID=false$' \
-  /tmp/terrascope-step44-bundle-hash-tamper.log
+  '^ARTIFACT_HASH_VALID=true$' \
+  /tmp/terrascope-step45-release-wrong-pin.log
+
+grep \
+  -q \
+  '^SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step45-release-wrong-pin.log
+
+grep \
+  -q \
+  '^RELEASE_KEY_PIN_VALID=false$' \
+  /tmp/terrascope-step45-release-wrong-pin.log
 
 grep \
   -q \
   '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step44-bundle-hash-tamper.log
+  /tmp/terrascope-step45-release-wrong-pin.log
 
-echo "[PASS] AIR_GAPPED_BUNDLE_HASH_TAMPER_DETECTION"
+echo "[PASS] WRONG_RELEASE_KEY_PIN_REJECTION"
 
 echo
-echo "===== LEDGER TAMPER WITH RECOMPUTED OUTER HASH ====="
+echo "===== ARTIFACT TAMPER ====="
 
-python3 \
-  - \
-  "${CHECKPOINT_BUNDLE}" \
-  "${TAMPERED_LEDGER}" \
-<<'PY'
-import hashlib
-import json
-import sys
+rm -rf "${TAMPER_ARTIFACT_DIR}"
 
-source = sys.argv[1]
-target = sys.argv[2]
+mkdir -p "${TAMPER_ARTIFACT_DIR}"
 
-envelope = json.load(
-    open(
-        source,
-        encoding="utf-8",
-    )
-)
+cp \
+  "${ARTIFACT}" \
+  "${TAMPER_ARTIFACT}"
 
-payload = json.loads(
-    envelope["payloadJson"]
-)
+printf '\x00' \
+  >> "${TAMPER_ARTIFACT}"
 
-payload["ledgerEntries"][0]["receiptHash"] = (
-    "0" * 64
-)
-
-payload_json = json.dumps(
-    payload,
-    separators=(",", ":"),
-    ensure_ascii=False,
-)
-
-envelope["payloadJson"] = payload_json
-
-envelope["bundleHash"] = hashlib.sha256(
-    payload_json.encode(
-        "utf-8"
-    )
-).hexdigest()
-
-with open(
-    target,
-    "w",
-    encoding="utf-8",
-) as handle:
-    json.dump(
-        envelope,
-        handle,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    )
-PY
-
+trap - ERR
 set +e
 
 java \
-  -jar "${CHECKPOINT_VERIFIER_JAR}" \
-  --bundle "${TAMPERED_LEDGER}" \
-  --signing-key-pin "${SIGNING_KEY_PIN_FILE}" \
-  > /tmp/terrascope-step44-ledger-tamper.log \
+  -jar "${RELEASE_VERIFIER_JAR}" \
+  --artifact "${TAMPER_ARTIFACT}" \
+  --manifest "${RELEASE_MANIFEST}" \
+  --release-key-pin "${RELEASE_PIN}" \
+  > /tmp/terrascope-step45-release-artifact-tamper.log \
   2>&1
 
-LEDGER_TAMPER_EXIT=$?
+ARTIFACT_TAMPER_STATUS=$?
 
 set -e
+trap cleanup EXIT
 
-cat /tmp/terrascope-step44-ledger-tamper.log
+cat /tmp/terrascope-step45-release-artifact-tamper.log
 
-[[ "${LEDGER_TAMPER_EXIT}" == "2" ]]
-
-grep \
-  -q \
-  '^BUNDLE_HASH_VALID=true$' \
-  /tmp/terrascope-step44-ledger-tamper.log
+[[ "${ARTIFACT_TAMPER_STATUS}" == "2" ]]
 
 grep \
   -q \
-  '^CANONICAL_PAYLOAD_VALID=true$' \
-  /tmp/terrascope-step44-ledger-tamper.log
+  '^ARTIFACT_HASH_VALID=false$' \
+  /tmp/terrascope-step45-release-artifact-tamper.log
 
 grep \
   -q \
-  '^LEDGER_VALID=false$' \
-  /tmp/terrascope-step44-ledger-tamper.log
+  '^SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step45-release-artifact-tamper.log
 
 grep \
   -q \
   '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step44-ledger-tamper.log
+  /tmp/terrascope-step45-release-artifact-tamper.log
 
-echo "[PASS] AIR_GAPPED_LEDGER_TAMPER_DETECTION"
+echo "[PASS] RELEASE_ARTIFACT_TAMPER_DETECTION"
 
 echo
-echo "===== CHECKPOINT SIGNATURE TAMPER WITH RECOMPUTED OUTER HASH ====="
+echo "===== MANIFEST PAYLOAD TAMPER ====="
 
 python3 \
   - \
-  "${CHECKPOINT_BUNDLE}" \
-  "${TAMPERED_SIGNATURE}" \
+  "${RELEASE_MANIFEST}" \
+  "${MANIFEST_TAMPER}" \
 <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(
+    sys.argv[1]
+)
+
+target = Path(
+    sys.argv[2]
+)
+
+text = source.read_text(
+    encoding="utf-8",
+)
+
+text = text.replace(
+    (
+        "artifactVersion="
+        "TS-STANDALONE-CHECKPOINT-BUNDLE-VERIFIER-V1"
+    ),
+    (
+        "artifactVersion="
+        "TS-STANDALONE-CHECKPOINT-BUNDLE-VERIFIER-TAMPERED"
+    ),
+    1,
+)
+
+target.write_text(
+    text,
+    encoding="utf-8",
+)
+PY
+
+trap - ERR
+set +e
+
+java \
+  -jar "${RELEASE_VERIFIER_JAR}" \
+  --artifact "${ARTIFACT}" \
+  --manifest "${MANIFEST_TAMPER}" \
+  --release-key-pin "${RELEASE_PIN}" \
+  > /tmp/terrascope-step45-release-manifest-tamper.log \
+  2>&1
+
+MANIFEST_TAMPER_STATUS=$?
+
+set -e
+trap cleanup EXIT
+
+cat /tmp/terrascope-step45-release-manifest-tamper.log
+
+[[ "${MANIFEST_TAMPER_STATUS}" == "2" ]]
+
+grep \
+  -q \
+  '^ARTIFACT_HASH_VALID=true$' \
+  /tmp/terrascope-step45-release-manifest-tamper.log
+
+grep \
+  -q \
+  '^ARTIFACT_VERSION_VALID=false$' \
+  /tmp/terrascope-step45-release-manifest-tamper.log
+
+grep \
+  -q \
+  '^SIGNATURE_VALID=false$' \
+  /tmp/terrascope-step45-release-manifest-tamper.log
+
+grep \
+  -q \
+  '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step45-release-manifest-tamper.log
+
+echo "[PASS] RELEASE_MANIFEST_TAMPER_DETECTION"
+
+echo
+echo "===== MANIFEST SIGNATURE TAMPER ====="
+
+python3 \
+  - \
+  "${RELEASE_MANIFEST}" \
+  "${SIGNATURE_TAMPER}" \
+<<'PY'
+from pathlib import Path
 import base64
-import hashlib
-import json
 import sys
 
-source = sys.argv[1]
-target = sys.argv[2]
-
-envelope = json.load(
-    open(
-        source,
-        encoding="utf-8",
-    )
+source = Path(
+    sys.argv[1]
 )
 
-payload = json.loads(
-    envelope["payloadJson"]
+target = Path(
+    sys.argv[2]
 )
 
-payload["checkpoint"]["signatureBase64"] = (
-    base64.b64encode(
+lines = source.read_text(
+    encoding="utf-8",
+).splitlines()
+
+assert lines[-1].startswith(
+    "signatureBase64="
+)
+
+lines[-1] = (
+    "signatureBase64="
+    + base64.b64encode(
         bytes(64)
     ).decode()
 )
 
-payload_json = json.dumps(
-    payload,
-    separators=(",", ":"),
-    ensure_ascii=False,
-)
-
-envelope["payloadJson"] = payload_json
-
-envelope["bundleHash"] = hashlib.sha256(
-    payload_json.encode(
-        "utf-8"
+target.write_text(
+    "\n".join(
+        lines
     )
-).hexdigest()
-
-with open(
-    target,
-    "w",
+    + "\n",
     encoding="utf-8",
-) as handle:
-    json.dump(
-        envelope,
-        handle,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    )
+)
 PY
 
+trap - ERR
 set +e
 
 java \
-  -jar "${CHECKPOINT_VERIFIER_JAR}" \
-  --bundle "${TAMPERED_SIGNATURE}" \
-  --signing-key-pin "${SIGNING_KEY_PIN_FILE}" \
-  > /tmp/terrascope-step44-signature-tamper.log \
+  -jar "${RELEASE_VERIFIER_JAR}" \
+  --artifact "${ARTIFACT}" \
+  --manifest "${SIGNATURE_TAMPER}" \
+  --release-key-pin "${RELEASE_PIN}" \
+  > /tmp/terrascope-step45-release-signature-tamper.log \
   2>&1
 
-SIGNATURE_TAMPER_EXIT=$?
+SIGNATURE_TAMPER_STATUS=$?
 
 set -e
+trap cleanup EXIT
 
-cat /tmp/terrascope-step44-signature-tamper.log
+cat /tmp/terrascope-step45-release-signature-tamper.log
 
-[[ "${SIGNATURE_TAMPER_EXIT}" == "2" ]]
-
-grep \
-  -q \
-  '^BUNDLE_HASH_VALID=true$' \
-  /tmp/terrascope-step44-signature-tamper.log
+[[ "${SIGNATURE_TAMPER_STATUS}" == "2" ]]
 
 grep \
   -q \
-  '^CANONICAL_PAYLOAD_VALID=true$' \
-  /tmp/terrascope-step44-signature-tamper.log
+  '^ARTIFACT_HASH_VALID=true$' \
+  /tmp/terrascope-step45-release-signature-tamper.log
 
 grep \
   -q \
-  '^LEDGER_VALID=true$' \
-  /tmp/terrascope-step44-signature-tamper.log
+  '^RELEASE_KEY_PIN_VALID=true$' \
+  /tmp/terrascope-step45-release-signature-tamper.log
 
 grep \
   -q \
-  '^CHECKPOINT_VALID=false$' \
-  /tmp/terrascope-step44-signature-tamper.log
+  '^SIGNATURE_VALID=false$' \
+  /tmp/terrascope-step45-release-signature-tamper.log
 
 grep \
   -q \
   '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step44-signature-tamper.log
+  /tmp/terrascope-step45-release-signature-tamper.log
 
-echo "[PASS] AIR_GAPPED_CHECKPOINT_SIGNATURE_TAMPER_DETECTION"
+echo "[PASS] RELEASE_SIGNATURE_TAMPER_DETECTION"
 
 echo
-echo "===== PROVE PLATFORM REMAINED OFFLINE ====="
+echo "===== PROVE OFFLINE STATE REMAINED ====="
 
-RUNNING_POSTGRES_COUNT_AFTER_TESTS="$(
+RUNNING_POSTGRES_AFTER="$(
   docker compose ps \
     --status running \
     -q postgres \
     | awk 'END { print NR + 0 }'
 )"
 
-echo "RUNNING_POSTGRES_COUNT_AFTER_TESTS=${RUNNING_POSTGRES_COUNT_AFTER_TESTS}"
+echo "RUNNING_POSTGRES_COUNT_AFTER_RELEASE_VERIFY=${RUNNING_POSTGRES_AFTER}"
 
-[[ "${RUNNING_POSTGRES_COUNT_AFTER_TESTS}" == "0" ]]
+[[ "${RUNNING_POSTGRES_AFTER}" == "0" ]]
 
 if curl \
     --silent \
@@ -1318,11 +920,14 @@ if curl \
     "http://localhost:8087/actuator/health" \
     >/dev/null 2>&1; then
 
-  echo "[FAIL] Backend became reachable during offline verification."
+  echo "[FAIL] Backend became reachable during release verification."
   exit 1
 fi
 
-echo "[PASS] TRUE_AIR_GAP_MAINTAINED"
+[[ ! -e "${PRIVATE_KEY}" ]]
+
+echo "[PASS] RELEASE_VERIFICATION_REMAINED_AIR_GAPPED"
+echo "[PASS] PRIVATE_KEY_REMAINED_ABSENT"
 
 echo
 echo "===== RESTORE POSTGRES FOR FINAL AUTHORITY ====="
@@ -1350,30 +955,9 @@ for VERSION in $(seq 1 43); do
   [[ "${COUNT}" == "1" ]]
 done
 
-FINAL_SOURCE_TOTAL="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT
-          (SELECT COUNT(*) FROM resilience_governance_offline_trust_checkpoint_bundles)
-        + (SELECT COUNT(*) FROM resilience_governance_offline_trust_receipt_checkpoints)
-        + (SELECT COUNT(*) FROM resilience_governance_offline_trust_receipt_ledger)
-        + (SELECT COUNT(*) FROM resilience_governance_offline_trust_verification_receipts);
-      " \
-    | tr -d '[:space:]'
-)"
-
-echo "FINAL_STEP44_SOURCE_ROW_COUNT=${FINAL_SOURCE_TOTAL}"
-
-[[ "${FINAL_SOURCE_TOTAL}" == "0" ]]
-
-echo "[PASS] STEP44_DATABASE_CLEAN"
 echo "[PASS] FLYWAY_V1_TO_V43_PRESERVED"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 44 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 45 VERIFICATION PASSED"
 echo "========================================================================"
