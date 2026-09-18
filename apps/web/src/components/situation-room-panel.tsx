@@ -116,6 +116,10 @@ import {
   ResilienceGovernanceClosure,
 } from "@/components/resilience-governance-closure";
 
+import {
+  ResilienceGovernanceSignatures,
+} from "@/components/resilience-governance-signatures";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1254,6 +1258,8 @@ export function SituationRoomPanel({
                     <ResilienceBenefitRealization />
 
                     <ResilienceGovernanceClosure />
+
+                    <ResilienceGovernanceSignatures />
 
                     <IncidentResilienceAuditLedger
                       key={
