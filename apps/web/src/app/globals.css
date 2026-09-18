@@ -11150,3 +11150,305 @@ a:focus-visible {
       1fr 1fr;
   }
 }
+
+.benefit-realization {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(84, 175, 164, 0.12);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(53, 180, 163, 0.024),
+      rgba(255, 255, 255, 0.004)
+    );
+}
+
+.benefit-realization-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.benefit-realization-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.benefit-realization-heading strong {
+  color: #aec2c2;
+  font-size: 10px;
+}
+
+.benefit-realization-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.benefit-realization-actions button {
+  display: flex;
+  min-height: 29px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #84ada6;
+  border: 1px solid rgba(88, 177, 163, 0.13);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.benefit-realization-error {
+  padding: 8px 9px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.benefit-realization-empty {
+  padding: 22px;
+  color: #587174;
+  border: 1px solid rgba(102, 151, 155, 0.06);
+  border-radius: 7px;
+  text-align: center;
+  font-size: 7px;
+}
+
+.benefit-realization-hero {
+  display: grid;
+  grid-template-columns:
+    auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid rgba(77, 178, 163, 0.14);
+  border-radius: 8px;
+}
+
+.benefit-realization-band {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid;
+  border-radius: 9px;
+}
+
+.benefit-realization-band--unproven {
+  color: #899b9d;
+  border-color: rgba(126, 151, 154, 0.15);
+}
+
+.benefit-realization-band--emerging {
+  color: #d6a671;
+  border-color: rgba(216, 151, 69, 0.18);
+}
+
+.benefit-realization-band--realizing {
+  color: #80b8ad;
+  border-color: rgba(72, 170, 158, 0.18);
+}
+
+.benefit-realization-band--realized {
+  color: #79c69a;
+  border-color: rgba(74, 181, 111, 0.18);
+}
+
+.benefit-realization-hero > div:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.benefit-realization-hero span {
+  color: #607a7d;
+  font-size: 6px;
+}
+
+.benefit-realization-hero > div:nth-child(2) > strong {
+  color: #b0c3c4;
+  font-size: 12px;
+}
+
+.benefit-realization-hero p {
+  margin: 0;
+  color: #657e80;
+  font-size: 7px;
+  line-height: 1.55;
+}
+
+.benefit-realization-closure {
+  display: flex;
+  min-width: 105px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.benefit-realization-closure--ready {
+  color: #7fc39b;
+}
+
+.benefit-realization-closure--blocked {
+  color: #db9a78;
+}
+
+.benefit-realization-closure strong {
+  font-size: 10px;
+}
+
+.benefit-realization-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.benefit-realization-summary article,
+.benefit-realization-rates article,
+.benefit-realization-workflow article {
+  display: flex;
+  min-height: 47px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 6px;
+}
+
+.benefit-realization-summary span,
+.benefit-realization-rates span,
+.benefit-realization-workflow span {
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.benefit-realization-summary strong,
+.benefit-realization-rates strong,
+.benefit-realization-workflow strong {
+  color: #a5babc;
+  font-size: 9px;
+}
+
+.benefit-realization-rates {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.benefit-realization-workflow {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.benefit-realization-history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(105, 152, 157, 0.07);
+  border-radius: 7px;
+}
+
+.benefit-realization-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #70aaa4;
+}
+
+.benefit-realization-section-heading strong {
+  color: #9eb3b5;
+  font-size: 8px;
+}
+
+.benefit-realization-section-heading > span {
+  margin-left: auto;
+  color: #587174;
+  font-size: 6px;
+}
+
+.benefit-realization-history-empty {
+  padding: 18px;
+  color: #567074;
+  text-align: center;
+  font-size: 7px;
+}
+
+.benefit-realization-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.benefit-realization-history article {
+  display: grid;
+  grid-template-columns:
+    auto 1fr 1fr 1fr 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(104, 151, 156, 0.06);
+  border-radius: 5px;
+}
+
+.benefit-realization-history article > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.benefit-realization-history span {
+  color: #587174;
+  font-size: 6px;
+}
+
+.benefit-realization-history strong {
+  color: #9bafb1;
+  font-size: 7px;
+}
+
+.benefit-realization-history time {
+  color: #4f686a;
+  font-size: 6px;
+}
+
+@media (max-width: 1000px) {
+  .benefit-realization-summary {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .benefit-realization-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .benefit-realization-closure {
+    align-items: flex-start;
+  }
+
+  .benefit-realization-summary,
+  .benefit-realization-rates,
+  .benefit-realization-workflow {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .benefit-realization-history article {
+    grid-template-columns:
+      1fr 1fr;
+  }
+}

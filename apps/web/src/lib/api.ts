@@ -164,6 +164,12 @@ import type {
   PortfolioObjectiveValidationHistoryResponse,
 } from "@/types/resilience-objective-outcomes";
 
+import type {
+  BenefitRealizationHistoryResponse,
+  BenefitRealizationResponse,
+  BenefitRealizationSnapshot,
+} from "@/types/resilience-benefit-realization";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3249,4 +3255,72 @@ export async function validatePortfolioObjectiveOutcome(
   }
 
   return response.json() as Promise<PortfolioObjectiveValidation>;
+}
+
+export async function fetchBenefitRealization(
+  signal?: AbortSignal,
+): Promise<BenefitRealizationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/benefit-realization`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Benefit realization returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<BenefitRealizationResponse>;
+}
+
+export async function fetchBenefitRealizationHistory(
+  signal?: AbortSignal,
+): Promise<BenefitRealizationHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/benefit-realization/history`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Benefit realization history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<BenefitRealizationHistoryResponse>;
+}
+
+export async function createBenefitRealizationSnapshot(): Promise<BenefitRealizationSnapshot> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/benefit-realization/snapshots`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to capture benefit realization snapshot. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<BenefitRealizationSnapshot>;
 }

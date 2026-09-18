@@ -108,6 +108,10 @@ import {
   ResilienceObjectiveOutcomes,
 } from "@/components/resilience-objective-outcomes";
 
+import {
+  ResilienceBenefitRealization,
+} from "@/components/resilience-benefit-realization";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1242,6 +1246,8 @@ export function SituationRoomPanel({
                     <ResilienceStrategicObjectives />
 
                     <ResilienceObjectiveOutcomes />
+
+                    <ResilienceBenefitRealization />
 
                     <IncidentResilienceAuditLedger
                       key={
