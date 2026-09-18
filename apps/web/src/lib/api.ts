@@ -170,6 +170,13 @@ import type {
   BenefitRealizationSnapshot,
 } from "@/types/resilience-benefit-realization";
 
+import type {
+  GovernanceClosureCertificate,
+  GovernanceClosureCertificateHistoryResponse,
+  GovernanceClosureReadinessResponse,
+  GovernanceClosureVerificationResponse,
+} from "@/types/resilience-governance-closure";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3323,4 +3330,93 @@ export async function createBenefitRealizationSnapshot(): Promise<BenefitRealiza
   }
 
   return response.json() as Promise<BenefitRealizationSnapshot>;
+}
+
+export async function fetchGovernanceClosureReadiness(
+  signal?: AbortSignal,
+): Promise<GovernanceClosureReadinessResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/readiness`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Governance closure readiness returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceClosureReadinessResponse>;
+}
+
+export async function fetchGovernanceClosureCertificates(
+  signal?: AbortSignal,
+): Promise<GovernanceClosureCertificateHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/certificates`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Governance closure certificate history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceClosureCertificateHistoryResponse>;
+}
+
+export async function createGovernanceClosureCertificate(): Promise<GovernanceClosureCertificate> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/certificates`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to issue governance closure certificate. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceClosureCertificate>;
+}
+
+export async function verifyGovernanceClosureCertificates(): Promise<GovernanceClosureVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Governance closure verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceClosureVerificationResponse>;
 }

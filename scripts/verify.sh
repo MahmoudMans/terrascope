@@ -9,7 +9,7 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
-BACKEND_LOG="/tmp/terrascope-step27-backend.log"
+BACKEND_LOG="/tmp/terrascope-step28-backend.log"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -22,7 +22,7 @@ trap cleanup EXIT
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 27 VERIFICATION"
+echo " TERRASCOPE — STEP 28 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -115,19 +115,19 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step27-status.json
+  >/tmp/terrascope-step28-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-status.json",
+    "/tmp/terrascope-step28-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.27.0"
+assert payload["version"] == "0.28.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
@@ -137,7 +137,7 @@ PY
 for VERSION in \
   1 2 3 4 5 6 7 8 9 10 \
   11 12 13 14 15 16 17 18 19 20 \
-  21 22 23 24 25 26 27
+  21 22 23 24 25 26 27 28
 do
   COUNT="$(
     docker compose exec -T postgres \
@@ -159,10 +159,10 @@ do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V27_RUNTIME"
+echo "[PASS] FLYWAY_V28_RUNTIME"
 
 echo
-echo "===== CLEAN STEP 27 FIXTURES ====="
+echo "===== CLEAN STEP 28 FIXTURES ====="
 
 docker compose exec -T postgres \
   psql \
@@ -172,45 +172,55 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step27-achieved';
+            'verification-step28-realized';
     " \
   >/dev/null
 
-echo "[PASS] STEP27_PRE_CLEAN"
+echo "[PASS] STEP28_PRE_CLEAN"
 
 echo
-echo "===== EMPTY BENEFIT REALIZATION ====="
+echo "===== BLOCKED INITIAL READINESS ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/benefit-realization" \
-  >/tmp/terrascope-step27-empty.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/readiness" \
+  >/tmp/terrascope-step28-readiness-blocked.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-empty.json",
+    "/tmp/terrascope-step28-readiness-blocked.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["band"] == "UNPROVEN"
-assert payload["closureReady"] is False
+assert payload["ready"] is False
 
-assert payload["totalObjectiveCount"] == 0
-assert payload["completedObjectiveCount"] == 0
-assert payload["validatedObjectiveCount"] == 0
-assert payload["achievedCount"] == 0
+assert "NO_STRATEGIC_OBJECTIVES" in payload["blockers"]
 
-assert payload["validationCoveragePct"] == 0.0
-assert payload["realizedBenefitRatePct"] == 0.0
+assert "REALIZATION_BAND_NOT_REALIZED" in payload["blockers"]
 
 print(
-    "[PASS] BENEFIT_REALIZATION_EMPTY_STATE"
+    "[PASS] GOVERNANCE_CLOSURE_INITIAL_BLOCKERS"
 )
 PY
+
+BLOCKED_CERT_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step28-blocked-cert.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/certificates"
+)"
+
+echo "BLOCKED_CLOSURE_CERTIFICATE_HTTP=${BLOCKED_CERT_HTTP}"
+
+[[ "${BLOCKED_CERT_HTTP}" == "409" ]]
+
+echo "[PASS] GOVERNANCE_CLOSURE_CERTIFICATION_GUARD"
 
 echo
 echo "===== CREATE EXECUTIVE BASELINE REVIEW ====="
@@ -220,14 +230,14 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/reviews" \
-  >/tmp/terrascope-step27-review.json
+  >/tmp/terrascope-step28-review.json
 
 REVIEW_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-review.json",
+    "/tmp/terrascope-step28-review.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -243,7 +253,7 @@ BASELINE_SNAPSHOT_ID="$(
 import json
 
 with open(
-    "/tmp/terrascope-step27-review.json",
+    "/tmp/terrascope-step28-review.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -257,22 +267,22 @@ PY
 echo "REVIEW_ID=${REVIEW_ID}"
 echo "BASELINE_SNAPSHOT_ID=${BASELINE_SNAPSHOT_ID}"
 
-echo "[PASS] BENEFIT_REALIZATION_REVIEW_FIXTURE"
+echo "[PASS] GOVERNANCE_CLOSURE_REVIEW_FIXTURE"
 
 echo
-echo "===== CREATE + COMPLETE STRATEGIC OBJECTIVE ====="
+echo "===== CREATE + COMPLETE OBJECTIVE ====="
 
 cat > \
-  /tmp/terrascope-step27-objective.json \
+  /tmp/terrascope-step28-objective.json \
 <<JSON
 {
   "portfolioReviewId": "${REVIEW_ID}",
-  "title": "Realize enterprise resilience assurance benefits",
-  "description": "Strategic Step 27 enterprise benefit-realization fixture.",
-  "priority": "HIGH",
-  "owner": "Executive Resilience Office",
+  "title": "Close enterprise resilience governance assurance",
+  "description": "Step 28 governance closure certificate fixture.",
+  "priority": "CRITICAL",
+  "owner": "Executive Resilience Council",
   "targetAt": "2035-12-31T23:59:59Z",
-  "successMetric": "Latest enterprise outcome validation demonstrates achieved measurable benefit."
+  "successMetric": "Enterprise benefit realization reaches REALIZED with complete validated assurance."
 }
 JSON
 
@@ -281,16 +291,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-objective.json \
+  --data @/tmp/terrascope-step28-objective.json \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives" \
-  >/tmp/terrascope-step27-objective-response.json
+  >/tmp/terrascope-step28-objective-response.json
 
 OBJECTIVE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-objective-response.json",
+    "/tmp/terrascope-step28-objective-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -302,10 +312,10 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step27-complete.json \
+  /tmp/terrascope-step28-complete.json \
 <<'JSON'
 {
-  "completionEvidence": "Executive governance implementation completed and approved for realized-benefit validation."
+  "completionEvidence": "Executive Resilience Council approved objective completion for independent benefit realization and governance closure certification."
 }
 JSON
 
@@ -314,35 +324,34 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-complete.json \
+  --data @/tmp/terrascope-step28-complete.json \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives/${OBJECTIVE_ID}/complete" \
   >/dev/null
 
 echo "OBJECTIVE_ID=${OBJECTIVE_ID}"
 
-echo "[PASS] BENEFIT_REALIZATION_OBJECTIVE_FIXTURE"
+echo "[PASS] GOVERNANCE_CLOSURE_OBJECTIVE_FIXTURE"
 
 echo
-echo "===== CAPTURE PARTIAL OBJECTIVE VALIDATION ====="
+echo "===== PARTIAL OUTCOME REMAINS BLOCKED ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives/${OBJECTIVE_ID}/outcomes" \
-  >/tmp/terrascope-step27-partial-validation.json
+  >/tmp/terrascope-step28-partial-validation.json
 
-PARTIAL_VALIDATION_SNAPSHOT_ID="$(
+PARTIAL_SNAPSHOT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-partial-validation.json",
+    "/tmp/terrascope-step28-partial-validation.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["validationNumber"] == 1
 assert payload["outcome"] == "PARTIAL"
 
 print(
@@ -351,104 +360,44 @@ print(
 PY
 )"
 
-echo "PARTIAL_VALIDATION_SNAPSHOT_ID=${PARTIAL_VALIDATION_SNAPSHOT_ID}"
-
-echo "[PASS] BENEFIT_REALIZATION_PARTIAL_OUTCOME_FIXTURE"
-
-echo
-echo "===== REALIZING BENEFIT BOARD ====="
-
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/benefit-realization" \
-  >/tmp/terrascope-step27-realizing.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/readiness" \
+  >/tmp/terrascope-step28-partial-readiness.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-realizing.json",
+    "/tmp/terrascope-step28-partial-readiness.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["band"] == "REALIZING"
-assert payload["closureReady"] is False
+assert payload["ready"] is False
 
-assert payload["totalObjectiveCount"] == 1
+assert "PARTIAL_OUTCOMES" in payload["blockers"]
 
-assert payload["plannedObjectiveCount"] == 0
-assert payload["inProgressObjectiveCount"] == 0
-assert payload["blockedObjectiveCount"] == 0
-
-assert payload["completedObjectiveCount"] == 1
-
-assert payload["validatedObjectiveCount"] == 1
-assert payload["unvalidatedCompletedObjectiveCount"] == 0
-
-assert payload["achievedCount"] == 0
-assert payload["partialCount"] == 1
-assert payload["notAchievedCount"] == 0
-
-assert payload["validationCoveragePct"] == 100.0
-assert payload["realizedBenefitRatePct"] == 0.0
+assert "REALIZED_BENEFIT_RATE_BELOW_100" in payload["blockers"]
 
 print(
-    "[PASS] BENEFIT_REALIZATION_REALIZING_STATE"
-)
-
-print(
-    "[PASS] BENEFIT_REALIZATION_VALIDATION_COVERAGE"
+    "[PASS] GOVERNANCE_CLOSURE_PARTIAL_BLOCKER"
 )
 PY
 
 echo
-echo "===== SNAPSHOT REALIZING STATE ====="
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  "http://localhost:8087/api/v1/resilience-portfolio/benefit-realization/snapshots" \
-  >/tmp/terrascope-step27-snapshot-one.json
-
-BENEFIT_SNAPSHOT_ONE_ID="$(
-  python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step27-snapshot-one.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["snapshotNumber"] == 1
-assert payload["band"] == "REALIZING"
-assert payload["closureReady"] is False
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-echo "BENEFIT_SNAPSHOT_ONE_ID=${BENEFIT_SNAPSHOT_ONE_ID}"
-
-echo "[PASS] BENEFIT_REALIZATION_SNAPSHOT_ONE"
-
-echo
-echo "===== CREATE ACHIEVED BENEFIT FIXTURE ====="
+echo "===== CREATE REALIZED BENEFIT FIXTURE ====="
 
 cat > \
-  /tmp/terrascope-step27-incident.json \
+  /tmp/terrascope-step28-incident.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step27-achieved",
+  "sourceEventId": "verification-step28-realized",
   "hazardType": "earthquakes",
-  "title": "Verification Step 27 Achieved Benefit Incident",
-  "description": "Enterprise benefit realization fixture.",
+  "title": "Verification Step 28 Realized Governance Incident",
+  "description": "Governance closure certificate realized-benefit fixture.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
@@ -461,16 +410,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-incident.json \
+  --data @/tmp/terrascope-step28-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step27-incident-response.json
+  >/tmp/terrascope-step28-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-incident-response.json",
+    "/tmp/terrascope-step28-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -482,7 +431,7 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step27-close.json \
+  /tmp/terrascope-step28-close.json \
 <<'JSON'
 {
   "status": "CLOSED"
@@ -494,7 +443,7 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-close.json \
+  --data @/tmp/terrascope-step28-close.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/status" \
   >/dev/null
 
@@ -503,14 +452,14 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/after-action-reviews" \
-  >/tmp/terrascope-step27-aar.json
+  >/tmp/terrascope-step28-aar.json
 
 AAR_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-aar.json",
+    "/tmp/terrascope-step28-aar.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -529,13 +478,13 @@ curl \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step27-improvement.json \
+  /tmp/terrascope-step28-improvement.json \
 <<JSON
 {
   "afterActionReviewId": "${AAR_ID}",
   "category": "PROCESS",
-  "title": "Institutionalize enterprise benefit assurance",
-  "description": "Step 27 realized-benefit fixture improvement.",
+  "title": "Prove enterprise governance assurance closure",
+  "description": "Step 28 governance closure validation improvement.",
   "priority": "HIGH",
   "owner": "Resilience Office",
   "dueAt": "2030-01-01T00:00:00Z"
@@ -547,16 +496,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-improvement.json \
+  --data @/tmp/terrascope-step28-improvement.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step27-improvement-response.json
+  >/tmp/terrascope-step28-improvement-response.json
 
 IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-improvement-response.json",
+    "/tmp/terrascope-step28-improvement-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -568,7 +517,7 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step27-complete-improvement.json \
+  /tmp/terrascope-step28-complete-improvement.json \
 <<'JSON'
 {
   "status": "COMPLETED"
@@ -580,18 +529,18 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-complete-improvement.json \
+  --data @/tmp/terrascope-step28-complete-improvement.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/status" \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step27-exercise.json \
+  /tmp/terrascope-step28-exercise.json \
 <<JSON
 {
   "improvementActionId": "${IMPROVEMENT_ID}",
   "exerciseType": "FUNCTIONAL",
-  "title": "Enterprise benefit realization exercise",
-  "description": "Validate enterprise benefit realization.",
+  "title": "Governance closure assurance exercise",
+  "description": "Validate enterprise governance closure assurance.",
   "owner": "Preparedness Office",
   "scheduledAt": "2030-02-01T10:00:00Z"
 }
@@ -602,16 +551,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-exercise.json \
+  --data @/tmp/terrascope-step28-exercise.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises" \
-  >/tmp/terrascope-step27-exercise-response.json
+  >/tmp/terrascope-step28-exercise-response.json
 
 EXERCISE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-exercise-response.json",
+    "/tmp/terrascope-step28-exercise-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -623,14 +572,14 @@ PY
 )"
 
 cat > \
-  /tmp/terrascope-step27-assessment.json \
+  /tmp/terrascope-step28-assessment.json \
 <<'JSON'
 {
   "result": "PASSED",
-  "readinessScore": 97,
+  "readinessScore": 98,
   "performedAt": "2030-02-01T12:00:00Z",
-  "evidenceSummary": "Enterprise benefit realization controls were successfully exercised.",
-  "findings": "No material assurance gap remained.",
+  "evidenceSummary": "Enterprise closure assurance controls successfully validated.",
+  "findings": "No material enterprise assurance gap remained.",
   "correctiveAction": ""
 }
 JSON
@@ -640,7 +589,7 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step27-assessment.json \
+  --data @/tmp/terrascope-step28-assessment.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/assess" \
   >/dev/null
 
@@ -667,29 +616,28 @@ curl \
 
 echo "INCIDENT_ID=${INCIDENT_ID}"
 
-echo "[PASS] BENEFIT_REALIZATION_ACHIEVED_FIXTURE"
+echo "[PASS] GOVERNANCE_CLOSURE_REALIZED_FIXTURE"
 
 echo
-echo "===== CAPTURE ACHIEVED OUTCOME ====="
+echo "===== ACHIEVED OBJECTIVE OUTCOME ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives/${OBJECTIVE_ID}/outcomes" \
-  >/tmp/terrascope-step27-achieved-validation.json
+  >/tmp/terrascope-step28-achieved-validation.json
 
-ACHIEVED_VALIDATION_SNAPSHOT_ID="$(
+ACHIEVED_SNAPSHOT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-achieved-validation.json",
+    "/tmp/terrascope-step28-achieved-validation.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["validationNumber"] == 2
 assert payload["outcome"] == "ACHIEVED"
 assert payload["scoreDelta"] >= 5
 
@@ -699,111 +647,103 @@ print(
 PY
 )"
 
-echo "ACHIEVED_VALIDATION_SNAPSHOT_ID=${ACHIEVED_VALIDATION_SNAPSHOT_ID}"
+echo "ACHIEVED_SNAPSHOT_ID=${ACHIEVED_SNAPSHOT_ID}"
 
-echo "[PASS] BENEFIT_REALIZATION_ACHIEVED_OUTCOME"
+echo "[PASS] GOVERNANCE_CLOSURE_ACHIEVED_OUTCOME"
 
 echo
-echo "===== REALIZED BENEFIT BOARD ====="
+echo "===== READY GOVERNANCE CLOSURE ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/benefit-realization" \
-  >/tmp/terrascope-step27-realized.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/readiness" \
+  >/tmp/terrascope-step28-ready.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step27-realized.json",
+    "/tmp/terrascope-step28-ready.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
+assert payload["ready"] is True
+
 assert payload["band"] == "REALIZED"
 
-assert payload["closureReady"] is True
-
 assert payload["totalObjectiveCount"] == 1
-
-assert payload["plannedObjectiveCount"] == 0
-assert payload["inProgressObjectiveCount"] == 0
-assert payload["blockedObjectiveCount"] == 0
 assert payload["completedObjectiveCount"] == 1
-
 assert payload["validatedObjectiveCount"] == 1
-assert payload["unvalidatedCompletedObjectiveCount"] == 0
-
 assert payload["achievedCount"] == 1
-assert payload["partialCount"] == 0
-assert payload["notAchievedCount"] == 0
 
 assert payload["validationCoveragePct"] == 100.0
 assert payload["realizedBenefitRatePct"] == 100.0
 
-assert payload["averageScoreDelta"] >= 5.0
+assert payload["blockers"] == []
 
 print(
-    f"REALIZATION_BAND={payload['band']}"
-)
-
-print(
-    f"REALIZATION_VALIDATION_COVERAGE={payload['validationCoveragePct']}"
-)
-
-print(
-    f"REALIZATION_BENEFIT_RATE={payload['realizedBenefitRatePct']}"
-)
-
-print(
-    f"REALIZATION_AVG_SCORE_DELTA={payload['averageScoreDelta']}"
-)
-
-print(
-    f"REALIZATION_AVG_DEBT_DELTA={payload['averageAssuranceDebtDelta']}"
-)
-
-print(
-    "[PASS] BENEFIT_REALIZATION_REALIZED_STATE"
-)
-
-print(
-    "[PASS] BENEFIT_REALIZATION_GOVERNANCE_CLOSURE"
-)
-
-print(
-    "[PASS] BENEFIT_REALIZATION_LATEST_VALIDATION_AUTHORITY"
+    "[PASS] GOVERNANCE_CLOSURE_READINESS"
 )
 PY
 
 echo
-echo "===== SNAPSHOT REALIZED STATE ====="
+echo "===== ISSUE CERTIFICATE #1 ====="
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  "http://localhost:8087/api/v1/resilience-portfolio/benefit-realization/snapshots" \
-  >/tmp/terrascope-step27-snapshot-two.json
+CERT_ONE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step28-cert-one.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/certificates"
+)"
 
-BENEFIT_SNAPSHOT_TWO_ID="$(
+echo "GOVERNANCE_CERTIFICATE_ONE_HTTP=${CERT_ONE_HTTP}"
+
+[[ "${CERT_ONE_HTTP}" == "200" ]]
+
+CERT_ONE_ID="$(
   python3 - <<'PY'
 import json
+import re
 
 with open(
-    "/tmp/terrascope-step27-snapshot-two.json",
+    "/tmp/terrascope-step28-cert-one.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-assert payload["snapshotNumber"] == 2
+assert payload["certificateNumber"] == 1
 
 assert payload["band"] == "REALIZED"
 assert payload["closureReady"] is True
 
+assert payload["previousCertificateHash"] is None
+
 assert payload["validationCoveragePct"] == 100.0
 assert payload["realizedBenefitRatePct"] == 100.0
+
+assert (
+    payload["dossierVersion"]
+    == "TS-GOVERNANCE-CLOSURE-DOSSIER-V1"
+)
+
+assert (
+    payload["certificateVersion"]
+    == "TS-GOVERNANCE-CLOSURE-CERTIFICATE-V1"
+)
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["dossierHash"],
+)
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["certificateHash"],
+)
 
 print(
     payload["id"]
@@ -811,62 +751,331 @@ print(
 PY
 )"
 
-echo "BENEFIT_SNAPSHOT_TWO_ID=${BENEFIT_SNAPSHOT_TWO_ID}"
-
-echo "[PASS] BENEFIT_REALIZATION_SNAPSHOT_TWO"
-
-echo
-echo "===== BENEFIT REALIZATION HISTORY ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/benefit-realization/history" \
-  >/tmp/terrascope-step27-history.json
-
-python3 \
-  - "${BENEFIT_SNAPSHOT_ONE_ID}" \
-  "${BENEFIT_SNAPSHOT_TWO_ID}" \
-<<'PY'
+CERT_ONE_HASH="$(
+  python3 - <<'PY'
 import json
-import sys
-
-first_id = sys.argv[1]
-second_id = sys.argv[2]
 
 with open(
-    "/tmp/terrascope-step27-history.json",
+    "/tmp/terrascope-step28-cert-one.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-snapshots = payload["snapshots"]
+print(
+    payload["certificateHash"]
+)
+PY
+)"
 
-assert len(snapshots) == 2
+CERT_ONE_BENEFIT_SNAPSHOT_ID="$(
+  python3 - <<'PY'
+import json
 
-assert snapshots[0]["id"] == second_id
-assert snapshots[0]["snapshotNumber"] == 2
-assert snapshots[0]["band"] == "REALIZED"
-assert snapshots[0]["closureReady"] is True
-
-assert snapshots[1]["id"] == first_id
-assert snapshots[1]["snapshotNumber"] == 1
-assert snapshots[1]["band"] == "REALIZING"
-assert snapshots[1]["closureReady"] is False
+with open(
+    "/tmp/terrascope-step28-cert-one.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
 
 print(
-    "[PASS] BENEFIT_REALIZATION_HISTORY"
+    payload["benefitSnapshotId"]
+)
+PY
+)"
+
+echo "CERT_ONE_ID=${CERT_ONE_ID}"
+echo "CERT_ONE_HASH=${CERT_ONE_HASH}"
+echo "CERT_ONE_BENEFIT_SNAPSHOT_ID=${CERT_ONE_BENEFIT_SNAPSHOT_ID}"
+
+echo "[PASS] GOVERNANCE_CLOSURE_CERTIFICATE_ONE"
+
+echo
+echo "===== VERIFY SINGLE CERTIFICATE CHAIN ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify" \
+  >/tmp/terrascope-step28-verify-one.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step28-verify-one.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is True
+
+assert payload["certificateCount"] == 1
+assert payload["verifiedCertificateCount"] == 1
+
+assert payload["brokenCertificateId"] is None
+assert payload["brokenCertificateNumber"] is None
+
+print(
+    "[PASS] GOVERNANCE_CLOSURE_SINGLE_CERTIFICATE_INTEGRITY"
+)
+PY
+
+echo
+echo "===== ISSUE CERTIFICATE #2 ====="
+
+CERT_TWO_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step28-cert-two.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/certificates"
+)"
+
+echo "GOVERNANCE_CERTIFICATE_TWO_HTTP=${CERT_TWO_HTTP}"
+
+[[ "${CERT_TWO_HTTP}" == "200" ]]
+
+CERT_TWO_ID="$(
+  python3 - "${CERT_ONE_HASH}" <<'PY'
+import json
+import re
+import sys
+
+first_hash = sys.argv[1]
+
+with open(
+    "/tmp/terrascope-step28-cert-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["certificateNumber"] == 2
+
+assert payload["band"] == "REALIZED"
+assert payload["closureReady"] is True
+
+assert (
+    payload["previousCertificateHash"]
+    == first_hash
+)
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["certificateHash"],
 )
 
 print(
-    "[PASS] BENEFIT_REALIZATION_TRANSITION_HISTORY"
+    payload["id"]
+)
+PY
+)"
+
+CERT_TWO_HASH="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step28-cert-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+print(
+    payload["certificateHash"]
+)
+PY
+)"
+
+CERT_TWO_BENEFIT_SNAPSHOT_ID="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step28-cert-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+print(
+    payload["benefitSnapshotId"]
+)
+PY
+)"
+
+echo "CERT_TWO_ID=${CERT_TWO_ID}"
+echo "CERT_TWO_HASH=${CERT_TWO_HASH}"
+echo "CERT_TWO_BENEFIT_SNAPSHOT_ID=${CERT_TWO_BENEFIT_SNAPSHOT_ID}"
+
+[[ "${CERT_TWO_HASH}" != "${CERT_ONE_HASH}" ]]
+
+echo "[PASS] GOVERNANCE_CLOSURE_CERTIFICATE_TWO"
+
+echo
+echo "===== VERIFY TWO-CERTIFICATE CHAIN ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify" \
+  >/tmp/terrascope-step28-verify-two.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step28-verify-two.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is True
+
+assert payload["certificateCount"] == 2
+assert payload["verifiedCertificateCount"] == 2
+
+print(
+    "[PASS] GOVERNANCE_CLOSURE_CHAIN_INTEGRITY"
+)
+PY
+
+echo
+echo "===== CERTIFICATE HISTORY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/certificates" \
+  >/tmp/terrascope-step28-cert-history.json
+
+python3 \
+  - "${CERT_ONE_HASH}" \
+  "${CERT_TWO_HASH}" \
+<<'PY'
+import json
+import sys
+
+first_hash = sys.argv[1]
+second_hash = sys.argv[2]
+
+with open(
+    "/tmp/terrascope-step28-cert-history.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+certificates = payload["certificates"]
+
+assert len(certificates) == 2
+
+assert certificates[0]["certificateNumber"] == 2
+assert certificates[0]["certificateHash"] == second_hash
+assert certificates[0]["previousCertificateHash"] == first_hash
+
+assert certificates[1]["certificateNumber"] == 1
+assert certificates[1]["certificateHash"] == first_hash
+assert certificates[1]["previousCertificateHash"] is None
+
+print(
+    "[PASS] GOVERNANCE_CLOSURE_CERTIFICATE_HISTORY"
+)
+PY
+
+echo
+echo "===== TAMPER DETECTION ====="
+
+docker compose exec -T postgres \
+  psql \
+    -U terrascope \
+    -d terrascope \
+    -c "
+      UPDATE resilience_governance_closure_certificates
+
+      SET previous_certificate_hash =
+          '0000000000000000000000000000000000000000000000000000000000000000'
+
+      WHERE id =
+            '${CERT_TWO_ID}'::uuid;
+    " \
+  >/dev/null
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify" \
+  >/tmp/terrascope-step28-tampered.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step28-tampered.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is False
+
+assert payload["certificateCount"] == 2
+assert payload["verifiedCertificateCount"] == 1
+
+assert payload["brokenCertificateNumber"] == 2
+
+assert (
+    "Previous certificate hash"
+    in payload["message"]
+)
+
+print(
+    "[PASS] GOVERNANCE_CLOSURE_TAMPER_DETECTION"
+)
+PY
+
+echo
+echo "===== RESTORE CERTIFICATE CHAIN ====="
+
+docker compose exec -T postgres \
+  psql \
+    -U terrascope \
+    -d terrascope \
+    -c "
+      UPDATE resilience_governance_closure_certificates
+
+      SET previous_certificate_hash =
+          '${CERT_ONE_HASH}'
+
+      WHERE id =
+            '${CERT_TWO_ID}'::uuid;
+    " \
+  >/dev/null
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify" \
+  >/tmp/terrascope-step28-restored.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step28-restored.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is True
+assert payload["verifiedCertificateCount"] == 2
+
+print(
+    "[PASS] GOVERNANCE_CLOSURE_RESTORATION_VERIFIED"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-BENEFIT_COLUMNS="$(
+CERT_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -877,12 +1086,12 @@ BENEFIT_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name =
-            'resilience_benefit_realization_snapshots';
+            'resilience_governance_closure_certificates';
       " \
     | tr -d '[:space:]'
 )"
 
-BENEFIT_ROWS="$(
+CERT_ROWS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -890,31 +1099,16 @@ BENEFIT_ROWS="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_benefit_realization_snapshots
+      FROM resilience_governance_closure_certificates
       WHERE id IN (
-          '${BENEFIT_SNAPSHOT_ONE_ID}'::uuid,
-          '${BENEFIT_SNAPSHOT_TWO_ID}'::uuid
+          '${CERT_ONE_ID}'::uuid,
+          '${CERT_TWO_ID}'::uuid
       );
       " \
     | tr -d '[:space:]'
 )"
 
-BENEFIT_UNIQUE="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM pg_constraint
-      WHERE conname =
-            'uq_benefit_realization_snapshot_number';
-      " \
-    | tr -d '[:space:]'
-)"
-
-BAND_CONSTRAINT="$(
+SNAPSHOT_FK="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -924,27 +1118,94 @@ BAND_CONSTRAINT="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conrelid =
-            'resilience_benefit_realization_snapshots'::regclass
-        AND conname =
-            'ck_benefit_realization_band';
+            'resilience_governance_closure_certificates'::regclass
+        AND contype = 'f'
+        AND pg_get_constraintdef(oid)
+            LIKE '%resilience_benefit_realization_snapshots%';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "BENEFIT_REALIZATION_COLUMN_COUNT=${BENEFIT_COLUMNS}"
-echo "BENEFIT_REALIZATION_ROW_COUNT=${BENEFIT_ROWS}"
-echo "BENEFIT_REALIZATION_UNIQUE_COUNT=${BENEFIT_UNIQUE}"
-echo "BENEFIT_REALIZATION_BAND_CONSTRAINT_COUNT=${BAND_CONSTRAINT}"
+CERT_UNIQUE="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conname =
+            'uq_governance_closure_certificate_number';
+      " \
+    | tr -d '[:space:]'
+)"
 
-[[ "${BENEFIT_COLUMNS}" == "20" ]]
-[[ "${BENEFIT_ROWS}" == "2" ]]
-[[ "${BENEFIT_UNIQUE}" == "1" ]]
-[[ "${BAND_CONSTRAINT}" == "1" ]]
+SNAPSHOT_UNIQUE="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conname =
+            'uq_governance_closure_benefit_snapshot';
+      " \
+    | tr -d '[:space:]'
+)"
 
-echo "[PASS] BENEFIT_REALIZATION_DATABASE_CONTRACT"
+DOSSIER_HASH_CHECK="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conname =
+            'ck_governance_closure_dossier_hash';
+      " \
+    | tr -d '[:space:]'
+)"
+
+CERT_HASH_CHECK="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conname =
+            'ck_governance_closure_certificate_hash';
+      " \
+    | tr -d '[:space:]'
+)"
+
+echo "GOVERNANCE_CLOSURE_COLUMN_COUNT=${CERT_COLUMNS}"
+echo "GOVERNANCE_CLOSURE_ROW_COUNT=${CERT_ROWS}"
+echo "GOVERNANCE_CLOSURE_SNAPSHOT_FK_COUNT=${SNAPSHOT_FK}"
+echo "GOVERNANCE_CLOSURE_CERTIFICATE_UNIQUE_COUNT=${CERT_UNIQUE}"
+echo "GOVERNANCE_CLOSURE_SNAPSHOT_UNIQUE_COUNT=${SNAPSHOT_UNIQUE}"
+echo "GOVERNANCE_CLOSURE_DOSSIER_HASH_CHECK_COUNT=${DOSSIER_HASH_CHECK}"
+echo "GOVERNANCE_CLOSURE_CERT_HASH_CHECK_COUNT=${CERT_HASH_CHECK}"
+
+[[ "${CERT_COLUMNS}" == "21" ]]
+[[ "${CERT_ROWS}" == "2" ]]
+[[ "${SNAPSHOT_FK}" == "1" ]]
+[[ "${CERT_UNIQUE}" == "1" ]]
+[[ "${SNAPSHOT_UNIQUE}" == "1" ]]
+[[ "${DOSSIER_HASH_CHECK}" == "1" ]]
+[[ "${CERT_HASH_CHECK}" == "1" ]]
+
+echo "[PASS] GOVERNANCE_CLOSURE_DATABASE_CONTRACT"
 
 echo
-echo "===== CLEAN STEP 27 FIXTURES ====="
+echo "===== CLEAN STEP 28 FIXTURES ====="
 
 docker compose exec -T postgres \
   psql \
@@ -952,16 +1213,23 @@ docker compose exec -T postgres \
     -d terrascope \
     -c "
       DELETE
+      FROM resilience_governance_closure_certificates
+      WHERE id IN (
+          '${CERT_ONE_ID}'::uuid,
+          '${CERT_TWO_ID}'::uuid
+      );
+
+      DELETE
       FROM resilience_benefit_realization_snapshots
       WHERE id IN (
-          '${BENEFIT_SNAPSHOT_ONE_ID}'::uuid,
-          '${BENEFIT_SNAPSHOT_TWO_ID}'::uuid
+          '${CERT_ONE_BENEFIT_SNAPSHOT_ID}'::uuid,
+          '${CERT_TWO_BENEFIT_SNAPSHOT_ID}'::uuid
       );
 
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step27-achieved';
+            'verification-step28-realized';
 
       DELETE
       FROM resilience_portfolio_reviews
@@ -972,8 +1240,8 @@ docker compose exec -T postgres \
       FROM resilience_portfolio_snapshots
       WHERE id IN (
           '${BASELINE_SNAPSHOT_ID}'::uuid,
-          '${PARTIAL_VALIDATION_SNAPSHOT_ID}'::uuid,
-          '${ACHIEVED_VALIDATION_SNAPSHOT_ID}'::uuid
+          '${PARTIAL_SNAPSHOT_ID}'::uuid,
+          '${ACHIEVED_SNAPSHOT_ID}'::uuid
       );
     " \
   >/dev/null
@@ -988,7 +1256,7 @@ VERIFY_INCIDENT_COUNT="$(
       SELECT COUNT(*)
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step27-achieved';
+            'verification-step28-realized';
       " \
     | tr -d '[:space:]'
 )"
@@ -1008,7 +1276,7 @@ VERIFY_OBJECTIVE_COUNT="$(
     | tr -d '[:space:]'
 )"
 
-VERIFY_VALIDATION_COUNT="$(
+VERIFY_CERT_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1016,14 +1284,16 @@ VERIFY_VALIDATION_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_portfolio_objective_validations
-      WHERE objective_id =
-            '${OBJECTIVE_ID}'::uuid;
+      FROM resilience_governance_closure_certificates
+      WHERE id IN (
+          '${CERT_ONE_ID}'::uuid,
+          '${CERT_TWO_ID}'::uuid
+      );
       " \
     | tr -d '[:space:]'
 )"
 
-VERIFY_BENEFIT_SNAPSHOT_COUNT="$(
+VERIFY_BENEFIT_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1033,8 +1303,8 @@ VERIFY_BENEFIT_SNAPSHOT_COUNT="$(
       SELECT COUNT(*)
       FROM resilience_benefit_realization_snapshots
       WHERE id IN (
-          '${BENEFIT_SNAPSHOT_ONE_ID}'::uuid,
-          '${BENEFIT_SNAPSHOT_TWO_ID}'::uuid
+          '${CERT_ONE_BENEFIT_SNAPSHOT_ID}'::uuid,
+          '${CERT_TWO_BENEFIT_SNAPSHOT_ID}'::uuid
       );
       " \
     | tr -d '[:space:]'
@@ -1057,19 +1327,19 @@ VERIFY_REVIEW_COUNT="$(
 
 echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
 echo "VERIFICATION_OBJECTIVE_COUNT=${VERIFY_OBJECTIVE_COUNT}"
-echo "VERIFICATION_OBJECTIVE_VALIDATION_COUNT=${VERIFY_VALIDATION_COUNT}"
-echo "VERIFICATION_BENEFIT_SNAPSHOT_COUNT=${VERIFY_BENEFIT_SNAPSHOT_COUNT}"
+echo "VERIFICATION_CLOSURE_CERTIFICATE_COUNT=${VERIFY_CERT_COUNT}"
+echo "VERIFICATION_BENEFIT_SNAPSHOT_COUNT=${VERIFY_BENEFIT_COUNT}"
 echo "VERIFICATION_REVIEW_COUNT=${VERIFY_REVIEW_COUNT}"
 
 [[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
 [[ "${VERIFY_OBJECTIVE_COUNT}" == "0" ]]
-[[ "${VERIFY_VALIDATION_COUNT}" == "0" ]]
-[[ "${VERIFY_BENEFIT_SNAPSHOT_COUNT}" == "0" ]]
+[[ "${VERIFY_CERT_COUNT}" == "0" ]]
+[[ "${VERIFY_BENEFIT_COUNT}" == "0" ]]
 [[ "${VERIFY_REVIEW_COUNT}" == "0" ]]
 
-echo "[PASS] BENEFIT_REALIZATION_CLEANUP"
+echo "[PASS] GOVERNANCE_CLOSURE_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 27 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 28 VERIFICATION PASSED"
 echo "========================================================================"

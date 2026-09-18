@@ -112,6 +112,10 @@ import {
   ResilienceBenefitRealization,
 } from "@/components/resilience-benefit-realization";
 
+import {
+  ResilienceGovernanceClosure,
+} from "@/components/resilience-governance-closure";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1248,6 +1252,8 @@ export function SituationRoomPanel({
                     <ResilienceObjectiveOutcomes />
 
                     <ResilienceBenefitRealization />
+
+                    <ResilienceGovernanceClosure />
 
                     <IncidentResilienceAuditLedger
                       key={
