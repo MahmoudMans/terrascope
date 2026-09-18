@@ -332,6 +332,14 @@ public class GovernanceClosureCertificateRepository {
                 .optional();
     }
 
+    public GovernanceClosureCertificate findCertificate(
+            UUID certificateId
+    ) {
+        return findById(
+                certificateId
+        );
+    }
+
     private GovernanceClosureCertificate findById(
             UUID certificateId
     ) {

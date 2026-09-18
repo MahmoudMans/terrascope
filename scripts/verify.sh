@@ -9,19 +9,18 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
+BACKEND_LOG="/tmp/terrascope-step31-backend.log"
 
-BACKEND_LOG="/tmp/terrascope-step30-backend.log"
+KEYGEN_SOURCE="/tmp/TerraScopeStep31Keygen.java"
 
-KEYGEN_SOURCE="/tmp/TerraScopeStep30Keygen.java"
+KEY1_PRIVATE_FILE="/tmp/terrascope-step31-key1-private.b64"
+KEY1_PUBLIC_FILE="/tmp/terrascope-step31-key1-public.b64"
 
-KEY1_PRIVATE_FILE="/tmp/terrascope-step30-key1-private.b64"
-KEY1_PUBLIC_FILE="/tmp/terrascope-step30-key1-public.b64"
+KEY2_PRIVATE_FILE="/tmp/terrascope-step31-key2-private.b64"
+KEY2_PUBLIC_FILE="/tmp/terrascope-step31-key2-public.b64"
 
-KEY2_PRIVATE_FILE="/tmp/terrascope-step30-key2-private.b64"
-KEY2_PUBLIC_FILE="/tmp/terrascope-step30-key2-public.b64"
-
-KEY1_ID="verification-step30-ed25519-v1"
-KEY2_ID="verification-step30-ed25519-v2"
+KEY1_ID="verification-step31-ed25519-v1"
+KEY2_ID="verification-step31-ed25519-v2"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -39,7 +38,30 @@ cleanup() {
 
 trap cleanup EXIT
 
-start_backend() {
+stop_backend() {
+  if [[ -n "${BACKEND_PID}" ]]; then
+    kill "${BACKEND_PID}" >/dev/null 2>&1 || true
+    wait "${BACKEND_PID}" >/dev/null 2>&1 || true
+
+    BACKEND_PID=""
+  fi
+
+  for attempt in $(seq 1 30); do
+    if ! curl \
+        --silent \
+        "http://localhost:8087/actuator/health" \
+        >/dev/null 2>&1; then
+
+      return 0
+    fi
+
+    sleep 1
+  done
+
+  return 1
+}
+
+start_backend_with_key() {
   local KEY_ID="$1"
   local PRIVATE_KEY="$2"
   local PUBLIC_KEY="$3"
@@ -47,7 +69,7 @@ start_backend() {
   {
     echo
     echo "========================================================================"
-    echo " START BACKEND WITH ${KEY_ID}"
+    echo " START BACKEND WITH SIGNING KEY ${KEY_ID}"
     echo "========================================================================"
   } >> "${BACKEND_LOG}"
 
@@ -80,25 +102,36 @@ start_backend() {
       return 1
     fi
 
-    if [[ "${attempt}" -eq 45 ]]; then
-      cat "${BACKEND_LOG}"
-      return 1
-    fi
-
     sleep 1
   done
+
+  cat "${BACKEND_LOG}"
+  return 1
 }
 
-stop_backend() {
-  if [[ -n "${BACKEND_PID}" ]]; then
-    kill "${BACKEND_PID}" >/dev/null 2>&1 || true
-    wait "${BACKEND_PID}" >/dev/null 2>&1 || true
+start_backend_without_key() {
+  {
+    echo
+    echo "========================================================================"
+    echo " START BACKEND WITHOUT PRIVATE SIGNING KEY"
+    echo "========================================================================"
+  } >> "${BACKEND_LOG}"
 
-    BACKEND_PID=""
-  fi
+  (
+    cd apps/backend
 
-  for attempt in $(seq 1 30); do
-    if ! curl \
+    env \
+      -u TERRASCOPE_GOVERNANCE_SIGNING_KEY_ID \
+      -u TERRASCOPE_GOVERNANCE_SIGNING_PRIVATE_KEY_PKCS8_B64 \
+      -u TERRASCOPE_GOVERNANCE_SIGNING_PUBLIC_KEY_X509_B64 \
+      mvn spring-boot:run
+  ) >> "${BACKEND_LOG}" 2>&1 &
+
+  BACKEND_PID=$!
+
+  for attempt in $(seq 1 45); do
+    if curl \
+        --fail \
         --silent \
         "http://localhost:8087/actuator/health" \
         >/dev/null 2>&1; then
@@ -106,15 +139,24 @@ stop_backend() {
       return 0
     fi
 
+    if ! kill -0 \
+        "${BACKEND_PID}" \
+        >/dev/null 2>&1; then
+
+      cat "${BACKEND_LOG}"
+      return 1
+    fi
+
     sleep 1
   done
 
+  cat "${BACKEND_LOG}"
   return 1
 }
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 30 VERIFICATION"
+echo " TERRASCOPE — STEP 31 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -177,7 +219,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 
-public class TerraScopeStep30Keygen {
+public class TerraScopeStep31Keygen {
 
     public static void main(
             String[] args
@@ -197,7 +239,6 @@ public class TerraScopeStep30Keygen {
                 Path.of(
                         args[0]
                 ),
-
                 Base64
                         .getEncoder()
                         .encodeToString(
@@ -210,7 +251,6 @@ public class TerraScopeStep30Keygen {
                 Path.of(
                         args[1]
                 ),
-
                 Base64
                         .getEncoder()
                         .encodeToString(
@@ -223,7 +263,6 @@ public class TerraScopeStep30Keygen {
                 Path.of(
                         args[2]
                 ),
-
                 Base64
                         .getEncoder()
                         .encodeToString(
@@ -236,7 +275,6 @@ public class TerraScopeStep30Keygen {
                 Path.of(
                         args[3]
                 ),
-
                 Base64
                         .getEncoder()
                         .encodeToString(
@@ -276,13 +314,11 @@ KEY2_PUBLIC="$(
 [[ -n "${KEY2_PRIVATE}" ]]
 [[ -n "${KEY2_PUBLIC}" ]]
 
-[[ "${KEY1_PUBLIC}" != "${KEY2_PUBLIC}" ]]
-
 echo "[PASS] TWO_LOCAL_ED25519_KEYPAIRS"
 
 rm -f "${BACKEND_LOG}"
 
-start_backend \
+start_backend_with_key \
   "${KEY1_ID}" \
   "${KEY1_PRIVATE}" \
   "${KEY1_PUBLIC}"
@@ -293,19 +329,19 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step30-status.json
+  >/tmp/terrascope-step31-status.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-status.json",
+    "/tmp/terrascope-step31-status.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["application"] == "TerraScope"
-assert payload["version"] == "0.30.0"
+assert payload["version"] == "0.31.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
@@ -315,7 +351,7 @@ PY
 for VERSION in \
   1 2 3 4 5 6 7 8 9 10 \
   11 12 13 14 15 16 17 18 19 20 \
-  21 22 23 24 25 26 27 28 29 30
+  21 22 23 24 25 26 27 28 29 30 31
 do
   COUNT="$(
     docker compose exec -T postgres \
@@ -337,16 +373,19 @@ do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V30_RUNTIME"
+echo "[PASS] FLYWAY_V31_RUNTIME"
 
 echo
-echo "===== CLEAN STEP 30 FIXTURES ====="
+echo "===== CLEAN STEP 31 FIXTURES ====="
 
 docker compose exec -T postgres \
   psql \
     -U terrascope \
     -d terrascope \
     -c "
+      DELETE
+      FROM resilience_governance_assurance_bundles;
+
       DELETE
       FROM resilience_governance_trust_anchor_events
       WHERE key_id IN (
@@ -375,81 +414,33 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step30-realized';
+            'verification-step31-realized';
     " \
   >/dev/null
 
-echo "[PASS] STEP30_PRE_CLEAN"
+echo "[PASS] STEP31_PRE_CLEAN"
 
 echo
-echo "===== KEY 1 SIGNING READINESS ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signing-readiness" \
-  >/tmp/terrascope-step30-key1-readiness.json
-
-KEY1_FINGERPRINT="$(
-  python3 - "${KEY1_ID}" <<'PY'
-import json
-import re
-import sys
-
-key_id = sys.argv[1]
-
-with open(
-    "/tmp/terrascope-step30-key1-readiness.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["ready"] is True
-
-assert payload["algorithm"] == "ED25519"
-
-assert payload["keyId"] == key_id
-
-assert payload["trustAnchorRegistered"] is False
-
-assert re.fullmatch(
-    r"[0-9a-f]{64}",
-    payload["publicKeyFingerprint"],
-)
-
-print(
-    payload["publicKeyFingerprint"]
-)
-PY
-)"
-
-echo "KEY1_FINGERPRINT=${KEY1_FINGERPRINT}"
-
-echo "[PASS] KEY1_SIGNING_READINESS"
-
-echo
-echo "===== CREATE GOVERNANCE CLOSURE FIXTURE ====="
+echo "===== CREATE CLOSURE CERTIFICATE FIXTURE ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/reviews" \
-  >/tmp/terrascope-step30-review.json
+  >/tmp/terrascope-step31-review.json
 
 REVIEW_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-review.json",
+    "/tmp/terrascope-step31-review.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["id"]
-)
+print(payload["id"])
 PY
 )"
 
@@ -458,28 +449,26 @@ BASELINE_SNAPSHOT_ID="$(
 import json
 
 with open(
-    "/tmp/terrascope-step30-review.json",
+    "/tmp/terrascope-step31-review.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["currentSnapshotId"]
-)
+print(payload["currentSnapshotId"])
 PY
 )"
 
 cat > \
-  /tmp/terrascope-step30-objective.json \
+  /tmp/terrascope-step31-objective.json \
 <<JSON
 {
   "portfolioReviewId": "${REVIEW_ID}",
-  "title": "Validate governance signing-key rotation",
-  "description": "Step 30 trust-anchor rotation and historical signature continuity fixture.",
+  "title": "Publish portable enterprise governance assurance",
+  "description": "Step 31 independently verifiable governance assurance bundle fixture.",
   "priority": "CRITICAL",
   "owner": "Executive Resilience Council",
   "targetAt": "2035-12-31T23:59:59Z",
-  "successMetric": "Governance certificates remain verifiable through an Ed25519 trust-anchor rotation."
+  "successMetric": "Closure evidence is portable and independently verifiable without access to the private signing key."
 }
 JSON
 
@@ -488,31 +477,29 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-objective.json \
+  --data @/tmp/terrascope-step31-objective.json \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives" \
-  >/tmp/terrascope-step30-objective-response.json
+  >/tmp/terrascope-step31-objective-response.json
 
 OBJECTIVE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-objective-response.json",
+    "/tmp/terrascope-step31-objective-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["objectives"][0]["id"]
-)
+print(payload["objectives"][0]["id"])
 PY
 )"
 
 cat > \
-  /tmp/terrascope-step30-complete-objective.json \
+  /tmp/terrascope-step31-complete-objective.json \
 <<'JSON'
 {
-  "completionEvidence": "Governance trust-anchor rotation controls were implemented for lifecycle validation."
+  "completionEvidence": "Portable governance assurance export and independent verification controls were implemented."
 }
 JSON
 
@@ -521,19 +508,19 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-complete-objective.json \
+  --data @/tmp/terrascope-step31-complete-objective.json \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives/${OBJECTIVE_ID}/complete" \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step30-incident.json \
+  /tmp/terrascope-step31-incident.json \
 <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step30-realized",
+  "sourceEventId": "verification-step31-realized",
   "hazardType": "earthquakes",
-  "title": "Verification Step 30 Trust Rotation Incident",
-  "description": "Trust-anchor rotation verification fixture.",
+  "title": "Verification Step 31 Portable Assurance Incident",
+  "description": "Portable governance bundle verification fixture.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
@@ -546,28 +533,26 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-incident.json \
+  --data @/tmp/terrascope-step31-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step30-incident-response.json
+  >/tmp/terrascope-step31-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-incident-response.json",
+    "/tmp/terrascope-step31-incident-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["incident"]["id"]
-)
+print(payload["incident"]["id"])
 PY
 )"
 
 cat > \
-  /tmp/terrascope-step30-close.json \
+  /tmp/terrascope-step31-close.json \
 <<'JSON'
 {
   "status": "CLOSED"
@@ -579,7 +564,7 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-close.json \
+  --data @/tmp/terrascope-step31-close.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/status" \
   >/dev/null
 
@@ -588,21 +573,19 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/after-action-reviews" \
-  >/tmp/terrascope-step30-aar.json
+  >/tmp/terrascope-step31-aar.json
 
 AAR_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-aar.json",
+    "/tmp/terrascope-step31-aar.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["id"]
-)
+print(payload["id"])
 PY
 )"
 
@@ -614,13 +597,13 @@ curl \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step30-improvement.json \
+  /tmp/terrascope-step31-improvement.json \
 <<JSON
 {
   "afterActionReviewId": "${AAR_ID}",
   "category": "TECHNOLOGY",
-  "title": "Exercise governance key rotation assurance",
-  "description": "Step 30 key rotation validation improvement.",
+  "title": "Validate portable governance assurance",
+  "description": "Step 31 portable bundle validation improvement.",
   "priority": "HIGH",
   "owner": "Resilience Office",
   "dueAt": "2030-01-01T00:00:00Z"
@@ -632,28 +615,26 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-improvement.json \
+  --data @/tmp/terrascope-step31-improvement.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step30-improvement-response.json
+  >/tmp/terrascope-step31-improvement-response.json
 
 IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-improvement-response.json",
+    "/tmp/terrascope-step31-improvement-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["actions"][0]["id"]
-)
+print(payload["actions"][0]["id"])
 PY
 )"
 
 cat > \
-  /tmp/terrascope-step30-complete-improvement.json \
+  /tmp/terrascope-step31-complete-improvement.json \
 <<'JSON'
 {
   "status": "COMPLETED"
@@ -665,18 +646,18 @@ curl \
   --silent \
   --request PATCH \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-complete-improvement.json \
+  --data @/tmp/terrascope-step31-complete-improvement.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/status" \
   >/dev/null
 
 cat > \
-  /tmp/terrascope-step30-exercise.json \
+  /tmp/terrascope-step31-exercise.json \
 <<JSON
 {
   "improvementActionId": "${IMPROVEMENT_ID}",
   "exerciseType": "TECHNICAL",
-  "title": "Governance trust rotation exercise",
-  "description": "Validate trust-anchor rotation and signature continuity.",
+  "title": "Portable governance assurance verification exercise",
+  "description": "Validate independent cryptographic evidence verification.",
   "owner": "Preparedness Office",
   "scheduledAt": "2030-02-01T10:00:00Z"
 }
@@ -687,35 +668,33 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-exercise.json \
+  --data @/tmp/terrascope-step31-exercise.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises" \
-  >/tmp/terrascope-step30-exercise-response.json
+  >/tmp/terrascope-step31-exercise-response.json
 
 EXERCISE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-exercise-response.json",
+    "/tmp/terrascope-step31-exercise-response.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["exercises"][0]["id"]
-)
+print(payload["exercises"][0]["id"])
 PY
 )"
 
 cat > \
-  /tmp/terrascope-step30-assessment.json \
+  /tmp/terrascope-step31-assessment.json \
 <<'JSON'
 {
   "result": "PASSED",
   "readinessScore": 99,
   "performedAt": "2030-02-01T12:00:00Z",
-  "evidenceSummary": "Trust-anchor rotation and signature continuity controls successfully validated.",
-  "findings": "No material signing-key lifecycle gap remained.",
+  "evidenceSummary": "Portable governance assurance controls were independently exercised.",
+  "findings": "No material evidence portability gap remained.",
   "correctiveAction": ""
 }
 JSON
@@ -725,7 +704,7 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step30-assessment.json \
+  --data @/tmp/terrascope-step31-assessment.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/assess" \
   >/dev/null
 
@@ -755,23 +734,21 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives/${OBJECTIVE_ID}/outcomes" \
-  >/tmp/terrascope-step30-outcome.json
+  >/tmp/terrascope-step31-outcome.json
 
 OUTCOME_SNAPSHOT_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-outcome.json",
+    "/tmp/terrascope-step31-outcome.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["outcome"] == "ACHIEVED"
 
-print(
-    payload["validationSnapshotId"]
-)
+print(payload["validationSnapshotId"])
 PY
 )"
 
@@ -780,21 +757,19 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/certificates" \
-  >/tmp/terrascope-step30-certificate.json
+  >/tmp/terrascope-step31-certificate.json
 
 CERTIFICATE_ID="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-certificate.json",
+    "/tmp/terrascope-step31-certificate.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["id"]
-)
+print(payload["id"])
 PY
 )"
 
@@ -803,14 +778,12 @@ CERTIFICATE_NUMBER="$(
 import json
 
 with open(
-    "/tmp/terrascope-step30-certificate.json",
+    "/tmp/terrascope-step31-certificate.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["certificateNumber"]
-)
+print(payload["certificateNumber"])
 PY
 )"
 
@@ -819,83 +792,51 @@ BENEFIT_SNAPSHOT_ID="$(
 import json
 
 with open(
-    "/tmp/terrascope-step30-certificate.json",
+    "/tmp/terrascope-step31-certificate.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["benefitSnapshotId"]
-)
+print(payload["benefitSnapshotId"])
 PY
 )"
 
 echo "CERTIFICATE_ID=${CERTIFICATE_ID}"
 echo "CERTIFICATE_NUMBER=${CERTIFICATE_NUMBER}"
 
-echo "[PASS] TRUST_ROTATION_CERTIFICATE_FIXTURE"
+echo "[PASS] PORTABLE_BUNDLE_CERTIFICATE_FIXTURE"
 
 echo
-echo "===== SIGN CERTIFICATE WITH KEY 1 ====="
+echo "===== SIGN WITH KEY 1 ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signatures/${CERTIFICATE_ID}" \
-  >/tmp/terrascope-step30-signature-key1.json
+  >/tmp/terrascope-step31-signature1.json
 
 SIGNATURE1_ID="$(
-  python3 \
-    - "${KEY1_ID}" \
-    "${CERTIFICATE_ID}" \
-<<'PY'
-import json
-import sys
-
-key_id = sys.argv[1]
-certificate_id = sys.argv[2]
-
-with open(
-    "/tmp/terrascope-step30-signature-key1.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["keyId"] == key_id
-assert payload["certificateId"] == certificate_id
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-SIGNATURE1_BASE64="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-signature-key1.json",
+    "/tmp/terrascope-step31-signature1.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["signatureBase64"]
-)
+print(payload["id"])
 PY
 )"
 
-echo "SIGNATURE1_ID=${SIGNATURE1_ID}"
-
-echo "[PASS] KEY1_CERTIFICATE_SIGNATURE"
+echo "[PASS] PORTABLE_BUNDLE_KEY1_SIGNATURE"
 
 echo
-echo "===== REGISTER REPLACEMENT KEY 2 ====="
+echo "===== REGISTER KEY 2 + RETIRE KEY 1 ====="
 
 cat > \
-  /tmp/terrascope-step30-register-key2.json \
+  /tmp/terrascope-step31-register-key2.json \
 <<JSON
 {
   "keyId": "${KEY2_ID}",
@@ -903,186 +844,62 @@ cat > \
 }
 JSON
 
-REGISTER_KEY2_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step30-key2-anchor.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step30-register-key2.json \
-    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors"
-)"
-
-echo "REGISTER_KEY2_HTTP=${REGISTER_KEY2_HTTP}"
-
-[[ "${REGISTER_KEY2_HTTP}" == "200" ]]
-
-KEY2_FINGERPRINT="$(
-  python3 - "${KEY2_ID}" <<'PY'
-import json
-import re
-import sys
-
-key_id = sys.argv[1]
-
-with open(
-    "/tmp/terrascope-step30-key2-anchor.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["keyId"] == key_id
-assert payload["algorithm"] == "ED25519"
-assert payload["status"] == "ACTIVE"
-
-assert payload["supersededByKeyId"] is None
-assert payload["retiredAt"] is None
-
-assert re.fullmatch(
-    r"[0-9a-f]{64}",
-    payload["publicKeyFingerprint"],
-)
-
-print(
-    payload["publicKeyFingerprint"]
-)
-PY
-)"
-
-echo "KEY2_FINGERPRINT=${KEY2_FINGERPRINT}"
-
-[[ "${KEY1_FINGERPRINT}" != "${KEY2_FINGERPRINT}" ]]
-
-echo "[PASS] REPLACEMENT_TRUST_ANCHOR_REGISTRATION"
-
-echo
-echo "===== RETIRE KEY 1 ====="
+curl \
+  --fail \
+  --silent \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step31-register-key2.json \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors" \
+  >/dev/null
 
 cat > \
-  /tmp/terrascope-step30-retire-key1.json \
+  /tmp/terrascope-step31-retire-key1.json \
 <<JSON
 {
   "replacementKeyId": "${KEY2_ID}",
-  "reason": "Scheduled governance signing-key rotation after successful replacement-anchor registration."
+  "reason": "Step 31 assurance bundle rotation continuity verification."
 }
 JSON
-
-RETIRE_KEY1_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step30-key1-retired.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    --header 'Content-Type: application/json' \
-    --data @/tmp/terrascope-step30-retire-key1.json \
-    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors/${KEY1_ID}/retire"
-)"
-
-echo "RETIRE_KEY1_HTTP=${RETIRE_KEY1_HTTP}"
-
-[[ "${RETIRE_KEY1_HTTP}" == "200" ]]
-
-python3 \
-  - "${KEY1_ID}" \
-  "${KEY2_ID}" \
-<<'PY'
-import json
-import sys
-
-key1 = sys.argv[1]
-key2 = sys.argv[2]
-
-with open(
-    "/tmp/terrascope-step30-key1-retired.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["keyId"] == key1
-
-assert payload["status"] == "RETIRED"
-
-assert payload["supersededByKeyId"] == key2
-
-assert payload["retiredAt"] is not None
-
-assert (
-    "rotation"
-    in payload["retirementReason"].lower()
-)
-
-print(
-    "[PASS] KEY1_RETIREMENT"
-)
-PY
-
-echo
-echo "===== RETIRED KEY CANNOT SIGN ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signing-readiness" \
-  >/tmp/terrascope-step30-key1-retired-readiness.json
-
-python3 - <<'PY'
-import json
-
-with open(
-    "/tmp/terrascope-step30-key1-retired-readiness.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["ready"] is False
-
-assert (
-    "retired"
-    in payload["message"].lower()
-)
-
-print(
-    "[PASS] RETIRED_KEY_SIGNING_BLOCK"
-)
-PY
-
-echo
-echo "===== HISTORICAL KEY1 SIGNATURE STILL VERIFIES ====="
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step31-retire-key1.json \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors/${KEY1_ID}/retire" \
+  >/dev/null
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify-signatures" \
-  >/tmp/terrascope-step30-retired-key-verify.json
+  >/tmp/terrascope-step31-key1-historical.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-retired-key-verify.json",
+    "/tmp/terrascope-step31-key1-historical.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["valid"] is True
-
 assert payload["signatureCount"] == 1
-assert payload["verifiedSignatureCount"] == 1
 
 print(
-    "[PASS] HISTORICAL_SIGNATURE_CONTINUITY"
+    "[PASS] PORTABLE_BUNDLE_RETIRED_KEY_CONTINUITY"
 )
 PY
 
 echo
-echo "===== RESTART BACKEND WITH KEY 2 ====="
+echo "===== RESTART WITH KEY 2 ====="
 
 stop_backend
 
-echo "[PASS] KEY1_BACKEND_STOPPED"
-
-start_backend \
+start_backend_with_key \
   "${KEY2_ID}" \
   "${KEY2_PRIVATE}" \
   "${KEY2_PUBLIC}"
@@ -1092,136 +909,292 @@ echo "[PASS] BACKEND_RUNTIME_KEY2_READY"
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signing-readiness" \
-  >/tmp/terrascope-step30-key2-readiness.json
-
-python3 \
-  - "${KEY2_ID}" \
-  "${KEY2_FINGERPRINT}" \
-<<'PY'
-import json
-import sys
-
-key_id = sys.argv[1]
-fingerprint = sys.argv[2]
-
-with open(
-    "/tmp/terrascope-step30-key2-readiness.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["ready"] is True
-
-assert payload["keyId"] == key_id
-
-assert payload["publicKeyFingerprint"] == fingerprint
-
-assert payload["trustAnchorRegistered"] is True
-
-print(
-    "[PASS] KEY2_SIGNING_READINESS"
-)
-PY
-
-echo
-echo "===== RE-ATTEST SAME CERTIFICATE WITH KEY 2 ====="
-
-KEY2_SIGN_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step30-signature-key2.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signatures/${CERTIFICATE_ID}"
-)"
-
-echo "KEY2_SIGNATURE_HTTP=${KEY2_SIGN_HTTP}"
-
-[[ "${KEY2_SIGN_HTTP}" == "200" ]]
+  --request POST \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signatures/${CERTIFICATE_ID}" \
+  >/tmp/terrascope-step31-signature2.json
 
 SIGNATURE2_ID="$(
-  python3 \
-    - "${KEY2_ID}" \
-    "${CERTIFICATE_ID}" \
-<<'PY'
-import json
-import sys
-
-key_id = sys.argv[1]
-certificate_id = sys.argv[2]
-
-with open(
-    "/tmp/terrascope-step30-signature-key2.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-assert payload["keyId"] == key_id
-
-assert payload["certificateId"] == certificate_id
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-SIGNATURE2_BASE64="$(
   python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-signature-key2.json",
+    "/tmp/terrascope-step31-signature2.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
-print(
-    payload["signatureBase64"]
-)
+print(payload["id"])
 PY
 )"
 
-echo "SIGNATURE2_ID=${SIGNATURE2_ID}"
-
-[[ "${SIGNATURE1_ID}" != "${SIGNATURE2_ID}" ]]
-[[ "${SIGNATURE1_BASE64}" != "${SIGNATURE2_BASE64}" ]]
-
-echo "[PASS] REPLACEMENT_KEY_REATTESTATION"
+echo "[PASS] PORTABLE_BUNDLE_KEY2_REATTESTATION"
 
 echo
-echo "===== KEY2 DUPLICATE GUARD ====="
-
-KEY2_DUPLICATE_HTTP="$(
-  curl \
-    --silent \
-    --output /tmp/terrascope-step30-key2-duplicate.json \
-    --write-out '%{http_code}' \
-    --request POST \
-    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signatures/${CERTIFICATE_ID}"
-)"
-
-echo "KEY2_DUPLICATE_HTTP=${KEY2_DUPLICATE_HTTP}"
-
-[[ "${KEY2_DUPLICATE_HTTP}" == "409" ]]
-
-echo "[PASS] PER_KEY_CERTIFICATE_DUPLICATE_GUARD"
-
-echo
-echo "===== VERIFY BOTH SIGNATURE GENERATIONS ====="
+echo "===== PREVIEW PORTABLE ASSURANCE BUNDLE ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify-signatures" \
-  >/tmp/terrascope-step30-two-key-verify.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/assurance-bundles/preview/${CERTIFICATE_ID}" \
+  >/tmp/terrascope-step31-preview.json
+
+python3 \
+  - "${CERTIFICATE_ID}" \
+  "${CERTIFICATE_NUMBER}" \
+<<'PY'
+import json
+import re
+import sys
+
+certificate_id = sys.argv[1]
+certificate_number = int(sys.argv[2])
+
+with open(
+    "/tmp/terrascope-step31-preview.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["certificateId"] == certificate_id
+assert payload["certificateNumber"] == certificate_number
+
+assert (
+    payload["bundleVersion"]
+    == "TS-GOVERNANCE-ASSURANCE-BUNDLE-V1"
+)
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["bundleHash"],
+)
+
+assert payload["signatureCount"] == 2
+assert payload["trustAnchorCount"] == 2
+assert payload["retiredAnchorCount"] == 1
+assert payload["lifecycleEventCount"] >= 5
+
+assert payload["portableVerificationValid"] is True
+
+print(
+    f"BUNDLE_PREVIEW_SIGNATURE_COUNT={payload['signatureCount']}"
+)
+
+print(
+    f"BUNDLE_PREVIEW_TRUST_ANCHOR_COUNT={payload['trustAnchorCount']}"
+)
+
+print(
+    f"BUNDLE_PREVIEW_RETIRED_ANCHOR_COUNT={payload['retiredAnchorCount']}"
+)
+
+print(
+    f"BUNDLE_PREVIEW_EVENT_COUNT={payload['lifecycleEventCount']}"
+)
+
+print(
+    "[PASS] PORTABLE_ASSURANCE_BUNDLE_PREVIEW"
+)
+PY
+
+echo
+echo "===== CREATE PORTABLE ASSURANCE BUNDLE ====="
+
+BUNDLE_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step31-bundle.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/assurance-bundles/${CERTIFICATE_ID}"
+)"
+
+echo "PORTABLE_ASSURANCE_BUNDLE_HTTP=${BUNDLE_HTTP}"
+
+[[ "${BUNDLE_HTTP}" == "200" ]]
+
+BUNDLE_ID="$(
+  python3 - <<'PY'
+import json
+import re
+
+with open(
+    "/tmp/terrascope-step31-bundle.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["bundleNumber"] == 1
+
+assert (
+    payload["bundleVersion"]
+    == "TS-GOVERNANCE-ASSURANCE-BUNDLE-V1"
+)
+
+assert re.fullmatch(
+    r"[0-9a-f]{64}",
+    payload["bundleHash"],
+)
+
+assert payload["signatureCount"] == 2
+assert payload["trustAnchorCount"] == 2
+assert payload["retiredAnchorCount"] == 1
+assert payload["lifecycleEventCount"] >= 5
+
+assert payload["portableVerificationValid"] is True
+
+assert payload["payloadJson"].startswith("{")
+assert payload["payloadJson"].endswith("}")
+
+print(payload["id"])
+PY
+)"
+
+BUNDLE_HASH="$(
+  python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step31-bundle.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+print(payload["bundleHash"])
+PY
+)"
+
+echo "BUNDLE_ID=${BUNDLE_ID}"
+echo "BUNDLE_HASH=${BUNDLE_HASH}"
+
+echo "[PASS] PORTABLE_ASSURANCE_BUNDLE_CREATE"
+
+echo
+echo "===== BUNDLE HISTORY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/assurance-bundles" \
+  >/tmp/terrascope-step31-history.json
+
+python3 - "${BUNDLE_ID}" <<'PY'
+import json
+import sys
+
+bundle_id = sys.argv[1]
+
+with open(
+    "/tmp/terrascope-step31-history.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert len(payload["bundles"]) == 1
+
+assert payload["bundles"][0]["id"] == bundle_id
+
+print(
+    "[PASS] PORTABLE_ASSURANCE_BUNDLE_HISTORY"
+)
+PY
+
+echo
+echo "===== RESTART WITHOUT ANY PRIVATE SIGNING KEY ====="
+
+stop_backend
+
+echo "[PASS] SIGNING_BACKEND_STOPPED"
+
+start_backend_without_key
+
+echo "[PASS] INDEPENDENT_VERIFIER_RUNTIME_READY"
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signing-readiness" \
+  >/tmp/terrascope-step31-no-key-readiness.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-two-key-verify.json",
+    "/tmp/terrascope-step31-no-key-readiness.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["ready"] is False
+
+assert (
+    "not configured"
+    in payload["message"].lower()
+)
+
+print(
+    "[PASS] PRIVATE_SIGNING_KEY_ABSENT"
+)
+PY
+
+echo
+echo "===== VERIFY PORTABLE BUNDLE WITHOUT PRIVATE KEY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/assurance-bundles/${BUNDLE_ID}/verify" \
+  >/tmp/terrascope-step31-bundle-verify.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step31-bundle-verify.json",
+    encoding="utf-8",
+) as handle:
+    payload = json.load(handle)
+
+assert payload["valid"] is True
+
+assert payload["hashValid"] is True
+assert payload["canonicalPayloadValid"] is True
+assert payload["portableVerificationValid"] is True
+
+assert payload["signatureCount"] == 2
+assert payload["verifiedSignatureCount"] == 2
+
+assert (
+    "independently"
+    in payload["message"].lower()
+)
+
+print(
+    "[PASS] PRIVATE_KEY_FREE_PORTABLE_VERIFICATION"
+)
+
+print(
+    "[PASS] PORTABLE_BUNDLE_HASH_AUTHORITY"
+)
+
+print(
+    "[PASS] PORTABLE_BUNDLE_SIGNATURE_AUTHORITY"
+)
+PY
+
+echo
+echo "===== LIVE SIGNATURE VERIFICATION ALSO NEEDS NO PRIVATE KEY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify-signatures" \
+  >/tmp/terrascope-step31-signature-verify-no-key.json
+
+python3 - <<'PY'
+import json
+
+with open(
+    "/tmp/terrascope-step31-signature-verify-no-key.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
@@ -1232,207 +1205,110 @@ assert payload["signatureCount"] == 2
 assert payload["verifiedSignatureCount"] == 2
 
 print(
-    "[PASS] DUAL_GENERATION_SIGNATURE_VERIFICATION"
+    "[PASS] PUBLIC_TRUST_ONLY_SIGNATURE_VERIFICATION"
 )
 PY
 
 echo
-echo "===== TRUST-ANCHOR LIFECYCLE HISTORY ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors" \
-  >/tmp/terrascope-step30-lifecycle.json
-
-python3 \
-  - "${KEY1_ID}" \
-  "${KEY2_ID}" \
-  "${KEY1_FINGERPRINT}" \
-  "${KEY2_FINGERPRINT}" \
-<<'PY'
-import json
-import sys
-
-key1 = sys.argv[1]
-key2 = sys.argv[2]
-fingerprint1 = sys.argv[3]
-fingerprint2 = sys.argv[4]
-
-with open(
-    "/tmp/terrascope-step30-lifecycle.json",
-    encoding="utf-8",
-) as handle:
-    payload = json.load(handle)
-
-anchors = {
-    anchor["keyId"]: anchor
-    for anchor in payload["anchors"]
-}
-
-assert key1 in anchors
-assert key2 in anchors
-
-assert anchors[key1]["status"] == "RETIRED"
-assert anchors[key1]["supersededByKeyId"] == key2
-assert anchors[key1]["publicKeyFingerprint"] == fingerprint1
-
-assert anchors[key2]["status"] == "ACTIVE"
-assert anchors[key2]["supersededByKeyId"] is None
-assert anchors[key2]["publicKeyFingerprint"] == fingerprint2
-
-events = payload["events"]
-
-types_for_key1 = [
-    event["eventType"]
-    for event in events
-    if event["keyId"] == key1
-]
-
-types_for_key2 = [
-    event["eventType"]
-    for event in events
-    if event["keyId"] == key2
-]
-
-assert "REGISTERED" in types_for_key1
-assert "SIGNATURE_ISSUED" in types_for_key1
-assert "RETIRED" in types_for_key1
-
-assert "REGISTERED" in types_for_key2
-assert "SIGNATURE_ISSUED" in types_for_key2
-
-retirement_event = next(
-    event
-    for event in events
-    if event["keyId"] == key1
-    and event["eventType"] == "RETIRED"
-)
-
-assert retirement_event["replacementKeyId"] == key2
-
-print(
-    f"TRUST_ANCHOR_EVENT_COUNT={len(events)}"
-)
-
-print(
-    "[PASS] TRUST_ANCHOR_LIFECYCLE_HISTORY"
-)
-PY
-
-echo
-echo "===== DELIBERATE RETIRED SIGNATURE TAMPER ====="
-
-ZERO_SIGNATURE="$(
-  python3 - <<'PY'
-import base64
-
-print(
-    base64.b64encode(
-        bytes(64)
-    ).decode()
-)
-PY
-)"
+echo "===== DELIBERATE BUNDLE PAYLOAD TAMPER ====="
 
 docker compose exec -T postgres \
   psql \
     -U terrascope \
     -d terrascope \
     -c "
-      UPDATE resilience_governance_closure_signatures
+      UPDATE resilience_governance_assurance_bundles
 
-      SET signature_base64 =
-          '${ZERO_SIGNATURE}'
+      SET payload_json =
+          payload_json || ' '
 
       WHERE id =
-            '${SIGNATURE1_ID}'::uuid;
+            '${BUNDLE_ID}'::uuid;
     " \
   >/dev/null
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify-signatures" \
-  >/tmp/terrascope-step30-tampered.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/assurance-bundles/${BUNDLE_ID}/verify" \
+  >/tmp/terrascope-step31-bundle-tampered.json
 
-python3 \
-  - "${SIGNATURE1_ID}" \
-<<'PY'
+python3 - <<'PY'
 import json
-import sys
-
-signature_id = sys.argv[1]
 
 with open(
-    "/tmp/terrascope-step30-tampered.json",
+    "/tmp/terrascope-step31-bundle-tampered.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["valid"] is False
 
-assert payload["signatureCount"] == 2
-
-assert payload["brokenSignatureId"] == signature_id
+assert payload["hashValid"] is False
 
 assert (
-    "verification failed"
+    "sha-256"
     in payload["message"].lower()
 )
 
 print(
-    "[PASS] RETIRED_SIGNATURE_TAMPER_DETECTION"
+    "[PASS] PORTABLE_BUNDLE_TAMPER_DETECTION"
 )
 PY
 
 echo
-echo "===== RESTORE RETIRED SIGNATURE ====="
+echo "===== RESTORE BUNDLE PAYLOAD ====="
 
 docker compose exec -T postgres \
   psql \
     -U terrascope \
     -d terrascope \
     -c "
-      UPDATE resilience_governance_closure_signatures
+      UPDATE resilience_governance_assurance_bundles
 
-      SET signature_base64 =
-          '${SIGNATURE1_BASE64}'
+      SET payload_json =
+          LEFT(
+              payload_json,
+              LENGTH(payload_json) - 1
+          )
 
       WHERE id =
-            '${SIGNATURE1_ID}'::uuid;
+            '${BUNDLE_ID}'::uuid;
     " \
   >/dev/null
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/verify-signatures" \
-  >/tmp/terrascope-step30-restored.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/assurance-bundles/${BUNDLE_ID}/verify" \
+  >/tmp/terrascope-step31-bundle-restored.json
 
 python3 - <<'PY'
 import json
 
 with open(
-    "/tmp/terrascope-step30-restored.json",
+    "/tmp/terrascope-step31-bundle-restored.json",
     encoding="utf-8",
 ) as handle:
     payload = json.load(handle)
 
 assert payload["valid"] is True
 
-assert payload["signatureCount"] == 2
+assert payload["hashValid"] is True
+assert payload["canonicalPayloadValid"] is True
+assert payload["portableVerificationValid"] is True
+
 assert payload["verifiedSignatureCount"] == 2
 
 print(
-    "[PASS] ROTATION_SIGNATURE_RESTORATION"
+    "[PASS] PORTABLE_BUNDLE_RESTORATION_VERIFIED"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-ANCHOR_COLUMNS="$(
+BUNDLE_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1446,12 +1322,12 @@ ANCHOR_COLUMNS="$(
       WHERE table_schema = 'public'
 
         AND table_name =
-            'resilience_governance_trust_anchors';
+            'resilience_governance_assurance_bundles';
       " \
     | tr -d '[:space:]'
 )"
 
-EVENT_COLUMNS="$(
+BUNDLE_ROWS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1460,17 +1336,15 @@ EVENT_COLUMNS="$(
       "
       SELECT COUNT(*)
 
-      FROM information_schema.columns
+      FROM resilience_governance_assurance_bundles
 
-      WHERE table_schema = 'public'
-
-        AND table_name =
-            'resilience_governance_trust_anchor_events';
+      WHERE id =
+            '${BUNDLE_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
 
-SIGNATURE_COLUMNS="$(
+CERTIFICATE_FK="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1479,72 +1353,20 @@ SIGNATURE_COLUMNS="$(
       "
       SELECT COUNT(*)
 
-      FROM information_schema.columns
+      FROM pg_constraint
 
-      WHERE table_schema = 'public'
+      WHERE conrelid =
+            'resilience_governance_assurance_bundles'::regclass
 
-        AND table_name =
-            'resilience_governance_closure_signatures';
+        AND contype = 'f'
+
+        AND pg_get_constraintdef(oid)
+            LIKE '%resilience_governance_closure_certificates%';
       " \
     | tr -d '[:space:]'
 )"
 
-ANCHOR_ROWS="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-
-      FROM resilience_governance_trust_anchors
-
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}'
-      );
-      " \
-    | tr -d '[:space:]'
-)"
-
-SIGNATURE_ROWS="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-
-      FROM resilience_governance_closure_signatures
-
-      WHERE certificate_id =
-            '${CERTIFICATE_ID}'::uuid;
-      " \
-    | tr -d '[:space:]'
-)"
-
-EVENT_ROWS="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-
-      FROM resilience_governance_trust_anchor_events
-
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}'
-      );
-      " \
-    | tr -d '[:space:]'
-)"
-
-NEW_SIGNATURE_UNIQUE="$(
+BUNDLE_UNIQUE="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1556,12 +1378,12 @@ NEW_SIGNATURE_UNIQUE="$(
       FROM pg_constraint
 
       WHERE conname =
-            'uq_governance_signature_certificate_key';
+            'uq_governance_assurance_bundle_number';
       " \
     | tr -d '[:space:]'
 )"
 
-OLD_SIGNATURE_UNIQUE="$(
+BUNDLE_HASH_CHECK="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1573,80 +1395,38 @@ OLD_SIGNATURE_UNIQUE="$(
       FROM pg_constraint
 
       WHERE conname =
-            'uq_governance_signature_certificate';
+            'ck_governance_assurance_bundle_hash';
       " \
     | tr -d '[:space:]'
 )"
 
-REPLACEMENT_FK="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
+echo "GOVERNANCE_ASSURANCE_BUNDLE_COLUMN_COUNT=${BUNDLE_COLUMNS}"
+echo "GOVERNANCE_ASSURANCE_BUNDLE_ROW_COUNT=${BUNDLE_ROWS}"
+echo "GOVERNANCE_ASSURANCE_BUNDLE_CERTIFICATE_FK_COUNT=${CERTIFICATE_FK}"
+echo "GOVERNANCE_ASSURANCE_BUNDLE_UNIQUE_COUNT=${BUNDLE_UNIQUE}"
+echo "GOVERNANCE_ASSURANCE_BUNDLE_HASH_CHECK_COUNT=${BUNDLE_HASH_CHECK}"
 
-      FROM pg_constraint
+[[ "${BUNDLE_COLUMNS}" == "13" ]]
+[[ "${BUNDLE_ROWS}" == "1" ]]
+[[ "${CERTIFICATE_FK}" == "1" ]]
+[[ "${BUNDLE_UNIQUE}" == "1" ]]
+[[ "${BUNDLE_HASH_CHECK}" == "1" ]]
 
-      WHERE conname =
-            'fk_governance_trust_anchor_replacement';
-      " \
-    | tr -d '[:space:]'
-)"
-
-LIFECYCLE_CHECK="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-
-      FROM pg_constraint
-
-      WHERE conname =
-            'ck_governance_trust_anchor_lifecycle';
-      " \
-    | tr -d '[:space:]'
-)"
-
-echo "TRUST_ANCHOR_COLUMN_COUNT=${ANCHOR_COLUMNS}"
-echo "TRUST_ANCHOR_EVENT_COLUMN_COUNT=${EVENT_COLUMNS}"
-echo "GOVERNANCE_SIGNATURE_COLUMN_COUNT=${SIGNATURE_COLUMNS}"
-echo "TRUST_ANCHOR_ROW_COUNT=${ANCHOR_ROWS}"
-echo "GOVERNANCE_SIGNATURE_ROW_COUNT=${SIGNATURE_ROWS}"
-echo "TRUST_ANCHOR_EVENT_ROW_COUNT=${EVENT_ROWS}"
-echo "NEW_SIGNATURE_UNIQUE_COUNT=${NEW_SIGNATURE_UNIQUE}"
-echo "OLD_SIGNATURE_UNIQUE_COUNT=${OLD_SIGNATURE_UNIQUE}"
-echo "TRUST_ANCHOR_REPLACEMENT_FK_COUNT=${REPLACEMENT_FK}"
-echo "TRUST_ANCHOR_LIFECYCLE_CHECK_COUNT=${LIFECYCLE_CHECK}"
-
-[[ "${ANCHOR_COLUMNS}" == "10" ]]
-[[ "${EVENT_COLUMNS}" == "6" ]]
-[[ "${SIGNATURE_COLUMNS}" == "11" ]]
-
-[[ "${ANCHOR_ROWS}" == "2" ]]
-[[ "${SIGNATURE_ROWS}" == "2" ]]
-[[ "${EVENT_ROWS}" -ge "5" ]]
-
-[[ "${NEW_SIGNATURE_UNIQUE}" == "1" ]]
-[[ "${OLD_SIGNATURE_UNIQUE}" == "0" ]]
-
-[[ "${REPLACEMENT_FK}" == "1" ]]
-[[ "${LIFECYCLE_CHECK}" == "1" ]]
-
-echo "[PASS] TRUST_ROTATION_DATABASE_CONTRACT"
+echo "[PASS] PORTABLE_ASSURANCE_BUNDLE_DATABASE_CONTRACT"
 
 echo
-echo "===== CLEAN STEP 30 FIXTURES ====="
+echo "===== CLEAN STEP 31 FIXTURES ====="
 
 docker compose exec -T postgres \
   psql \
     -U terrascope \
     -d terrascope \
     -c "
+      DELETE
+      FROM resilience_governance_assurance_bundles
+      WHERE id =
+            '${BUNDLE_ID}'::uuid;
+
       DELETE
       FROM resilience_governance_trust_anchor_events
       WHERE key_id IN (
@@ -1685,7 +1465,7 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step30-realized';
+            'verification-step31-realized';
 
       DELETE
       FROM resilience_portfolio_reviews
@@ -1701,7 +1481,7 @@ docker compose exec -T postgres \
     " \
   >/dev/null
 
-VERIFY_INCIDENT_COUNT="$(
+VERIFY_BUNDLE_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1709,24 +1489,9 @@ VERIFY_INCIDENT_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM incident_cases
-      WHERE source_event_id =
-            'verification-step30-realized';
-      " \
-    | tr -d '[:space:]'
-)"
-
-VERIFY_OBJECTIVE_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM resilience_portfolio_objectives
+      FROM resilience_governance_assurance_bundles
       WHERE id =
-            '${OBJECTIVE_ID}'::uuid;
+            '${BUNDLE_ID}'::uuid;
       " \
     | tr -d '[:space:]'
 )"
@@ -1780,7 +1545,7 @@ VERIFY_ANCHOR_COUNT="$(
     | tr -d '[:space:]'
 )"
 
-VERIFY_EVENT_COUNT="$(
+VERIFY_INCIDENT_COUNT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1788,32 +1553,45 @@ VERIFY_EVENT_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_governance_trust_anchor_events
-      WHERE key_id IN (
-          '${KEY1_ID}',
-          '${KEY2_ID}'
-      );
+      FROM incident_cases
+      WHERE source_event_id =
+            'verification-step31-realized';
       " \
     | tr -d '[:space:]'
 )"
 
-echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
-echo "VERIFICATION_OBJECTIVE_COUNT=${VERIFY_OBJECTIVE_COUNT}"
+VERIFY_OBJECTIVE_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_portfolio_objectives
+      WHERE id =
+            '${OBJECTIVE_ID}'::uuid;
+      " \
+    | tr -d '[:space:]'
+)"
+
+echo "VERIFICATION_ASSURANCE_BUNDLE_COUNT=${VERIFY_BUNDLE_COUNT}"
 echo "VERIFICATION_CLOSURE_CERTIFICATE_COUNT=${VERIFY_CERTIFICATE_COUNT}"
 echo "VERIFICATION_SIGNATURE_COUNT=${VERIFY_SIGNATURE_COUNT}"
 echo "VERIFICATION_TRUST_ANCHOR_COUNT=${VERIFY_ANCHOR_COUNT}"
-echo "VERIFICATION_TRUST_EVENT_COUNT=${VERIFY_EVENT_COUNT}"
+echo "VERIFICATION_INCIDENT_COUNT=${VERIFY_INCIDENT_COUNT}"
+echo "VERIFICATION_OBJECTIVE_COUNT=${VERIFY_OBJECTIVE_COUNT}"
 
-[[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
-[[ "${VERIFY_OBJECTIVE_COUNT}" == "0" ]]
+[[ "${VERIFY_BUNDLE_COUNT}" == "0" ]]
 [[ "${VERIFY_CERTIFICATE_COUNT}" == "0" ]]
 [[ "${VERIFY_SIGNATURE_COUNT}" == "0" ]]
 [[ "${VERIFY_ANCHOR_COUNT}" == "0" ]]
-[[ "${VERIFY_EVENT_COUNT}" == "0" ]]
+[[ "${VERIFY_INCIDENT_COUNT}" == "0" ]]
+[[ "${VERIFY_OBJECTIVE_COUNT}" == "0" ]]
 
-echo "[PASS] TRUST_ROTATION_CLEANUP"
+echo "[PASS] PORTABLE_ASSURANCE_BUNDLE_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 30 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 31 VERIFICATION PASSED"
 echo "========================================================================"

@@ -124,6 +124,10 @@ import {
   ResilienceGovernanceTrustLifecycle,
 } from "@/components/resilience-governance-trust-lifecycle";
 
+import {
+  ResilienceGovernanceAssuranceBundles,
+} from "@/components/resilience-governance-assurance-bundles";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1266,6 +1270,8 @@ export function SituationRoomPanel({
                     <ResilienceGovernanceSignatures />
 
                     <ResilienceGovernanceTrustLifecycle />
+
+                    <ResilienceGovernanceAssuranceBundles />
 
                     <IncidentResilienceAuditLedger
                       key={

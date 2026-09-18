@@ -191,6 +191,13 @@ import type {
   RetireGovernanceTrustAnchorRequest,
 } from "@/types/resilience-governance-trust-lifecycle";
 
+import type {
+  GovernanceAssuranceBundle,
+  GovernanceAssuranceBundleHistoryResponse,
+  GovernanceAssuranceBundlePreview,
+  GovernanceAssuranceBundleVerificationResponse,
+} from "@/types/resilience-governance-assurance-bundles";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3597,4 +3604,98 @@ export async function retireGovernanceTrustAnchor(
   }
 
   return response.json() as Promise<GovernanceTrustAnchorView>;
+}
+
+export async function fetchGovernanceAssuranceBundlePreview(
+  certificateId: string,
+  signal?: AbortSignal,
+): Promise<GovernanceAssuranceBundlePreview> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/assurance-bundles/preview/${certificateId}`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Governance assurance bundle preview returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceBundlePreview>;
+}
+
+export async function fetchGovernanceAssuranceBundles(
+  signal?: AbortSignal,
+): Promise<GovernanceAssuranceBundleHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/assurance-bundles`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Governance assurance bundle history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceBundleHistoryResponse>;
+}
+
+export async function createGovernanceAssuranceBundle(
+  certificateId: string,
+): Promise<GovernanceAssuranceBundle> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/assurance-bundles/${certificateId}`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create governance assurance bundle. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceBundle>;
+}
+
+export async function verifyGovernanceAssuranceBundle(
+  bundleId: string,
+): Promise<GovernanceAssuranceBundleVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/assurance-bundles/${bundleId}/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Governance assurance bundle verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceBundleVerificationResponse>;
 }
