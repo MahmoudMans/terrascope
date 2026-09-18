@@ -151,6 +151,13 @@ import type {
   ResiliencePortfolioReviewPreview,
 } from "@/types/resilience-portfolio-review";
 
+import type {
+  CreatePortfolioObjectiveRequest,
+  PortfolioObjectiveBoardResponse,
+  PortfolioObjectiveHistoryResponse,
+  PortfolioObjectiveStatus,
+} from "@/types/resilience-portfolio-objectives";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -2958,4 +2965,210 @@ export async function createResiliencePortfolioReview(): Promise<ResiliencePortf
   }
 
   return response.json() as Promise<ResiliencePortfolioReview>;
+}
+
+export async function fetchPortfolioObjectiveBoard(
+  signal?: AbortSignal,
+): Promise<PortfolioObjectiveBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portfolio objective board returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveBoardResponse>;
+}
+
+export async function fetchPortfolioObjectiveHistory(
+  objectiveId: string,
+): Promise<PortfolioObjectiveHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/history`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portfolio objective history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveHistoryResponse>;
+}
+
+export async function createPortfolioObjective(
+  request: CreatePortfolioObjectiveRequest,
+): Promise<PortfolioObjectiveBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to create portfolio objective. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveBoardResponse>;
+}
+
+export async function updatePortfolioObjectiveStatus(
+  objectiveId: string,
+  status: PortfolioObjectiveStatus,
+): Promise<PortfolioObjectiveBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update portfolio objective status. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveBoardResponse>;
+}
+
+export async function updatePortfolioObjectiveOwner(
+  objectiveId: string,
+  owner: string,
+): Promise<PortfolioObjectiveBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/owner`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update portfolio objective owner. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveBoardResponse>;
+}
+
+export async function updatePortfolioObjectiveTarget(
+  objectiveId: string,
+  targetAt: string | null,
+): Promise<PortfolioObjectiveBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/target`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        targetAt,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update portfolio objective target. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveBoardResponse>;
+}
+
+export async function updatePortfolioObjectiveProgress(
+  objectiveId: string,
+  progressPct: number,
+): Promise<PortfolioObjectiveBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/progress`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        progressPct,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to update portfolio objective progress. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveBoardResponse>;
+}
+
+export async function completePortfolioObjective(
+  objectiveId: string,
+  completionEvidence: string,
+): Promise<PortfolioObjectiveBoardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/complete`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        completionEvidence,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to complete portfolio objective. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveBoardResponse>;
 }
