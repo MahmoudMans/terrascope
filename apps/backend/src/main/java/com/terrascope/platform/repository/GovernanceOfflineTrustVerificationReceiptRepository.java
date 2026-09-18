@@ -294,7 +294,7 @@ public class GovernanceOfflineTrustVerificationReceiptRepository {
                 .list();
     }
 
-    private Optional<GovernanceOfflineTrustVerificationReceipt> findById(
+    public Optional<GovernanceOfflineTrustVerificationReceipt> findById(
             UUID id
     ) {
         return jdbcClient

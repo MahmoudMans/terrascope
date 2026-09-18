@@ -31,14 +31,18 @@ public class GovernanceOfflineTrustVerificationReceiptService {
 
     private final GovernanceOfflineTrustVerificationReceiptRepository repository;
 
+    private final GovernanceOfflineTrustReceiptLedgerService ledgerService;
+
     public GovernanceOfflineTrustVerificationReceiptService(
             GovernanceOfflineTrustVerificationReceiptCodec codec,
             GovernanceTrustLineagePinnedVerifier verifier,
-            GovernanceOfflineTrustVerificationReceiptRepository repository
+            GovernanceOfflineTrustVerificationReceiptRepository repository,
+            GovernanceOfflineTrustReceiptLedgerService ledgerService
     ) {
         this.codec = codec;
         this.verifier = verifier;
         this.repository = repository;
+        this.ledgerService = ledgerService;
     }
 
     @Transactional
@@ -178,18 +182,32 @@ public class GovernanceOfflineTrustVerificationReceiptService {
         if (
                 existing.isPresent()
         ) {
-            return existing.get();
+            GovernanceOfflineTrustVerificationReceipt imported =
+                    existing.get();
+
+            ledgerService.anchor(
+                    imported
+            );
+
+            return imported;
         }
 
-        return repository.save(
-                UUID.randomUUID(),
+        GovernanceOfflineTrustVerificationReceipt imported =
+                repository.save(
+                        UUID.randomUUID(),
 
-                repository.nextImportNumber(),
+                        repository.nextImportNumber(),
 
-                document,
+                        document,
 
-                reverified
+                        reverified
+                );
+
+        ledgerService.anchor(
+                imported
         );
+
+        return imported;
     }
 
     public GovernanceOfflineTrustVerificationReceiptHistoryResponse history() {

@@ -240,6 +240,11 @@ import type {
   GovernanceOfflineTrustVerificationReceiptHistoryResponse,
 } from "@/types/resilience-governance-offline-trust-verification";
 
+import type {
+  GovernanceOfflineTrustReceiptLedgerHistoryResponse,
+  GovernanceOfflineTrustReceiptLedgerVerificationResponse,
+} from "@/types/resilience-governance-offline-trust-ledger";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -4230,4 +4235,49 @@ export async function fetchGovernanceOfflineTrustVerificationReceipts(
   }
 
   return response.json() as Promise<GovernanceOfflineTrustVerificationReceiptHistoryResponse>;
+}
+
+export async function fetchGovernanceOfflineTrustReceiptLedger(
+  signal?: AbortSignal,
+): Promise<GovernanceOfflineTrustReceiptLedgerHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Offline trust receipt ledger returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustReceiptLedgerHistoryResponse>;
+}
+
+export async function verifyGovernanceOfflineTrustReceiptLedger(): Promise<GovernanceOfflineTrustReceiptLedgerVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Offline trust receipt ledger verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustReceiptLedgerVerificationResponse>;
 }

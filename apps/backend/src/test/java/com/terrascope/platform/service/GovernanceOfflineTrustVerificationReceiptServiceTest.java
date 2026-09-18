@@ -29,6 +29,8 @@ class GovernanceOfflineTrustVerificationReceiptServiceTest {
 
     private GovernanceOfflineTrustVerificationReceiptRepository repository;
 
+    private GovernanceOfflineTrustReceiptLedgerService ledgerService;
+
     private GovernanceOfflineTrustVerificationReceiptService service;
 
     @BeforeEach
@@ -48,11 +50,17 @@ class GovernanceOfflineTrustVerificationReceiptServiceTest {
                         GovernanceOfflineTrustVerificationReceiptRepository.class
                 );
 
+        ledgerService =
+                mock(
+                        GovernanceOfflineTrustReceiptLedgerService.class
+                );
+
         service =
                 new GovernanceOfflineTrustVerificationReceiptService(
                         codec,
                         verifier,
-                        repository
+                        repository,
+                        ledgerService
                 );
     }
 
