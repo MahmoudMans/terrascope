@@ -36,23 +36,6 @@ public class GovernanceOfflineTrustReceiptLedgerRepository {
         this.jdbcClient = jdbcClient;
     }
 
-    public int nextLedgerNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(ledger_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_offline_trust_receipt_ledger
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
-    }
-
     public Optional<GovernanceOfflineTrustReceiptLedgerEntry> findByReceiptId(
             UUID receiptId
     ) {

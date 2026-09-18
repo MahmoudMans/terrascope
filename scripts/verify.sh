@@ -10,35 +10,29 @@ cd "${ROOT_DIR}"
 
 BACKEND_PID=""
 
-BACKEND_LOG="/tmp/terrascope-step39-backend.log"
+BACKEND_LOG="/tmp/terrascope-step40-backend.log"
 
-KEYGEN_SOURCE="/tmp/TerraScopeStep39Keygen.java"
+KEYGEN_SOURCE="/tmp/TerraScopeStep40Keygen.java"
 
-KEY1_PRIVATE_FILE="/tmp/terrascope-step39-key1-private.b64"
-KEY1_PUBLIC_FILE="/tmp/terrascope-step39-key1-public.b64"
+KEY1_PRIVATE_FILE="/tmp/terrascope-step40-key1-private.b64"
+KEY1_PUBLIC_FILE="/tmp/terrascope-step40-key1-public.b64"
 
-KEY2_PRIVATE_FILE="/tmp/terrascope-step39-key2-private.b64"
-KEY2_PUBLIC_FILE="/tmp/terrascope-step39-key2-public.b64"
+KEY2_PRIVATE_FILE="/tmp/terrascope-step40-key2-private.b64"
+KEY2_PUBLIC_FILE="/tmp/terrascope-step40-key2-public.b64"
 
-KEY3_PRIVATE_FILE="/tmp/terrascope-step39-key3-private.b64"
-KEY3_PUBLIC_FILE="/tmp/terrascope-step39-key3-public.b64"
+KEY3_PRIVATE_FILE="/tmp/terrascope-step40-key3-private.b64"
+KEY3_PUBLIC_FILE="/tmp/terrascope-step40-key3-public.b64"
 
-ENVELOPE="/tmp/terrascope-step39-lineage-envelope.json"
+ENVELOPE="/tmp/terrascope-step40-lineage-envelope.json"
+ROOT_PIN_FILE="/tmp/terrascope-step40-root.sha256"
 
-ROOT_PIN_FILE="/tmp/terrascope-step39-root.sha256"
-WRONG_PIN_FILE="/tmp/terrascope-step39-wrong-root.sha256"
+STANDALONE_JAR="/tmp/terrascope-step40-trust-verifier.jar"
 
-VALID_RECEIPT="/tmp/terrascope-step39-valid-receipt.json"
-INVALID_RECEIPT="/tmp/terrascope-step39-invalid-receipt.json"
+KEY1_ID="verification-step40-ed25519-v1"
+KEY2_ID="verification-step40-ed25519-v2"
+KEY3_ID="verification-step40-ed25519-v3"
 
-VALID_IMPORT_REQUEST="/tmp/terrascope-step39-valid-import-request.json"
-INVALID_IMPORT_REQUEST="/tmp/terrascope-step39-invalid-import-request.json"
-
-STANDALONE_JAR="/tmp/terrascope-step39-trust-verifier.jar"
-
-KEY1_ID="verification-step39-ed25519-v1"
-KEY2_ID="verification-step39-ed25519-v2"
-KEY3_ID="verification-step39-ed25519-v3"
+IMPORT_COUNT=12
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -56,12 +50,13 @@ cleanup() {
     "${KEY3_PUBLIC_FILE}" \
     "${ENVELOPE}" \
     "${ROOT_PIN_FILE}" \
-    "${WRONG_PIN_FILE}" \
-    "${VALID_RECEIPT}" \
-    "${INVALID_RECEIPT}" \
-    "${VALID_IMPORT_REQUEST}" \
-    "${INVALID_IMPORT_REQUEST}" \
     "${STANDALONE_JAR}"
+
+  rm -rf \
+    /tmp/terrascope-step40-receipts \
+    /tmp/terrascope-step40-requests \
+    /tmp/terrascope-step40-responses \
+    /tmp/terrascope-step40-statuses
 }
 
 trap cleanup EXIT
@@ -143,7 +138,7 @@ start_without_key() {
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 39 VERIFICATION"
+echo " TERRASCOPE — STEP 40 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -194,7 +189,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 
-public class TerraScopeStep39Keygen {
+public class TerraScopeStep40Keygen {
 
     public static void main(
             String[] args
@@ -277,26 +272,26 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step39-status.json
+  >/tmp/terrascope-step40-status.json
 
 python3 - <<'PY'
 import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step39-status.json",
+        "/tmp/terrascope-step40-status.json",
         encoding="utf-8",
     )
 )
 
-assert payload["version"] == "0.39.0"
+assert payload["version"] == "0.40.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in $(seq 1 39); do
+for VERSION in $(seq 1 40); do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -317,7 +312,10 @@ for VERSION in $(seq 1 39); do
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V39_RUNTIME"
+echo "[PASS] FLYWAY_V40_RUNTIME"
+
+echo
+echo "===== PRE-CLEAN ====="
 
 docker compose exec -T postgres \
   psql \
@@ -371,8 +369,10 @@ docker compose exec -T postgres \
       );
 
       UPDATE resilience_governance_trust_anchors
+
       SET superseded_by_key_id =
           NULL
+
       WHERE key_id IN (
           '${KEY1_ID}',
           '${KEY2_ID}',
@@ -386,12 +386,58 @@ docker compose exec -T postgres \
           '${KEY2_ID}',
           '${KEY3_ID}'
       );
+
+      UPDATE resilience_governance_sequence_allocators
+
+      SET
+          next_value = 1,
+          updated_at = NOW()
+
+      WHERE allocator_key IN (
+          'OFFLINE_TRUST_IMPORT_NUMBER_V1',
+          'OFFLINE_TRUST_LEDGER_NUMBER_V1'
+      );
     " \
   >/dev/null
 
-echo "[PASS] STEP39_PRE_CLEAN"
+ALLOCATOR_ROW_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_governance_sequence_allocators;
+      " \
+    | tr -d '[:space:]'
+)"
 
-cat > /tmp/terrascope-step39-register-root.json <<JSON
+ALLOCATOR_NEXT_SUM="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT SUM(next_value)
+      FROM resilience_governance_sequence_allocators;
+      " \
+    | tr -d '[:space:]'
+)"
+
+echo "ALLOCATOR_ROW_COUNT=${ALLOCATOR_ROW_COUNT}"
+echo "ALLOCATOR_NEXT_VALUE_SUM=${ALLOCATOR_NEXT_SUM}"
+
+[[ "${ALLOCATOR_ROW_COUNT}" == "2" ]]
+[[ "${ALLOCATOR_NEXT_SUM}" == "2" ]]
+
+echo "[PASS] STEP40_PRE_CLEAN"
+
+echo
+echo "===== CREATE PORTABLE LINEAGE ====="
+
+cat > /tmp/terrascope-step40-register-root.json <<JSON
 {
   "keyId": "${KEY1_ID}",
   "publicKeyX509Base64": "${KEY1_PUBLIC}"
@@ -403,17 +449,15 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step39-register-root.json \
+  --data @/tmp/terrascope-step40-register-root.json \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors" \
-  >/tmp/terrascope-step39-root-anchor.json
+  >/tmp/terrascope-step40-root-anchor.json
 
-echo "[PASS] ROOT_TRUST_ANCHOR_REGISTERED"
-
-cat > /tmp/terrascope-step39-transition1.json <<JSON
+cat > /tmp/terrascope-step40-transition1.json <<JSON
 {
   "replacementKeyId": "${KEY2_ID}",
   "replacementPublicKeyX509Base64": "${KEY2_PUBLIC}",
-  "reason": "Step 39 receipt transparency transition one."
+  "reason": "Step 40 concurrent allocator transition one."
 }
 JSON
 
@@ -422,11 +466,9 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step39-transition1.json \
+  --data @/tmp/terrascope-step40-transition1.json \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate" \
-  >/tmp/terrascope-step39-transition1-response.json
-
-echo "[PASS] ROOT_TO_KEY2_SIGNED_TRANSITION"
+  >/tmp/terrascope-step40-transition1-response.json
 
 stop_backend
 
@@ -435,13 +477,11 @@ start_with_key \
   "${KEY2_PRIVATE}" \
   "${KEY2_PUBLIC}"
 
-echo "[PASS] KEY2_RUNTIME_READY"
-
-cat > /tmp/terrascope-step39-transition2.json <<JSON
+cat > /tmp/terrascope-step40-transition2.json <<JSON
 {
   "replacementKeyId": "${KEY3_ID}",
   "replacementPublicKeyX509Base64": "${KEY3_PUBLIC}",
-  "reason": "Step 39 receipt transparency transition two."
+  "reason": "Step 40 concurrent allocator transition two."
 }
 JSON
 
@@ -450,18 +490,16 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step39-transition2.json \
+  --data @/tmp/terrascope-step40-transition2.json \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate" \
-  >/tmp/terrascope-step39-transition2-response.json
-
-echo "[PASS] KEY2_TO_KEY3_SIGNED_TRANSITION"
+  >/tmp/terrascope-step40-transition2-response.json
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/packages" \
-  >/tmp/terrascope-step39-package.json
+  >/tmp/terrascope-step40-package.json
 
 PACKAGE_ID="$(
   python3 - <<'PY'
@@ -469,7 +507,7 @@ import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step39-package.json",
+        "/tmp/terrascope-step40-package.json",
         encoding="utf-8",
     )
 )
@@ -487,8 +525,6 @@ curl \
   --silent \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/packages/export/${PACKAGE_ID}" \
   --output "${ENVELOPE}"
-
-echo "[PASS] PORTABLE_LINEAGE_EXPORTED"
 
 ROOT_PIN="$(
   python3 \
@@ -514,93 +550,103 @@ print(
 PY
 )"
 
-WRONG_PIN="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-
-if [[ "${WRONG_PIN}" == "${ROOT_PIN}" ]]; then
-  WRONG_PIN="0000000000000000000000000000000000000000000000000000000000000000"
-fi
-
 printf '%s\n' \
   "${ROOT_PIN}" \
   > "${ROOT_PIN_FILE}"
 
-printf '%s\n' \
-  "${WRONG_PIN}" \
-  > "${WRONG_PIN_FILE}"
+echo "[PASS] CONCURRENCY_LINEAGE_FIXTURE_READY"
 
-echo "[PASS] ROOT_PIN_FILES_READY"
+echo
+echo "===== GENERATE ${IMPORT_COUNT} DISTINCT OFFLINE RECEIPTS ====="
 
-stop_backend
+rm -rf \
+  /tmp/terrascope-step40-receipts \
+  /tmp/terrascope-step40-requests \
+  /tmp/terrascope-step40-responses \
+  /tmp/terrascope-step40-statuses
 
-docker compose stop postgres >/dev/null
+mkdir -p \
+  /tmp/terrascope-step40-receipts \
+  /tmp/terrascope-step40-requests \
+  /tmp/terrascope-step40-responses \
+  /tmp/terrascope-step40-statuses
 
-echo "[PASS] AIR_GAP_RUNTIME_READY"
+for INDEX in $(seq 1 "${IMPORT_COUNT}"); do
+  RECEIPT_FILE="/tmp/terrascope-step40-receipts/receipt-${INDEX}.json"
 
-java \
-  -jar "${STANDALONE_JAR}" \
-  --envelope "${ENVELOPE}" \
-  --root-pin "${ROOT_PIN_FILE}" \
-  --receipt "${VALID_RECEIPT}" \
-  >/tmp/terrascope-step39-valid-verifier.log
+  java \
+    -jar "${STANDALONE_JAR}" \
+    --envelope "${ENVELOPE}" \
+    --root-pin "${ROOT_PIN_FILE}" \
+    --receipt "${RECEIPT_FILE}" \
+    >/tmp/terrascope-step40-receipt-${INDEX}.log
 
-set +e
+  grep \
+    -q \
+    'VERIFICATION_RESULT=VALID' \
+    /tmp/terrascope-step40-receipt-${INDEX}.log
 
-java \
-  -jar "${STANDALONE_JAR}" \
-  --envelope "${ENVELOPE}" \
-  --root-pin "${WRONG_PIN_FILE}" \
-  --receipt "${INVALID_RECEIPT}" \
-  >/tmp/terrascope-step39-invalid-verifier.log
-
-INVALID_EXIT=$?
-
-set -e
-
-[[ "${INVALID_EXIT}" == "2" ]]
-
-echo "[PASS] AIR_GAPPED_VALID_AND_INVALID_RECEIPTS"
-
-docker compose up -d postgres
-
-for attempt in $(seq 1 30); do
-  if docker compose exec -T postgres \
-      pg_isready \
-      -U terrascope \
-      -d terrascope \
-      >/dev/null 2>&1; then
-
-    break
-  fi
-
-  [[ "${attempt}" -lt 30 ]]
-
-  sleep 1
+  sleep 0.02
 done
 
-start_without_key
+UNIQUE_RECEIPT_HASH_COUNT="$(
+  python3 - <<'PY'
+import glob
+import json
 
-echo "[PASS] KEYLESS_IMPORT_RUNTIME_READY"
+hashes = set()
 
-python3 \
-  - \
-  "${VALID_RECEIPT}" \
-  "${INVALID_RECEIPT}" \
-  "${VALID_IMPORT_REQUEST}" \
-  "${INVALID_IMPORT_REQUEST}" \
-<<'PY'
+for file_name in glob.glob(
+    "/tmp/terrascope-step40-receipts/receipt-*.json"
+):
+    payload = json.load(
+        open(
+            file_name,
+            encoding="utf-8",
+        )
+    )
+
+    assert payload["valid"] is True
+
+    hashes.add(
+        payload["receiptHash"]
+    )
+
+print(
+    len(hashes)
+)
+PY
+)"
+
+echo "UNIQUE_RECEIPT_HASH_COUNT=${UNIQUE_RECEIPT_HASH_COUNT}"
+
+[[ "${UNIQUE_RECEIPT_HASH_COUNT}" == "${IMPORT_COUNT}" ]]
+
+echo "[PASS] DISTINCT_OFFLINE_RECEIPTS_READY"
+
+echo
+echo "===== BUILD CONCURRENT IMPORT REQUESTS ====="
+
+python3 - "${IMPORT_COUNT}" <<'PY'
 import json
 import sys
 
-for source, target in (
-    (
-        sys.argv[1],
-        sys.argv[3],
-    ),
-    (
-        sys.argv[2],
-        sys.argv[4],
-    ),
+count = int(
+    sys.argv[1]
+)
+
+for index in range(
+    1,
+    count + 1,
 ):
+    source = (
+        f"/tmp/terrascope-step40-receipts/receipt-{index}.json"
+    )
+
+    target = (
+        f"/tmp/terrascope-step40-requests/request-{index}.json"
+    )
+
     receipt_json = open(
         source,
         encoding="utf-8",
@@ -621,151 +667,283 @@ for source, target in (
         )
 PY
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @"${VALID_IMPORT_REQUEST}" \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
-  >/tmp/terrascope-step39-valid-import.json
+echo "[PASS] CONCURRENT_IMPORT_REQUESTS_READY"
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @"${INVALID_IMPORT_REQUEST}" \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
-  >/tmp/terrascope-step39-invalid-import.json
+echo
+echo "===== RESTART KEYLESS ====="
 
-VALID_RECEIPT_ID="$(
-  python3 - <<'PY'
+stop_backend
+
+start_without_key
+
+echo "[PASS] KEYLESS_CONCURRENT_IMPORT_RUNTIME_READY"
+
+echo
+echo "===== CONCURRENT IMPORT BURST ====="
+
+PIDS=()
+
+for INDEX in $(seq 1 "${IMPORT_COUNT}"); do
+  (
+    curl \
+      --silent \
+      --output "/tmp/terrascope-step40-responses/response-${INDEX}.json" \
+      --write-out '%{http_code}' \
+      --request POST \
+      --header 'Content-Type: application/json' \
+      --data @"/tmp/terrascope-step40-requests/request-${INDEX}.json" \
+      "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
+      >"/tmp/terrascope-step40-statuses/status-${INDEX}.txt"
+  ) &
+
+  PIDS+=(
+    "$!"
+  )
+done
+
+for PID in "${PIDS[@]}"; do
+  wait "${PID}"
+done
+
+python3 - "${IMPORT_COUNT}" <<'PY'
+from pathlib import Path
 import json
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step39-valid-import.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["verificationResult"] == "VALID"
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-INVALID_RECEIPT_ID="$(
-  python3 - <<'PY'
-import json
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step39-invalid-import.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["verificationResult"] == "INVALID"
-
-print(
-    payload["id"]
-)
-PY
-)"
-
-echo "VALID_RECEIPT_ID=${VALID_RECEIPT_ID}"
-echo "INVALID_RECEIPT_ID=${INVALID_RECEIPT_ID}"
-
-echo "[PASS] TWO_OFFLINE_RECEIPTS_IMPORTED"
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger" \
-  >/tmp/terrascope-step39-ledger-history.json
-
-python3 \
-  - "${VALID_RECEIPT_ID}" \
-  "${INVALID_RECEIPT_ID}" \
-<<'PY'
-import json
-import re
 import sys
 
-valid_id = sys.argv[1]
-invalid_id = sys.argv[2]
-
-payload = json.load(
-    open(
-        "/tmp/terrascope-step39-ledger-history.json",
-        encoding="utf-8",
-    )
+count = int(
+    sys.argv[1]
 )
 
-entries = payload["entries"]
+import_numbers = []
 
-assert len(entries) == 2
+for index in range(
+    1,
+    count + 1,
+):
+    status = Path(
+        f"/tmp/terrascope-step40-statuses/status-{index}.txt"
+    ).read_text().strip()
 
-assert entries[0]["ledgerNumber"] == 2
-assert entries[0]["receiptId"] == invalid_id
-assert entries[0]["verificationResult"] == "INVALID"
+    assert status == "200", (
+        index,
+        status,
+        Path(
+            f"/tmp/terrascope-step40-responses/response-{index}.json"
+        ).read_text(),
+    )
 
-assert entries[1]["ledgerNumber"] == 1
-assert entries[1]["receiptId"] == valid_id
-assert entries[1]["verificationResult"] == "VALID"
+    payload = json.loads(
+        Path(
+            f"/tmp/terrascope-step40-responses/response-{index}.json"
+        ).read_text()
+    )
 
-assert entries[1]["previousLedgerHash"] is None
+    assert payload["verificationResult"] == "VALID"
 
-assert (
-    entries[0]["previousLedgerHash"]
-    == entries[1]["ledgerHash"]
+    import_numbers.append(
+        payload["importNumber"]
+    )
+
+assert len(
+    set(
+        import_numbers
+    )
+) == count
+
+assert sorted(
+    import_numbers
+) == list(
+    range(
+        1,
+        count + 1,
+    )
 )
-
-for entry in entries:
-    assert re.fullmatch(
-        r"[0-9a-f]{64}",
-        entry["receiptPayloadHash"],
-    )
-
-    assert re.fullmatch(
-        r"[0-9a-f]{64}",
-        entry["ledgerHash"],
-    )
 
 print(
-    "[PASS] OFFLINE_RECEIPT_LEDGER_HISTORY"
+    f"CONCURRENT_HTTP_200_COUNT={count}"
 )
 
 print(
-    "[PASS] OFFLINE_RECEIPT_LEDGER_CHAIN_LINKAGE"
+    "CONCURRENT_IMPORT_NUMBERS="
+    + ",".join(
+        map(
+            str,
+            sorted(
+                import_numbers
+            ),
+        )
+    )
+)
+
+print(
+    "[PASS] CONCURRENT_IMPORT_HTTP_AUTHORITY"
 )
 PY
+
+echo
+echo "========================================================================"
+echo " CONCURRENT DATABASE AUTHORITY"
+echo "========================================================================"
+
+RECEIPT_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_governance_offline_trust_verification_receipts;
+      " \
+    | tr -d '[:space:]'
+)"
+
+RECEIPT_DISTINCT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(DISTINCT import_number)
+      FROM resilience_governance_offline_trust_verification_receipts;
+      " \
+    | tr -d '[:space:]'
+)"
+
+RECEIPT_MIN="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT MIN(import_number)
+      FROM resilience_governance_offline_trust_verification_receipts;
+      " \
+    | tr -d '[:space:]'
+)"
+
+RECEIPT_MAX="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT MAX(import_number)
+      FROM resilience_governance_offline_trust_verification_receipts;
+      " \
+    | tr -d '[:space:]'
+)"
+
+LEDGER_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_governance_offline_trust_receipt_ledger;
+      " \
+    | tr -d '[:space:]'
+)"
+
+LEDGER_DISTINCT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(DISTINCT ledger_number)
+      FROM resilience_governance_offline_trust_receipt_ledger;
+      " \
+    | tr -d '[:space:]'
+)"
+
+LEDGER_MIN="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT MIN(ledger_number)
+      FROM resilience_governance_offline_trust_receipt_ledger;
+      " \
+    | tr -d '[:space:]'
+)"
+
+LEDGER_MAX="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT MAX(ledger_number)
+      FROM resilience_governance_offline_trust_receipt_ledger;
+      " \
+    | tr -d '[:space:]'
+)"
+
+echo "CONCURRENT_RECEIPT_COUNT=${RECEIPT_COUNT}"
+echo "CONCURRENT_RECEIPT_DISTINCT_IMPORT_NUMBERS=${RECEIPT_DISTINCT}"
+echo "CONCURRENT_RECEIPT_MIN=${RECEIPT_MIN}"
+echo "CONCURRENT_RECEIPT_MAX=${RECEIPT_MAX}"
+
+echo "CONCURRENT_LEDGER_COUNT=${LEDGER_COUNT}"
+echo "CONCURRENT_LEDGER_DISTINCT_NUMBERS=${LEDGER_DISTINCT}"
+echo "CONCURRENT_LEDGER_MIN=${LEDGER_MIN}"
+echo "CONCURRENT_LEDGER_MAX=${LEDGER_MAX}"
+
+[[ "${RECEIPT_COUNT}" == "${IMPORT_COUNT}" ]]
+[[ "${RECEIPT_DISTINCT}" == "${IMPORT_COUNT}" ]]
+[[ "${RECEIPT_MIN}" == "1" ]]
+[[ "${RECEIPT_MAX}" == "${IMPORT_COUNT}" ]]
+
+[[ "${LEDGER_COUNT}" == "${IMPORT_COUNT}" ]]
+[[ "${LEDGER_DISTINCT}" == "${IMPORT_COUNT}" ]]
+[[ "${LEDGER_MIN}" == "1" ]]
+[[ "${LEDGER_MAX}" == "${IMPORT_COUNT}" ]]
+
+echo "[PASS] CONCURRENT_MONOTONIC_NUMBER_AUTHORITY"
+
+echo
+echo "===== CONCURRENT HASH-CHAIN VERIFICATION ====="
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/verify" \
-  >/tmp/terrascope-step39-ledger-valid.json
+  >/tmp/terrascope-step40-ledger-verification.json
 
 HEAD_HASH="$(
-  python3 - <<'PY'
+  python3 \
+    - "${IMPORT_COUNT}" \
+<<'PY'
 import json
 import re
+import sys
+
+count = int(
+    sys.argv[1]
+)
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step39-ledger-valid.json",
+        "/tmp/terrascope-step40-ledger-verification.json",
         encoding="utf-8",
     )
 )
 
 assert payload["valid"] is True
-assert payload["ledgerEntryCount"] == 2
-assert payload["verifiedEntryCount"] == 2
+
+assert payload["ledgerEntryCount"] == count
+assert payload["verifiedEntryCount"] == count
+
 assert payload["brokenLedgerNumber"] is None
 
 assert re.fullmatch(
@@ -779,123 +957,318 @@ print(
 PY
 )"
 
-echo "OFFLINE_RECEIPT_LEDGER_HEAD=${HEAD_HASH}"
+echo "CONCURRENT_LEDGER_HEAD=${HEAD_HASH}"
 
-echo "[PASS] OFFLINE_RECEIPT_LEDGER_VERIFIED"
+echo "[PASS] CONCURRENT_HASH_CHAIN_VERIFICATION"
 
-ORIGINAL_ROOT_PIN_VALID="$(
+docker compose exec -T postgres \
+  psql \
+    -U terrascope \
+    -d terrascope \
+    -AtF '|' \
+    -c "
+      SELECT
+        ledger_number,
+        COALESCE(
+            previous_ledger_hash,
+            '<null>'
+        ),
+        ledger_hash
+      FROM resilience_governance_offline_trust_receipt_ledger
+      ORDER BY ledger_number;
+    " \
+  >/tmp/terrascope-step40-ledger-chain.txt
+
+python3 \
+  - \
+  /tmp/terrascope-step40-ledger-chain.txt \
+  "${IMPORT_COUNT}" \
+  "${HEAD_HASH}" \
+<<'PY'
+from pathlib import Path
+import re
+import sys
+
+file_name = sys.argv[1]
+count = int(
+    sys.argv[2]
+)
+expected_head = sys.argv[3]
+
+rows = []
+
+for line in Path(
+    file_name
+).read_text().splitlines():
+    if not line:
+        continue
+
+    number, previous_hash, ledger_hash = (
+        line.split(
+            "|"
+        )
+    )
+
+    rows.append(
+        (
+            int(
+                number
+            ),
+            previous_hash,
+            ledger_hash,
+        )
+    )
+
+assert len(
+    rows
+) == count
+
+previous = None
+
+for expected_number, row in enumerate(
+    rows,
+    start=1,
+):
+    number, previous_hash, ledger_hash = row
+
+    assert number == expected_number
+
+    if previous is None:
+        assert previous_hash == "<null>"
+    else:
+        assert previous_hash == previous
+
+    assert re.fullmatch(
+        r"[0-9a-f]{64}",
+        ledger_hash,
+    )
+
+    previous = ledger_hash
+
+assert previous == expected_head
+
+print(
+    "[PASS] CONCURRENT_SQL_CHAIN_LINKAGE"
+)
+PY
+
+echo
+echo "===== ALLOCATOR STATE AFTER CONCURRENT BURST ====="
+
+IMPORT_NEXT="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
       -d terrascope \
       -tAc \
       "
-      SELECT root_pin_valid
-      FROM resilience_governance_offline_trust_verification_receipts
-      WHERE id =
-            '${VALID_RECEIPT_ID}'::uuid;
+      SELECT next_value
+      FROM resilience_governance_sequence_allocators
+      WHERE allocator_key=
+            'OFFLINE_TRUST_IMPORT_NUMBER_V1';
       " \
     | tr -d '[:space:]'
 )"
 
-[[ "${ORIGINAL_ROOT_PIN_VALID}" == "t" ]]
+LEDGER_NEXT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT next_value
+      FROM resilience_governance_sequence_allocators
+      WHERE allocator_key=
+            'OFFLINE_TRUST_LEDGER_NUMBER_V1';
+      " \
+    | tr -d '[:space:]'
+)"
 
-docker compose exec -T postgres \
-  psql \
-    -U terrascope \
-    -d terrascope \
-    -c "
-      UPDATE resilience_governance_offline_trust_verification_receipts
+EXPECTED_NEXT="$(
+  python3 \
+    - "${IMPORT_COUNT}" \
+<<'PY'
+import sys
 
-      SET root_pin_valid =
-          FALSE
+print(
+    int(
+        sys.argv[1]
+    ) + 1
+)
+PY
+)"
 
-      WHERE id =
-            '${VALID_RECEIPT_ID}'::uuid;
-    " \
-  >/dev/null
+echo "IMPORT_ALLOCATOR_NEXT=${IMPORT_NEXT}"
+echo "LEDGER_ALLOCATOR_NEXT=${LEDGER_NEXT}"
+echo "EXPECTED_ALLOCATOR_NEXT=${EXPECTED_NEXT}"
 
-echo "[PASS] RECEIPT_ROW_TAMPER_APPLIED"
+[[ "${IMPORT_NEXT}" == "${EXPECTED_NEXT}" ]]
+[[ "${LEDGER_NEXT}" == "${EXPECTED_NEXT}" ]]
+
+echo "[PASS] ALLOCATOR_POST_CONCURRENCY_STATE"
+
+echo
+echo "===== IDEMPOTENT RE-IMPORT DOES NOT CONSUME NUMBERS ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/verify" \
-  >/tmp/terrascope-step39-ledger-tampered.json
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data @/tmp/terrascope-step40-requests/request-1.json \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/imports" \
+  >/tmp/terrascope-step40-idempotent-response.json
 
 python3 - <<'PY'
 import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step39-ledger-tampered.json",
+        "/tmp/terrascope-step40-idempotent-response.json",
         encoding="utf-8",
     )
 )
 
-assert payload["valid"] is False
+assert payload["verificationResult"] == "VALID"
 
-assert payload["ledgerEntryCount"] == 2
-assert payload["verifiedEntryCount"] == 0
-
-assert payload["brokenLedgerNumber"] == 1
-
-assert (
-    "modified after ledger anchoring"
-    in payload["message"]
-)
+assert 1 <= payload["importNumber"] <= 12
 
 print(
-    "[PASS] OFFLINE_RECEIPT_ROW_TAMPER_DETECTION"
+    "[PASS] IDEMPOTENT_REIMPORT_RESPONSE"
 )
 PY
+
+IMPORT_NEXT_AFTER_IDEMPOTENT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT next_value
+      FROM resilience_governance_sequence_allocators
+      WHERE allocator_key=
+            'OFFLINE_TRUST_IMPORT_NUMBER_V1';
+      " \
+    | tr -d '[:space:]'
+)"
+
+LEDGER_NEXT_AFTER_IDEMPOTENT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT next_value
+      FROM resilience_governance_sequence_allocators
+      WHERE allocator_key=
+            'OFFLINE_TRUST_LEDGER_NUMBER_V1';
+      " \
+    | tr -d '[:space:]'
+)"
+
+[[ "${IMPORT_NEXT_AFTER_IDEMPOTENT}" == "${EXPECTED_NEXT}" ]]
+[[ "${LEDGER_NEXT_AFTER_IDEMPOTENT}" == "${EXPECTED_NEXT}" ]]
+
+echo "[PASS] IDEMPOTENT_REIMPORT_DOES_NOT_ADVANCE_ALLOCATORS"
+
+echo
+echo "===== TRANSACTION ROLLBACK PROOF ====="
+
+IMPORT_BEFORE_ROLLBACK="${IMPORT_NEXT_AFTER_IDEMPOTENT}"
+LEDGER_BEFORE_ROLLBACK="${LEDGER_NEXT_AFTER_IDEMPOTENT}"
 
 docker compose exec -T postgres \
   psql \
+    -v ON_ERROR_STOP=1 \
     -U terrascope \
     -d terrascope \
-    -c "
-      UPDATE resilience_governance_offline_trust_verification_receipts
+<<'SQL' >/tmp/terrascope-step40-import-rollback.txt
+BEGIN;
 
-      SET root_pin_valid =
-          TRUE
+UPDATE resilience_governance_sequence_allocators
+SET
+    next_value =
+        next_value + 1,
+    updated_at =
+        NOW()
+WHERE allocator_key =
+      'OFFLINE_TRUST_IMPORT_NUMBER_V1'
+RETURNING
+    next_value - 1;
 
-      WHERE id =
-            '${VALID_RECEIPT_ID}'::uuid;
-    " \
-  >/dev/null
+ROLLBACK;
+SQL
 
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/verify" \
-  >/tmp/terrascope-step39-ledger-restored.json
+docker compose exec -T postgres \
+  psql \
+    -v ON_ERROR_STOP=1 \
+    -U terrascope \
+    -d terrascope \
+<<'SQL' >/tmp/terrascope-step40-ledger-rollback.txt
+BEGIN;
 
-python3 \
-  - "${HEAD_HASH}" \
-<<'PY'
-import json
-import sys
+UPDATE resilience_governance_sequence_allocators
+SET
+    next_value =
+        next_value + 1,
+    updated_at =
+        NOW()
+WHERE allocator_key =
+      'OFFLINE_TRUST_LEDGER_NUMBER_V1'
+RETURNING
+    next_value - 1;
 
-head = sys.argv[1]
+ROLLBACK;
+SQL
 
-payload = json.load(
-    open(
-        "/tmp/terrascope-step39-ledger-restored.json",
-        encoding="utf-8",
-    )
-)
+IMPORT_AFTER_ROLLBACK="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT next_value
+      FROM resilience_governance_sequence_allocators
+      WHERE allocator_key=
+            'OFFLINE_TRUST_IMPORT_NUMBER_V1';
+      " \
+    | tr -d '[:space:]'
+)"
 
-assert payload["valid"] is True
-assert payload["verifiedEntryCount"] == 2
-assert payload["headLedgerHash"] == head
+LEDGER_AFTER_ROLLBACK="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT next_value
+      FROM resilience_governance_sequence_allocators
+      WHERE allocator_key=
+            'OFFLINE_TRUST_LEDGER_NUMBER_V1';
+      " \
+    | tr -d '[:space:]'
+)"
 
-print(
-    "[PASS] OFFLINE_RECEIPT_ROW_RESTORATION"
-)
-PY
+echo "IMPORT_BEFORE_ROLLBACK=${IMPORT_BEFORE_ROLLBACK}"
+echo "IMPORT_AFTER_ROLLBACK=${IMPORT_AFTER_ROLLBACK}"
 
-COLUMN_COUNT="$(
+echo "LEDGER_BEFORE_ROLLBACK=${LEDGER_BEFORE_ROLLBACK}"
+echo "LEDGER_AFTER_ROLLBACK=${LEDGER_AFTER_ROLLBACK}"
+
+[[ "${IMPORT_AFTER_ROLLBACK}" == "${IMPORT_BEFORE_ROLLBACK}" ]]
+[[ "${LEDGER_AFTER_ROLLBACK}" == "${LEDGER_BEFORE_ROLLBACK}" ]]
+
+echo "[PASS] TRANSACTIONAL_ALLOCATOR_ROLLBACK_SAFETY"
+
+echo
+echo "===== DATABASE CONTRACT ====="
+
+ALLOCATOR_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -906,12 +1279,12 @@ COLUMN_COUNT="$(
       FROM information_schema.columns
       WHERE table_schema='public'
         AND table_name=
-            'resilience_governance_offline_trust_receipt_ledger';
+            'resilience_governance_sequence_allocators';
       " \
     | tr -d '[:space:]'
 )"
 
-ROW_COUNT="$(
+ALLOCATOR_ROWS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -919,12 +1292,12 @@ ROW_COUNT="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_governance_offline_trust_receipt_ledger;
+      FROM resilience_governance_sequence_allocators;
       " \
     | tr -d '[:space:]'
 )"
 
-FK_COUNT="$(
+ALLOCATOR_PK="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -934,38 +1307,24 @@ FK_COUNT="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conrelid=
-            'resilience_governance_offline_trust_receipt_ledger'::regclass
-        AND contype='f';
+            'resilience_governance_sequence_allocators'::regclass
+        AND contype='p';
       " \
     | tr -d '[:space:]'
 )"
 
-UNIQUE_RECEIPT_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM pg_constraint
-      WHERE conname=
-            'uq_offline_trust_receipt_ledger_receipt';
-      " \
-    | tr -d '[:space:]'
-)"
+echo "ALLOCATOR_COLUMN_COUNT=${ALLOCATOR_COLUMNS}"
+echo "ALLOCATOR_ROW_COUNT=${ALLOCATOR_ROWS}"
+echo "ALLOCATOR_PRIMARY_KEY_COUNT=${ALLOCATOR_PK}"
 
-echo "OFFLINE_LEDGER_COLUMN_COUNT=${COLUMN_COUNT}"
-echo "OFFLINE_LEDGER_ROW_COUNT=${ROW_COUNT}"
-echo "OFFLINE_LEDGER_FK_COUNT=${FK_COUNT}"
-echo "OFFLINE_LEDGER_UNIQUE_RECEIPT_COUNT=${UNIQUE_RECEIPT_COUNT}"
+[[ "${ALLOCATOR_COLUMNS}" == "4" ]]
+[[ "${ALLOCATOR_ROWS}" == "2" ]]
+[[ "${ALLOCATOR_PK}" == "1" ]]
 
-[[ "${COLUMN_COUNT}" == "11" ]]
-[[ "${ROW_COUNT}" == "2" ]]
-[[ "${FK_COUNT}" == "1" ]]
-[[ "${UNIQUE_RECEIPT_COUNT}" == "1" ]]
+echo "[PASS] TRANSACTIONAL_ALLOCATOR_DATABASE_CONTRACT"
 
-echo "[PASS] OFFLINE_RECEIPT_LEDGER_DATABASE_CONTRACT"
+echo
+echo "===== CLEAN STEP 40 FIXTURE ====="
 
 docker compose exec -T postgres \
   psql \
@@ -976,11 +1335,7 @@ docker compose exec -T postgres \
       FROM resilience_governance_offline_trust_receipt_ledger;
 
       DELETE
-      FROM resilience_governance_offline_trust_verification_receipts
-      WHERE id IN (
-          '${VALID_RECEIPT_ID}'::uuid,
-          '${INVALID_RECEIPT_ID}'::uuid
-      );
+      FROM resilience_governance_offline_trust_verification_receipts;
 
       DELETE
       FROM resilience_governance_trust_lineage_packages;
@@ -1020,8 +1375,10 @@ docker compose exec -T postgres \
       );
 
       UPDATE resilience_governance_trust_anchors
+
       SET superseded_by_key_id =
           NULL
+
       WHERE key_id IN (
           '${KEY1_ID}',
           '${KEY2_ID}',
@@ -1035,23 +1392,21 @@ docker compose exec -T postgres \
           '${KEY2_ID}',
           '${KEY3_ID}'
       );
+
+      UPDATE resilience_governance_sequence_allocators
+
+      SET
+          next_value = 1,
+          updated_at = NOW()
+
+      WHERE allocator_key IN (
+          'OFFLINE_TRUST_IMPORT_NUMBER_V1',
+          'OFFLINE_TRUST_LEDGER_NUMBER_V1'
+      );
     " \
   >/dev/null
 
-FINAL_LEDGER_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM resilience_governance_offline_trust_receipt_ledger;
-      " \
-    | tr -d '[:space:]'
-)"
-
-FINAL_RECEIPT_COUNT="$(
+FINAL_RECEIPTS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1064,15 +1419,43 @@ FINAL_RECEIPT_COUNT="$(
     | tr -d '[:space:]'
 )"
 
-echo "FINAL_OFFLINE_LEDGER_COUNT=${FINAL_LEDGER_COUNT}"
-echo "FINAL_OFFLINE_RECEIPT_COUNT=${FINAL_RECEIPT_COUNT}"
+FINAL_LEDGER="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_governance_offline_trust_receipt_ledger;
+      " \
+    | tr -d '[:space:]'
+)"
 
-[[ "${FINAL_LEDGER_COUNT}" == "0" ]]
-[[ "${FINAL_RECEIPT_COUNT}" == "0" ]]
+FINAL_ALLOCATOR_SUM="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT SUM(next_value)
+      FROM resilience_governance_sequence_allocators;
+      " \
+    | tr -d '[:space:]'
+)"
 
-echo "[PASS] STEP39_CLEANUP"
+echo "FINAL_RECEIPT_COUNT=${FINAL_RECEIPTS}"
+echo "FINAL_LEDGER_COUNT=${FINAL_LEDGER}"
+echo "FINAL_ALLOCATOR_NEXT_VALUE_SUM=${FINAL_ALLOCATOR_SUM}"
+
+[[ "${FINAL_RECEIPTS}" == "0" ]]
+[[ "${FINAL_LEDGER}" == "0" ]]
+[[ "${FINAL_ALLOCATOR_SUM}" == "2" ]]
+
+echo "[PASS] STEP40_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 39 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 40 VERIFICATION PASSED"
 echo "========================================================================"

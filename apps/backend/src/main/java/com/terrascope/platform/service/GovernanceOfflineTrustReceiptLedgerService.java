@@ -23,14 +23,18 @@ public class GovernanceOfflineTrustReceiptLedgerService {
 
     private final GovernanceOfflineTrustReceiptLedgerHasher hasher;
 
+    private final GovernanceMonotonicSequenceService allocatorService;
+
     public GovernanceOfflineTrustReceiptLedgerService(
             GovernanceOfflineTrustReceiptLedgerRepository ledgerRepository,
             GovernanceOfflineTrustVerificationReceiptRepository receiptRepository,
-            GovernanceOfflineTrustReceiptLedgerHasher hasher
+            GovernanceOfflineTrustReceiptLedgerHasher hasher,
+            GovernanceMonotonicSequenceService allocatorService
     ) {
         this.ledgerRepository = ledgerRepository;
         this.receiptRepository = receiptRepository;
         this.hasher = hasher;
+        this.allocatorService = allocatorService;
     }
 
     @Transactional
@@ -49,7 +53,7 @@ public class GovernanceOfflineTrustReceiptLedgerService {
         }
 
         int ledgerNumber =
-                ledgerRepository.nextLedgerNumber();
+                allocatorService.nextLedgerNumber();
 
         String previousLedgerHash =
                 ledgerRepository

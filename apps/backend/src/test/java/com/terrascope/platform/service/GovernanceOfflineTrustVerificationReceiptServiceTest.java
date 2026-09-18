@@ -31,6 +31,8 @@ class GovernanceOfflineTrustVerificationReceiptServiceTest {
 
     private GovernanceOfflineTrustReceiptLedgerService ledgerService;
 
+    private GovernanceMonotonicSequenceService allocatorService;
+
     private GovernanceOfflineTrustVerificationReceiptService service;
 
     @BeforeEach
@@ -55,12 +57,18 @@ class GovernanceOfflineTrustVerificationReceiptServiceTest {
                         GovernanceOfflineTrustReceiptLedgerService.class
                 );
 
+        allocatorService =
+                mock(
+                        GovernanceMonotonicSequenceService.class
+                );
+
         service =
                 new GovernanceOfflineTrustVerificationReceiptService(
                         codec,
                         verifier,
                         repository,
-                        ledgerService
+                        ledgerService,
+                        allocatorService
                 );
     }
 
@@ -141,7 +149,7 @@ class GovernanceOfflineTrustVerificationReceiptServiceTest {
         );
 
         when(
-                repository.nextImportNumber()
+                allocatorService.nextImportNumber()
         ).thenReturn(
                 1
         );

@@ -26,6 +26,8 @@ class GovernanceOfflineTrustReceiptLedgerServiceTest {
 
     private GovernanceOfflineTrustReceiptLedgerHasher hasher;
 
+    private GovernanceMonotonicSequenceService allocatorService;
+
     private GovernanceOfflineTrustReceiptLedgerService service;
 
     @BeforeEach
@@ -43,11 +45,17 @@ class GovernanceOfflineTrustReceiptLedgerServiceTest {
         hasher =
                 new GovernanceOfflineTrustReceiptLedgerHasher();
 
+        allocatorService =
+                mock(
+                        GovernanceMonotonicSequenceService.class
+                );
+
         service =
                 new GovernanceOfflineTrustReceiptLedgerService(
                         ledgerRepository,
                         receiptRepository,
-                        hasher
+                        hasher,
+                        allocatorService
                 );
     }
 
@@ -69,7 +77,7 @@ class GovernanceOfflineTrustReceiptLedgerServiceTest {
         );
 
         when(
-                ledgerRepository.nextLedgerNumber()
+                allocatorService.nextLedgerNumber()
         ).thenReturn(
                 1
         );

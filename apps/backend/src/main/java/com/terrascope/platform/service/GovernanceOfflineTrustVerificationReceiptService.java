@@ -33,16 +33,20 @@ public class GovernanceOfflineTrustVerificationReceiptService {
 
     private final GovernanceOfflineTrustReceiptLedgerService ledgerService;
 
+    private final GovernanceMonotonicSequenceService allocatorService;
+
     public GovernanceOfflineTrustVerificationReceiptService(
             GovernanceOfflineTrustVerificationReceiptCodec codec,
             GovernanceTrustLineagePinnedVerifier verifier,
             GovernanceOfflineTrustVerificationReceiptRepository repository,
-            GovernanceOfflineTrustReceiptLedgerService ledgerService
+            GovernanceOfflineTrustReceiptLedgerService ledgerService,
+            GovernanceMonotonicSequenceService allocatorService
     ) {
         this.codec = codec;
         this.verifier = verifier;
         this.repository = repository;
         this.ledgerService = ledgerService;
+        this.allocatorService = allocatorService;
     }
 
     @Transactional
@@ -196,7 +200,7 @@ public class GovernanceOfflineTrustVerificationReceiptService {
                 repository.save(
                         UUID.randomUUID(),
 
-                        repository.nextImportNumber(),
+                        allocatorService.nextImportNumber(),
 
                         document,
 

@@ -51,23 +51,6 @@ public class GovernanceOfflineTrustVerificationReceiptRepository {
         this.jdbcClient = jdbcClient;
     }
 
-    public int nextImportNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(import_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_offline_trust_verification_receipts
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
-    }
-
     public Optional<GovernanceOfflineTrustVerificationReceipt> findByReceiptHash(
             String receiptHash
     ) {
