@@ -222,6 +222,12 @@ import type {
   GovernanceTrustAnchorTransitionVerificationResponse,
 } from "@/types/resilience-governance-trust-transitions";
 
+import type {
+  GovernanceTrustLineagePackage,
+  GovernanceTrustLineagePackageHistoryResponse,
+  GovernanceTrustLineageVerificationResponse,
+} from "@/types/resilience-governance-trust-lineage";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3996,4 +4002,95 @@ export async function verifyGovernanceTrustAnchorTransitions(): Promise<Governan
   }
 
   return response.json() as Promise<GovernanceTrustAnchorTransitionVerificationResponse>;
+}
+
+export async function fetchGovernanceTrustLineagePackages(
+  signal?: AbortSignal,
+): Promise<GovernanceTrustLineagePackageHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/packages`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portable trust-lineage package history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustLineagePackageHistoryResponse>;
+}
+
+export async function createGovernanceTrustLineagePackage(): Promise<GovernanceTrustLineagePackage> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/packages`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portable trust-lineage package creation returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustLineagePackage>;
+}
+
+export async function exportGovernanceTrustLineagePackage(
+  packageId: string,
+): Promise<string> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/packages/export/${packageId}`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portable trust-lineage export returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.text();
+}
+
+export async function verifyGovernanceTrustLineageEnvelope(
+  envelopeJson: string,
+): Promise<GovernanceTrustLineageVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/verify-envelope`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: envelopeJson,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Portable trust-lineage verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustLineageVerificationResponse>;
 }
