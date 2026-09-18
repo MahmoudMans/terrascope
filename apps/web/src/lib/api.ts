@@ -158,6 +158,12 @@ import type {
   PortfolioObjectiveStatus,
 } from "@/types/resilience-portfolio-objectives";
 
+import type {
+  PortfolioObjectiveOutcomePreview,
+  PortfolioObjectiveValidation,
+  PortfolioObjectiveValidationHistoryResponse,
+} from "@/types/resilience-objective-outcomes";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3171,4 +3177,76 @@ export async function completePortfolioObjective(
   }
 
   return response.json() as Promise<PortfolioObjectiveBoardResponse>;
+}
+
+export async function fetchPortfolioObjectiveOutcomePreview(
+  objectiveId: string,
+  signal?: AbortSignal,
+): Promise<PortfolioObjectiveOutcomePreview> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/outcomes/preview`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Objective outcome preview returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveOutcomePreview>;
+}
+
+export async function fetchPortfolioObjectiveValidationHistory(
+  objectiveId: string,
+  signal?: AbortSignal,
+): Promise<PortfolioObjectiveValidationHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/outcomes`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Objective validation history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveValidationHistoryResponse>;
+}
+
+export async function validatePortfolioObjectiveOutcome(
+  objectiveId: string,
+): Promise<PortfolioObjectiveValidation> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/objectives/${objectiveId}/outcomes`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to validate objective outcome. HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<PortfolioObjectiveValidation>;
 }

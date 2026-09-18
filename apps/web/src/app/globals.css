@@ -10849,3 +10849,304 @@ a:focus-visible {
     grid-column: 1;
   }
 }
+
+.objective-outcomes {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(84, 174, 164, 0.12);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(53, 177, 163, 0.022),
+      rgba(255, 255, 255, 0.004)
+    );
+}
+
+.objective-outcomes-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.objective-outcomes-heading > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.objective-outcomes-heading strong {
+  color: #aec2c2;
+  font-size: 10px;
+}
+
+.objective-outcomes-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.objective-outcomes-actions button {
+  display: flex;
+  min-height: 29px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #84ada6;
+  border: 1px solid rgba(88, 177, 163, 0.13);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.objective-outcomes-error {
+  padding: 8px 9px;
+  color: #ffaf9a;
+  border: 1px solid rgba(255, 106, 79, 0.15);
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.objective-outcomes-empty {
+  padding: 22px;
+  color: #587174;
+  border: 1px solid rgba(102, 151, 155, 0.06);
+  border-radius: 7px;
+  text-align: center;
+  font-size: 7px;
+}
+
+.objective-outcomes-select {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.objective-outcomes-select > span {
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.objective-outcomes-select select {
+  height: 31px;
+  padding: 0 8px;
+  color: #8fa5a7;
+  border: 1px solid rgba(106, 150, 155, 0.09);
+  border-radius: 5px;
+  outline: none;
+  background: rgba(3, 9, 11, 0.65);
+  font-size: 7px;
+}
+
+.objective-outcomes-hero {
+  display: grid;
+  grid-template-columns:
+    auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(78, 178, 164, 0.14);
+  border-radius: 8px;
+}
+
+.objective-outcome {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid;
+  border-radius: 9px;
+}
+
+.objective-outcome--achieved {
+  color: #7dc69c;
+  border-color: rgba(74, 181, 111, 0.18);
+}
+
+.objective-outcome--partial {
+  color: #dfbd78;
+  border-color: rgba(221, 177, 70, 0.18);
+}
+
+.objective-outcome--not-achieved {
+  color: #ec8f8f;
+  border-color: rgba(226, 90, 90, 0.19);
+}
+
+.objective-outcomes-hero > div:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.objective-outcomes-hero span {
+  color: #607a7d;
+  font-size: 6px;
+}
+
+.objective-outcomes-hero > div:nth-child(2) > strong {
+  color: #b0c3c4;
+  font-size: 12px;
+}
+
+.objective-outcomes-hero p {
+  margin: 0;
+  color: #657e80;
+  font-size: 7px;
+  line-height: 1.55;
+}
+
+.objective-outcomes-score {
+  display: grid;
+  grid-template-columns:
+    auto auto;
+  align-items: baseline;
+  text-align: right;
+}
+
+.objective-outcomes-score span {
+  grid-column: 1 / -1;
+}
+
+.objective-outcomes-score strong {
+  color: #a1c7b8;
+  font-size: 20px;
+}
+
+.objective-outcomes-score small {
+  color: #6c8a87;
+  font-size: 8px;
+}
+
+.objective-outcomes-metrics {
+  display: grid;
+  grid-template-columns:
+    repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.objective-outcomes-metrics article {
+  display: grid;
+  grid-template-columns:
+    1fr auto;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(104, 151, 156, 0.07);
+  border-radius: 6px;
+}
+
+.objective-outcomes-metrics span {
+  grid-column: 1 / -1;
+  color: #526b6f;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.objective-outcomes-metrics strong {
+  color: #a5babc;
+  font-size: 9px;
+}
+
+.objective-outcomes-metrics small {
+  color: #6e9590;
+  font-size: 7px;
+}
+
+.objective-outcomes-history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(105, 152, 157, 0.07);
+  border-radius: 7px;
+}
+
+.objective-outcomes-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #70aaa4;
+}
+
+.objective-outcomes-section-heading strong {
+  color: #9eb3b5;
+  font-size: 8px;
+}
+
+.objective-outcomes-section-heading > span {
+  margin-left: auto;
+  color: #587174;
+  font-size: 6px;
+}
+
+.objective-outcomes-history-empty {
+  padding: 18px;
+  color: #567074;
+  text-align: center;
+  font-size: 7px;
+}
+
+.objective-outcomes-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.objective-outcomes-history article {
+  display: grid;
+  grid-template-columns:
+    auto 1fr 1fr 1fr auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  color: #75ad9f;
+  border: 1px solid rgba(104, 151, 156, 0.06);
+  border-radius: 5px;
+}
+
+.objective-outcomes-history article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.objective-outcomes-history span {
+  color: #587174;
+  font-size: 6px;
+}
+
+.objective-outcomes-history strong {
+  color: #9bafb1;
+  font-size: 7px;
+}
+
+.objective-outcomes-history time {
+  color: #4f686a;
+  font-size: 6px;
+}
+
+@media (max-width: 850px) {
+  .objective-outcomes-metrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .objective-outcomes-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .objective-outcomes-score {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .objective-outcomes-history article {
+    grid-template-columns:
+      1fr 1fr;
+  }
+}
