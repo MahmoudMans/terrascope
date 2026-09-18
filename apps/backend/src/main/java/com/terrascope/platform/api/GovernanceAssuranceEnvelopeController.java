@@ -1,9 +1,12 @@
 package com.terrascope.platform.api;
 
 import com.terrascope.platform.api.model.GovernanceAssuranceEnvelopeVerificationResponse;
+import com.terrascope.platform.api.model.GovernanceAssuranceReceiptLedgerHistoryResponse;
+import com.terrascope.platform.api.model.GovernanceAssuranceReceiptLedgerVerificationResponse;
 import com.terrascope.platform.api.model.GovernanceAssuranceVerificationReceipt;
 import com.terrascope.platform.api.model.GovernanceAssuranceVerificationReceiptHistoryResponse;
 import com.terrascope.platform.service.GovernanceAssuranceEnvelopeService;
+import com.terrascope.platform.service.GovernanceAssuranceReceiptLedgerService;
 import com.terrascope.platform.service.GovernanceAssuranceStatelessVerifier;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -27,12 +30,16 @@ public class GovernanceAssuranceEnvelopeController {
 
     private final GovernanceAssuranceStatelessVerifier verifier;
 
+    private final GovernanceAssuranceReceiptLedgerService receiptLedgerService;
+
     public GovernanceAssuranceEnvelopeController(
             GovernanceAssuranceEnvelopeService service,
-            GovernanceAssuranceStatelessVerifier verifier
+            GovernanceAssuranceStatelessVerifier verifier,
+            GovernanceAssuranceReceiptLedgerService receiptLedgerService
     ) {
         this.service = service;
         this.verifier = verifier;
+        this.receiptLedgerService = receiptLedgerService;
     }
 
     @GetMapping(
@@ -104,5 +111,15 @@ public class GovernanceAssuranceEnvelopeController {
     @GetMapping("/verification-receipts")
     public GovernanceAssuranceVerificationReceiptHistoryResponse receiptHistory() {
         return service.receiptHistory();
+    }
+
+    @GetMapping("/receipt-ledger")
+    public GovernanceAssuranceReceiptLedgerHistoryResponse receiptLedgerHistory() {
+        return receiptLedgerService.history();
+    }
+
+    @GetMapping("/receipt-ledger/verify")
+    public GovernanceAssuranceReceiptLedgerVerificationResponse verifyReceiptLedger() {
+        return receiptLedgerService.verify();
     }
 }

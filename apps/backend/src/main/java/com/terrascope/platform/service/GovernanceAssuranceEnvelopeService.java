@@ -27,18 +27,22 @@ public class GovernanceAssuranceEnvelopeService {
 
     private final GovernanceAssuranceStatelessVerifier statelessVerifier;
 
+    private final GovernanceAssuranceReceiptLedgerService receiptLedgerService;
+
     public GovernanceAssuranceEnvelopeService(
             GovernanceAssuranceBundleRepository bundleRepository,
             GovernanceAssuranceBundleService bundleService,
             GovernanceAssuranceEnvelopeCodec envelopeCodec,
             GovernanceAssuranceVerificationReceiptRepository receiptRepository,
-            GovernanceAssuranceStatelessVerifier statelessVerifier
+            GovernanceAssuranceStatelessVerifier statelessVerifier,
+            GovernanceAssuranceReceiptLedgerService receiptLedgerService
     ) {
         this.bundleRepository = bundleRepository;
         this.bundleService = bundleService;
         this.envelopeCodec = envelopeCodec;
         this.receiptRepository = receiptRepository;
         this.statelessVerifier = statelessVerifier;
+        this.receiptLedgerService = receiptLedgerService;
     }
 
     public byte[] export(
@@ -103,12 +107,19 @@ public class GovernanceAssuranceEnvelopeService {
                         envelopeBytes
                 );
 
-        return receiptRepository.save(
-                UUID.randomUUID(),
+        GovernanceAssuranceVerificationReceipt receipt =
+                receiptRepository.save(
+                        UUID.randomUUID(),
 
-                receiptRepository.nextReceiptNumber(),
+                        receiptRepository.nextReceiptNumber(),
 
-                verification
+                        verification
+                );
+
+        receiptLedgerService.append(
+                receipt
         );
+
+        return receipt;
     }
 }

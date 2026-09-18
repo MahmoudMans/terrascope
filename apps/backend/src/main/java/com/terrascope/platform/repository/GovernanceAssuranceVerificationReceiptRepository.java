@@ -196,31 +196,16 @@ public class GovernanceAssuranceVerificationReceiptRepository {
                         )
                         .single();
 
-        return findById(
+        return findReceipt(
                 receiptId
-        ).orElseThrow();
-    }
-
-    public List<GovernanceAssuranceVerificationReceipt> findHistory() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                        """
-                        + COLUMNS
-                        + """
-                        FROM resilience_governance_assurance_verification_receipts
-
-                        ORDER BY
-                            receipt_number DESC,
-                            verified_at DESC
-                        """)
-                .query(
-                        this::map
+        ).orElseThrow(() ->
+                new IllegalStateException(
+                        "Verification receipt disappeared after persistence."
                 )
-                .list();
+        );
     }
 
-    private Optional<GovernanceAssuranceVerificationReceipt> findById(
+    public Optional<GovernanceAssuranceVerificationReceipt> findReceipt(
             UUID id
     ) {
         return jdbcClient
@@ -240,6 +225,25 @@ public class GovernanceAssuranceVerificationReceiptRepository {
                         this::map
                 )
                 .optional();
+    }
+
+    public List<GovernanceAssuranceVerificationReceipt> findHistory() {
+        return jdbcClient
+                .sql("""
+                        SELECT
+                        """
+                        + COLUMNS
+                        + """
+                        FROM resilience_governance_assurance_verification_receipts
+
+                        ORDER BY
+                            receipt_number DESC,
+                            verified_at DESC
+                        """)
+                .query(
+                        this::map
+                )
+                .list();
     }
 
     private GovernanceAssuranceVerificationReceipt map(

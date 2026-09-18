@@ -204,6 +204,11 @@ import type {
   GovernanceAssuranceVerificationReceiptHistoryResponse,
 } from "@/types/resilience-governance-airgap";
 
+import type {
+  GovernanceAssuranceReceiptLedgerHistoryResponse,
+  GovernanceAssuranceReceiptLedgerVerificationResponse,
+} from "@/types/resilience-governance-receipt-ledger";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3799,4 +3804,49 @@ export async function fetchGovernanceAssuranceVerificationReceipts(
   }
 
   return response.json() as Promise<GovernanceAssuranceVerificationReceiptHistoryResponse>;
+}
+
+export async function fetchGovernanceAssuranceReceiptLedger(
+  signal?: AbortSignal,
+): Promise<GovernanceAssuranceReceiptLedgerHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/receipt-ledger`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Assurance receipt ledger returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceReceiptLedgerHistoryResponse>;
+}
+
+export async function verifyGovernanceAssuranceReceiptLedger(): Promise<GovernanceAssuranceReceiptLedgerVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/airgap/receipt-ledger/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Assurance receipt ledger verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceAssuranceReceiptLedgerVerificationResponse>;
 }
