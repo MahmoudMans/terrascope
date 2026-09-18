@@ -1,4 +1,10 @@
 import type {
+  GovernanceOfflineTrustReceiptCheckpoint,
+  GovernanceOfflineTrustReceiptCheckpointHistoryResponse,
+  GovernanceOfflineTrustReceiptCheckpointVerificationResponse,
+} from "@/types/resilience-governance-offline-trust-checkpoints";
+
+import type {
   EarthquakeFeedResponse,
   EarthquakeQuery,
 } from "@/types/earthquake";
@@ -4280,4 +4286,70 @@ export async function verifyGovernanceOfflineTrustReceiptLedger(): Promise<Gover
   }
 
   return response.json() as Promise<GovernanceOfflineTrustReceiptLedgerVerificationResponse>;
+}
+
+export async function createGovernanceOfflineTrustReceiptCheckpoint(): Promise<GovernanceOfflineTrustReceiptCheckpoint> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoints`,
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Offline receipt checkpoint creation returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustReceiptCheckpoint>;
+}
+
+export async function fetchGovernanceOfflineTrustReceiptCheckpoints(
+  signal?: AbortSignal,
+): Promise<GovernanceOfflineTrustReceiptCheckpointHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoints`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Offline receipt checkpoints returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustReceiptCheckpointHistoryResponse>;
+}
+
+export async function verifyGovernanceOfflineTrustReceiptCheckpoints(): Promise<GovernanceOfflineTrustReceiptCheckpointVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/offline-verification/ledger/checkpoints/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Offline receipt checkpoint verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceOfflineTrustReceiptCheckpointVerificationResponse>;
 }
