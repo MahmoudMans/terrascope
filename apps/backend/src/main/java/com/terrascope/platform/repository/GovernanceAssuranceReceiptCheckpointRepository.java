@@ -42,20 +42,10 @@ public class GovernanceAssuranceReceiptCheckpointRepository {
     }
 
     public int nextCheckpointNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(checkpoint_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_assurance_receipt_checkpoints
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_ASSURANCE_RECEIPT_CHECKPOINTS_CHECKPOINT_NUMBER_V1"
+        );
     }
 
     public Optional<GovernanceAssuranceReceiptCheckpoint> findLatest() {

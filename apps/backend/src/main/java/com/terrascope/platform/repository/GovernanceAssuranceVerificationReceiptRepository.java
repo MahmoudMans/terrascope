@@ -46,20 +46,10 @@ public class GovernanceAssuranceVerificationReceiptRepository {
     }
 
     public int nextReceiptNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(receipt_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_assurance_verification_receipts
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_ASSURANCE_VERIFICATION_RECEIPTS_RECEIPT_NUMBER_V1"
+        );
     }
 
     public GovernanceAssuranceVerificationReceipt save(

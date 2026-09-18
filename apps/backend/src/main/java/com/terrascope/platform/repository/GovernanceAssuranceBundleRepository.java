@@ -39,20 +39,10 @@ public class GovernanceAssuranceBundleRepository {
     }
 
     public int nextBundleNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(bundle_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_assurance_bundles
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_ASSURANCE_BUNDLES_BUNDLE_NUMBER_V1"
+        );
     }
 
     public GovernanceAssuranceBundle save(

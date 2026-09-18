@@ -50,20 +50,10 @@ public class GovernanceClosureCertificateRepository {
     }
 
     public int nextCertificateNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(certificate_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_closure_certificates
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_CLOSURE_CERTIFICATES_CERTIFICATE_NUMBER_V1"
+        );
     }
 
     public Optional<GovernanceClosureCertificate> findLatest() {

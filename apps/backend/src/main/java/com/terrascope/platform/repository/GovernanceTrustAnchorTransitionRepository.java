@@ -42,20 +42,10 @@ public class GovernanceTrustAnchorTransitionRepository {
     }
 
     public int nextTransitionNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(transition_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_trust_anchor_transitions
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_TRUST_ANCHOR_TRANSITIONS_TRANSITION_NUMBER_V1"
+        );
     }
 
     public boolean existsForOutgoingKey(

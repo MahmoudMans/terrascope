@@ -39,20 +39,10 @@ public class GovernanceAssuranceReceiptLedgerRepository {
     }
 
     public int nextLedgerNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(ledger_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_assurance_receipt_ledger
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_ASSURANCE_RECEIPT_LEDGER_LEDGER_NUMBER_V1"
+        );
     }
 
     public Optional<GovernanceAssuranceReceiptLedgerEntry> findLatest() {

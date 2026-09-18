@@ -38,20 +38,10 @@ public class GovernanceTrustLineagePackageRepository {
     }
 
     public int nextPackageNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(package_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_trust_lineage_packages
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_TRUST_LINEAGE_PACKAGES_PACKAGE_NUMBER_V1"
+        );
     }
 
     public List<GovernanceTrustLineagePortableTrustAnchor> findPortableAnchors() {

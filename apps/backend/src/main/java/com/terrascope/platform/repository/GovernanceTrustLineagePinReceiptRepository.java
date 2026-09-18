@@ -45,20 +45,10 @@ public class GovernanceTrustLineagePinReceiptRepository {
     }
 
     public int nextReceiptNumber() {
-        return jdbcClient
-                .sql("""
-                        SELECT
-                            COALESCE(
-                                MAX(receipt_number),
-                                0
-                            ) + 1
-
-                        FROM resilience_governance_trust_lineage_pin_receipts
-                        """)
-                .query(
-                        Integer.class
-                )
-                .single();
+        return GovernanceTransactionalSequenceAllocator.next(
+                jdbcClient,
+                "GOV_TRUST_LINEAGE_PIN_RECEIPTS_RECEIPT_NUMBER_V1"
+        );
     }
 
     public GovernanceTrustLineagePinReceipt save(
