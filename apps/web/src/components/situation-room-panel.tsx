@@ -140,6 +140,10 @@ import {
   ResilienceGovernanceReceiptCheckpoints,
 } from "@/components/resilience-governance-receipt-checkpoints";
 
+import {
+  ResilienceGovernanceTrustTransitions,
+} from "@/components/resilience-governance-trust-transitions";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1290,6 +1294,8 @@ export function SituationRoomPanel({
                     <ResilienceGovernanceReceiptLedger />
 
                     <ResilienceGovernanceReceiptCheckpoints />
+
+                    <ResilienceGovernanceTrustTransitions />
 
                     <IncidentResilienceAuditLedger
                       key={

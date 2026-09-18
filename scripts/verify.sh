@@ -9,22 +9,24 @@ ROOT_DIR="$(
 cd "${ROOT_DIR}"
 
 BACKEND_PID=""
+BACKEND_LOG="/tmp/terrascope-step35-backend.log"
 
-BACKEND_LOG="/tmp/terrascope-step34-backend.log"
+KEYGEN_SOURCE="/tmp/TerraScopeStep35Keygen.java"
 
-KEYGEN_SOURCE="/tmp/TerraScopeStep34Keygen.java"
+KEY1_PRIVATE_FILE="/tmp/terrascope-step35-key1-private.b64"
+KEY1_PUBLIC_FILE="/tmp/terrascope-step35-key1-public.b64"
 
-KEY1_PRIVATE_FILE="/tmp/terrascope-step34-key1-private.b64"
-KEY1_PUBLIC_FILE="/tmp/terrascope-step34-key1-public.b64"
+KEY2_PRIVATE_FILE="/tmp/terrascope-step35-key2-private.b64"
+KEY2_PUBLIC_FILE="/tmp/terrascope-step35-key2-public.b64"
 
-KEY2_PRIVATE_FILE="/tmp/terrascope-step34-key2-private.b64"
-KEY2_PUBLIC_FILE="/tmp/terrascope-step34-key2-public.b64"
+KEY3_PRIVATE_FILE="/tmp/terrascope-step35-key3-private.b64"
+KEY3_PUBLIC_FILE="/tmp/terrascope-step35-key3-public.b64"
 
-ENVELOPE="/tmp/terrascope-step34-envelope.json"
-TAMPERED_ENVELOPE="/tmp/terrascope-step34-tampered-envelope.json"
+ENVELOPE="/tmp/terrascope-step35-envelope.json"
 
-KEY1_ID="verification-step34-ed25519-v1"
-KEY2_ID="verification-step34-ed25519-v2"
+KEY1_ID="verification-step35-ed25519-v1"
+KEY2_ID="verification-step35-ed25519-v2"
+KEY3_ID="verification-step35-ed25519-v3"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -38,8 +40,9 @@ cleanup() {
     "${KEY1_PUBLIC_FILE}" \
     "${KEY2_PRIVATE_FILE}" \
     "${KEY2_PUBLIC_FILE}" \
-    "${ENVELOPE}" \
-    "${TAMPERED_ENVELOPE}"
+    "${KEY3_PRIVATE_FILE}" \
+    "${KEY3_PUBLIC_FILE}" \
+    "${ENVELOPE}"
 }
 
 trap cleanup EXIT
@@ -67,9 +70,7 @@ wait_backend() {
     fi
 
     if [[ -n "${BACKEND_PID}" ]] \
-       && ! kill -0 \
-          "${BACKEND_PID}" \
-          >/dev/null 2>&1; then
+       && ! kill -0 "${BACKEND_PID}" >/dev/null 2>&1; then
 
       cat "${BACKEND_LOG}"
 
@@ -121,7 +122,7 @@ start_without_key() {
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 34 VERIFICATION"
+echo " TERRASCOPE — STEP 35 VERIFICATION"
 echo "========================================================================"
 
 docker compose config >/dev/null
@@ -160,7 +161,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 
-public class TerraScopeStep34Keygen {
+public class TerraScopeStep35Keygen {
 
     public static void main(
             String[] args
@@ -170,43 +171,40 @@ public class TerraScopeStep34Keygen {
                         "Ed25519"
                 );
 
-        KeyPair first =
-                generator.generateKeyPair();
+        for (
+                int index = 0;
+                index < 3;
+                index++
+        ) {
+            KeyPair pair =
+                    generator.generateKeyPair();
 
-        KeyPair second =
-                generator.generateKeyPair();
+            Files.writeString(
+                    Path.of(
+                            args[index * 2]
+                    ),
+                    Base64
+                            .getEncoder()
+                            .encodeToString(
+                                    pair
+                                            .getPrivate()
+                                            .getEncoded()
+                            )
+            );
 
-        Files.writeString(
-                Path.of(args[0]),
-                Base64.getEncoder()
-                        .encodeToString(
-                                first.getPrivate().getEncoded()
-                        )
-        );
-
-        Files.writeString(
-                Path.of(args[1]),
-                Base64.getEncoder()
-                        .encodeToString(
-                                first.getPublic().getEncoded()
-                        )
-        );
-
-        Files.writeString(
-                Path.of(args[2]),
-                Base64.getEncoder()
-                        .encodeToString(
-                                second.getPrivate().getEncoded()
-                        )
-        );
-
-        Files.writeString(
-                Path.of(args[3]),
-                Base64.getEncoder()
-                        .encodeToString(
-                                second.getPublic().getEncoded()
-                        )
-        );
+            Files.writeString(
+                    Path.of(
+                            args[index * 2 + 1]
+                    ),
+                    Base64
+                            .getEncoder()
+                            .encodeToString(
+                                    pair
+                                            .getPublic()
+                                            .getEncoded()
+                            )
+            );
+        }
     }
 }
 JAVA
@@ -216,7 +214,9 @@ java \
   "${KEY1_PRIVATE_FILE}" \
   "${KEY1_PUBLIC_FILE}" \
   "${KEY2_PRIVATE_FILE}" \
-  "${KEY2_PUBLIC_FILE}"
+  "${KEY2_PUBLIC_FILE}" \
+  "${KEY3_PRIVATE_FILE}" \
+  "${KEY3_PUBLIC_FILE}"
 
 KEY1_PRIVATE="$(cat "${KEY1_PRIVATE_FILE}")"
 KEY1_PUBLIC="$(cat "${KEY1_PUBLIC_FILE}")"
@@ -224,9 +224,14 @@ KEY1_PUBLIC="$(cat "${KEY1_PUBLIC_FILE}")"
 KEY2_PRIVATE="$(cat "${KEY2_PRIVATE_FILE}")"
 KEY2_PUBLIC="$(cat "${KEY2_PUBLIC_FILE}")"
 
-[[ "${KEY1_PUBLIC}" != "${KEY2_PUBLIC}" ]]
+KEY3_PRIVATE="$(cat "${KEY3_PRIVATE_FILE}")"
+KEY3_PUBLIC="$(cat "${KEY3_PUBLIC_FILE}")"
 
-echo "[PASS] TWO_LOCAL_ED25519_KEYPAIRS"
+[[ "${KEY1_PUBLIC}" != "${KEY2_PUBLIC}" ]]
+[[ "${KEY2_PUBLIC}" != "${KEY3_PUBLIC}" ]]
+[[ "${KEY1_PUBLIC}" != "${KEY3_PUBLIC}" ]]
+
+echo "[PASS] THREE_LOCAL_ED25519_KEYPAIRS"
 
 rm -f "${BACKEND_LOG}"
 
@@ -241,26 +246,26 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  >/tmp/terrascope-step34-status.json
+  >/tmp/terrascope-step35-status.json
 
 python3 - <<'PY'
 import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step34-status.json",
+        "/tmp/terrascope-step35-status.json",
         encoding="utf-8",
     )
 )
 
-assert payload["version"] == "0.34.0"
+assert payload["version"] == "0.35.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
 )
 PY
 
-for VERSION in $(seq 1 34); do
+for VERSION in $(seq 1 35); do
   COUNT="$(
     docker compose exec -T postgres \
       psql \
@@ -277,11 +282,10 @@ for VERSION in $(seq 1 34); do
   )"
 
   echo "FLYWAY_V${VERSION}_COUNT=${COUNT}"
-
   [[ "${COUNT}" == "1" ]]
 done
 
-echo "[PASS] FLYWAY_V34_RUNTIME"
+echo "[PASS] FLYWAY_V35_RUNTIME"
 
 echo
 echo "===== PRE-CLEAN ====="
@@ -291,6 +295,9 @@ docker compose exec -T postgres \
     -U terrascope \
     -d terrascope \
     -c "
+      DELETE
+      FROM resilience_governance_trust_anchor_transitions;
+
       DELETE
       FROM resilience_governance_assurance_receipt_checkpoints;
 
@@ -307,69 +314,78 @@ docker compose exec -T postgres \
       FROM resilience_governance_trust_anchor_events
       WHERE key_id IN (
           '${KEY1_ID}',
-          '${KEY2_ID}'
+          '${KEY2_ID}',
+          '${KEY3_ID}'
       )
          OR replacement_key_id IN (
           '${KEY1_ID}',
-          '${KEY2_ID}'
+          '${KEY2_ID}',
+          '${KEY3_ID}'
       );
 
       DELETE
       FROM resilience_governance_closure_signatures
       WHERE key_id IN (
           '${KEY1_ID}',
-          '${KEY2_ID}'
+          '${KEY2_ID}',
+          '${KEY3_ID}'
+      );
+
+      UPDATE resilience_governance_trust_anchors
+      SET superseded_by_key_id = NULL
+      WHERE key_id IN (
+          '${KEY1_ID}',
+          '${KEY2_ID}',
+          '${KEY3_ID}'
       );
 
       DELETE
       FROM resilience_governance_trust_anchors
       WHERE key_id IN (
           '${KEY1_ID}',
-          '${KEY2_ID}'
+          '${KEY2_ID}',
+          '${KEY3_ID}'
       );
 
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step34-realized';
+            'verification-step35-realized';
     " \
   >/dev/null
 
-echo "[PASS] STEP34_PRE_CLEAN"
+echo "[PASS] STEP35_PRE_CLEAN"
 
 echo
-echo "===== CREATE PORTABLE GOVERNANCE FIXTURE ====="
+echo "===== CREATE GOVERNANCE FIXTURE ====="
 
-curl \
-  --fail \
-  --silent \
-  --request POST \
+curl --fail --silent --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/reviews" \
-  >/tmp/terrascope-step34-review.json
+  >/tmp/terrascope-step35-review.json
 
 REVIEW_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-review.json"))["id"])
+print(json.load(open("/tmp/terrascope-step35-review.json"))["id"])
 PY
 )"
 
 BASELINE_SNAPSHOT_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-review.json"))["currentSnapshotId"])
+print(json.load(open("/tmp/terrascope-step35-review.json"))["currentSnapshotId"])
 PY
 )"
 
-cat > /tmp/terrascope-step34-objective.json <<JSON
+cat > /tmp/terrascope-step35-objective.json <<JSON
 {
   "portfolioReviewId": "${REVIEW_ID}",
-  "title": "Cryptographically checkpoint assurance decisions",
-  "description": "Step 34 signed receipt-ledger checkpoint fixture.",
+  "title": "Cryptographically prove governance key succession",
+  "description": "Step 35 signed trust-anchor transition fixture.",
   "priority": "CRITICAL",
   "owner": "Executive Resilience Council",
   "targetAt": "2035-12-31T23:59:59Z",
-  "successMetric": "Receipt-ledger heads are cryptographically attested through Ed25519 checkpoints."
+  "successMetric": "Every governance signing-key retirement is cryptographically linked to its successor."
 }
 JSON
 
@@ -378,14 +394,14 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step34-objective.json \
+  --data @/tmp/terrascope-step35-objective.json \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives" \
-  >/tmp/terrascope-step34-objective-response.json
+  >/tmp/terrascope-step35-objective-response.json
 
 OBJECTIVE_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-objective-response.json"))["objectives"][0]["id"])
+print(json.load(open("/tmp/terrascope-step35-objective-response.json"))["objectives"][0]["id"])
 PY
 )"
 
@@ -394,17 +410,17 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data '{"completionEvidence":"Signed receipt-ledger checkpoint governance implemented."}' \
+  --data '{"completionEvidence":"Signed trust-anchor transition governance implemented."}' \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives/${OBJECTIVE_ID}/complete" \
   >/dev/null
 
-cat > /tmp/terrascope-step34-incident.json <<'JSON'
+cat > /tmp/terrascope-step35-incident.json <<'JSON'
 {
   "alertEventId": null,
-  "sourceEventId": "verification-step34-realized",
+  "sourceEventId": "verification-step35-realized",
   "hazardType": "earthquakes",
-  "title": "Verification Step 34 Signed Checkpoint Incident",
-  "description": "Signed receipt-ledger checkpoint fixture.",
+  "title": "Verification Step 35 Trust Lineage Incident",
+  "description": "Signed trust-anchor transition verification fixture.",
   "latitude": 36.8065,
   "longitude": 10.1815,
   "severity": "SEVERE",
@@ -417,14 +433,14 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step34-incident.json \
+  --data @/tmp/terrascope-step35-incident.json \
   "http://localhost:8087/api/v1/incidents" \
-  >/tmp/terrascope-step34-incident-response.json
+  >/tmp/terrascope-step35-incident-response.json
 
 INCIDENT_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-incident-response.json"))["incident"]["id"])
+print(json.load(open("/tmp/terrascope-step35-incident-response.json"))["incident"]["id"])
 PY
 )"
 
@@ -442,12 +458,12 @@ curl \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/after-action-reviews" \
-  >/tmp/terrascope-step34-aar.json
+  >/tmp/terrascope-step35-aar.json
 
 AAR_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-aar.json"))["id"])
+print(json.load(open("/tmp/terrascope-step35-aar.json"))["id"])
 PY
 )"
 
@@ -458,12 +474,12 @@ curl \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/sitrep/reports" \
   >/dev/null
 
-cat > /tmp/terrascope-step34-improvement.json <<JSON
+cat > /tmp/terrascope-step35-improvement.json <<JSON
 {
   "afterActionReviewId": "${AAR_ID}",
   "category": "TECHNOLOGY",
-  "title": "Exercise signed transparency checkpoints",
-  "description": "Validate Ed25519 receipt-ledger checkpoints.",
+  "title": "Validate cryptographic key succession",
+  "description": "Exercise signed trust-anchor transition lineage.",
   "priority": "HIGH",
   "owner": "Resilience Office",
   "dueAt": "2030-01-01T00:00:00Z"
@@ -475,14 +491,14 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step34-improvement.json \
+  --data @/tmp/terrascope-step35-improvement.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements" \
-  >/tmp/terrascope-step34-improvement-response.json
+  >/tmp/terrascope-step35-improvement-response.json
 
 IMPROVEMENT_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-improvement-response.json"))["actions"][0]["id"])
+print(json.load(open("/tmp/terrascope-step35-improvement-response.json"))["actions"][0]["id"])
 PY
 )"
 
@@ -495,12 +511,12 @@ curl \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/improvements/${IMPROVEMENT_ID}/status" \
   >/dev/null
 
-cat > /tmp/terrascope-step34-exercise.json <<JSON
+cat > /tmp/terrascope-step35-exercise.json <<JSON
 {
   "improvementActionId": "${IMPROVEMENT_ID}",
   "exerciseType": "TECHNICAL",
-  "title": "Signed checkpoint assurance exercise",
-  "description": "Validate checkpoint signing, rotation, and tamper detection.",
+  "title": "Signed key lineage exercise",
+  "description": "Validate outgoing-key signatures and chained trust transitions.",
   "owner": "Preparedness Office",
   "scheduledAt": "2030-02-01T10:00:00Z"
 }
@@ -511,24 +527,24 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step34-exercise.json \
+  --data @/tmp/terrascope-step35-exercise.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises" \
-  >/tmp/terrascope-step34-exercise-response.json
+  >/tmp/terrascope-step35-exercise-response.json
 
 EXERCISE_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-exercise-response.json"))["exercises"][0]["id"])
+print(json.load(open("/tmp/terrascope-step35-exercise-response.json"))["exercises"][0]["id"])
 PY
 )"
 
-cat > /tmp/terrascope-step34-assessment.json <<'JSON'
+cat > /tmp/terrascope-step35-assessment.json <<'JSON'
 {
   "result": "PASSED",
   "readinessScore": 99,
   "performedAt": "2030-02-01T12:00:00Z",
-  "evidenceSummary": "Signed receipt-ledger checkpoint controls successfully exercised.",
-  "findings": "No material signed-checkpoint assurance gap remained.",
+  "evidenceSummary": "Signed trust-anchor transition controls successfully exercised.",
+  "findings": "No material governance key-lineage assurance gap remained.",
   "correctiveAction": ""
 }
 JSON
@@ -538,7 +554,7 @@ curl \
   --silent \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step34-assessment.json \
+  --data @/tmp/terrascope-step35-assessment.json \
   "http://localhost:8087/api/v1/incidents/${INCIDENT_ID}/preparedness-exercises/${EXERCISE_ID}/assess" \
   >/dev/null
 
@@ -556,52 +572,52 @@ curl --fail --silent --request POST \
 
 curl --fail --silent --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/objectives/${OBJECTIVE_ID}/outcomes" \
-  >/tmp/terrascope-step34-outcome.json
+  >/tmp/terrascope-step35-outcome.json
 
 OUTCOME_SNAPSHOT_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-outcome.json"))["validationSnapshotId"])
+print(json.load(open("/tmp/terrascope-step35-outcome.json"))["validationSnapshotId"])
 PY
 )"
 
 curl --fail --silent --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/certificates" \
-  >/tmp/terrascope-step34-certificate.json
+  >/tmp/terrascope-step35-certificate.json
 
 CERTIFICATE_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-certificate.json"))["id"])
+print(json.load(open("/tmp/terrascope-step35-certificate.json"))["id"])
 PY
 )"
 
 BENEFIT_SNAPSHOT_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-certificate.json"))["benefitSnapshotId"])
+print(json.load(open("/tmp/terrascope-step35-certificate.json"))["benefitSnapshotId"])
 PY
 )"
 
 curl --fail --silent --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/signatures/${CERTIFICATE_ID}" \
-  >/tmp/terrascope-step34-signature.json
+  >/tmp/terrascope-step35-signature.json
 
 SIGNATURE_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-signature.json"))["id"])
+print(json.load(open("/tmp/terrascope-step35-signature.json"))["id"])
 PY
 )"
 
 curl --fail --silent --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/assurance-bundles/${CERTIFICATE_ID}" \
-  >/tmp/terrascope-step34-bundle.json
+  >/tmp/terrascope-step35-bundle.json
 
 BUNDLE_ID="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-bundle.json"))["id"])
+print(json.load(open("/tmp/terrascope-step35-bundle.json"))["id"])
 PY
 )"
 
@@ -611,13 +627,6 @@ curl \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/export/${BUNDLE_ID}" \
   --output "${ENVELOPE}"
 
-[[ -s "${ENVELOPE}" ]]
-
-echo "[PASS] CHECKPOINT_PORTABLE_FIXTURE"
-
-echo
-echo "===== CREATE VALID + INVALID RECEIPTS ====="
-
 curl \
   --fail \
   --silent \
@@ -625,217 +634,178 @@ curl \
   --header 'Content-Type: application/json' \
   --data-binary @"${ENVELOPE}" \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/verification-receipts" \
-  >/tmp/terrascope-step34-valid-receipt.json
+  >/tmp/terrascope-step35-receipt1.json
 
-VALID_RECEIPT_ID="$(
+RECEIPT1_ID="$(
   python3 - <<'PY'
 import json
-payload=json.load(open("/tmp/terrascope-step34-valid-receipt.json"))
-assert payload["verificationResult"] == "VALID"
-print(payload["id"])
+print(json.load(open("/tmp/terrascope-step35-receipt1.json"))["id"])
 PY
 )"
-
-python3 \
-  - \
-  "${ENVELOPE}" \
-  "${TAMPERED_ENVELOPE}" \
-<<'PY'
-import base64
-import hashlib
-import json
-import re
-import sys
-
-source = sys.argv[1]
-target = sys.argv[2]
-
-envelope = json.load(
-    open(
-        source,
-        encoding="utf-8",
-    )
-)
-
-payload_json = envelope["payloadJson"]
-
-zero_signature = base64.b64encode(
-    bytes(64)
-).decode()
-
-tampered, count = re.subn(
-    r'("signatureBase64":")[^"]+(")',
-    lambda match:
-        match.group(1)
-        + zero_signature
-        + match.group(2),
-    payload_json,
-    count=1,
-)
-
-assert count == 1
-
-envelope["payloadJson"] = tampered
-envelope["bundleHash"] = hashlib.sha256(
-    tampered.encode("utf-8")
-).hexdigest()
-
-with open(
-    target,
-    "w",
-    encoding="utf-8",
-) as handle:
-    json.dump(
-        envelope,
-        handle,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    )
-PY
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data-binary @"${TAMPERED_ENVELOPE}" \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/verification-receipts" \
-  >/tmp/terrascope-step34-invalid-receipt.json
-
-INVALID_RECEIPT_ID="$(
-  python3 - <<'PY'
-import json
-payload=json.load(open("/tmp/terrascope-step34-invalid-receipt.json"))
-assert payload["verificationResult"] == "INVALID"
-print(payload["id"])
-PY
-)"
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/verify" \
-  >/tmp/terrascope-step34-ledger-verify.json
-
-python3 - <<'PY'
-import json
-
-payload=json.load(
-    open(
-        "/tmp/terrascope-step34-ledger-verify.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["valid"] is True
-assert payload["entryCount"] == 2
-assert payload["verifiedEntryCount"] == 2
-
-print(
-    "[PASS] CHECKPOINT_LEDGER_BASE_VALID"
-)
-PY
-
-echo
-echo "===== SIGN CHECKPOINT #1 WITH KEY 1 ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints" \
-  >/tmp/terrascope-step34-checkpoint1.json
+  >/tmp/terrascope-step35-checkpoint1.json
 
 CHECKPOINT1_ID="$(
+  python3 - <<'PY'
+import json
+print(json.load(open("/tmp/terrascope-step35-checkpoint1.json"))["id"])
+PY
+)"
+
+echo "[PASS] KEY1_GOVERNANCE_FIXTURE"
+
+echo
+echo "===== SIGN TRANSITION #1 — KEY1 -> KEY2 ====="
+
+cat > /tmp/terrascope-step35-transition1-request.json <<JSON
+{
+  "replacementKeyId": "${KEY2_ID}",
+  "replacementPublicKeyX509Base64": "${KEY2_PUBLIC}",
+  "reason": "Step 35 cryptographic rotation from generation one to generation two."
+}
+JSON
+
+TRANSITION1_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step35-transition1.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step35-transition1-request.json \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate"
+)"
+
+echo "TRANSITION1_HTTP=${TRANSITION1_HTTP}"
+
+if [[ "${TRANSITION1_HTTP}" != "200" ]]; then
+  echo "TRANSITION1_RESPONSE_BEGIN"
+
+  cat /tmp/terrascope-step35-transition1.json || true
+
+  echo
+  echo "TRANSITION1_RESPONSE_END"
+
+  exit 1
+fi
+
+TRANSITION1_ID="$(
   python3 \
     - "${KEY1_ID}" \
+    "${KEY2_ID}" \
 <<'PY'
 import json
 import re
 import sys
 
-key_id = sys.argv[1]
+key1 = sys.argv[1]
+key2 = sys.argv[2]
 
-payload=json.load(
+payload = json.load(
     open(
-        "/tmp/terrascope-step34-checkpoint1.json",
+        "/tmp/terrascope-step35-transition1.json",
         encoding="utf-8",
     )
 )
 
-assert payload["checkpointNumber"] == 1
-assert payload["coveredLedgerNumber"] == 2
-assert payload["entryCount"] == 2
-assert payload["validReceiptCount"] == 1
-assert payload["invalidReceiptCount"] == 1
+assert payload["transitionNumber"] == 1
 
-assert payload["keyId"] == key_id
+assert payload["outgoingKeyId"] == key1
+assert payload["replacementKeyId"] == key2
+
 assert payload["algorithm"] == "ED25519"
 
-assert payload["previousCheckpointHash"] is None
+assert payload["previousTransitionHash"] is None
 
 assert re.fullmatch(
     r"[0-9a-f]{64}",
-    payload["checkpointHash"],
+    payload["transitionHash"],
 )
 
 print(payload["id"])
 PY
 )"
 
-CHECKPOINT1_HASH="$(
+TRANSITION1_HASH="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-checkpoint1.json"))["checkpointHash"])
+print(json.load(open("/tmp/terrascope-step35-transition1.json"))["transitionHash"])
 PY
 )"
 
-CHECKPOINT1_SIGNATURE="$(
-  python3 - <<'PY'
-import json
-print(json.load(open("/tmp/terrascope-step34-checkpoint1.json"))["signatureBase64"])
-PY
-)"
+echo "TRANSITION1_ID=${TRANSITION1_ID}"
+echo "TRANSITION1_HASH=${TRANSITION1_HASH}"
 
-echo "CHECKPOINT1_ID=${CHECKPOINT1_ID}"
-echo "CHECKPOINT1_HASH=${CHECKPOINT1_HASH}"
-
-echo "[PASS] KEY1_SIGNED_LEDGER_CHECKPOINT"
+echo "[PASS] KEY1_TO_KEY2_SIGNED_TRANSITION"
 
 echo
-echo "===== DUPLICATE KEY/HEAD GUARD ====="
+echo "===== KEY1 DUPLICATE ROTATION GUARD ====="
 
 DUPLICATE_HTTP="$(
   curl \
     --silent \
-    --output /tmp/terrascope-step34-duplicate.json \
+    --output /tmp/terrascope-step35-duplicate.json \
     --write-out '%{http_code}' \
     --request POST \
-    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints"
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step35-transition1-request.json \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate"
 )"
 
-echo "CHECKPOINT_DUPLICATE_HTTP=${DUPLICATE_HTTP}"
+echo "KEY1_DUPLICATE_ROTATION_HTTP=${DUPLICATE_HTTP}"
 
 [[ "${DUPLICATE_HTTP}" == "409" ]]
 
-echo "[PASS] CHECKPOINT_DUPLICATE_GUARD"
+echo "[PASS] SIGNED_TRANSITION_DUPLICATE_GUARD"
 
 echo
-echo "===== VERIFY CHECKPOINT #1 ====="
+echo "===== VERIFY FIRST TRANSITION ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/verify" \
+  >/tmp/terrascope-step35-transition-verify1.json
+
+python3 - <<'PY'
+import json
+
+payload = json.load(
+    open(
+        "/tmp/terrascope-step35-transition-verify1.json",
+        encoding="utf-8",
+    )
+)
+
+assert payload["valid"] is True
+assert payload["transitionCount"] == 1
+assert payload["verifiedTransitionCount"] == 1
+
+print(
+    "[PASS] FIRST_SIGNED_TRANSITION_VERIFIED"
+)
+PY
+
+echo
+echo "===== HISTORICAL KEY1 CHECKPOINT AFTER RETIREMENT ====="
 
 curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
-  >/tmp/terrascope-step34-checkpoint-verify1.json
+  >/tmp/terrascope-step35-checkpoint-after-rotation1.json
 
 python3 - <<'PY'
 import json
 
-payload=json.load(
+payload = json.load(
     open(
-        "/tmp/terrascope-step34-checkpoint-verify1.json",
+        "/tmp/terrascope-step35-checkpoint-after-rotation1.json",
         encoding="utf-8",
     )
 )
@@ -845,105 +815,12 @@ assert payload["checkpointCount"] == 1
 assert payload["verifiedCheckpointCount"] == 1
 
 print(
-    "[PASS] KEY1_CHECKPOINT_VERIFICATION"
+    "[PASS] KEY1_HISTORICAL_CHECKPOINT_AFTER_SIGNED_ROTATION"
 )
 PY
 
 echo
-echo "===== REGISTER REPLACEMENT KEY 2 ====="
-
-cat > /tmp/terrascope-step34-register-key2.json <<JSON
-{
-  "keyId": "${KEY2_ID}",
-  "publicKeyX509Base64": "${KEY2_PUBLIC}"
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step34-register-key2.json \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors" \
-  >/tmp/terrascope-step34-key2-anchor.json
-
-echo "[PASS] CHECKPOINT_REPLACEMENT_KEY_REGISTERED"
-
-echo
-echo "===== RETIRE KEY 1 ====="
-
-cat > /tmp/terrascope-step34-retire-key1.json <<JSON
-{
-  "replacementKeyId": "${KEY2_ID}",
-  "reason": "Step 34 signed checkpoint key rotation."
-}
-JSON
-
-curl \
-  --fail \
-  --silent \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data @/tmp/terrascope-step34-retire-key1.json \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-anchors/${KEY1_ID}/retire" \
-  >/tmp/terrascope-step34-key1-retired.json
-
-python3 \
-  - "${KEY1_ID}" \
-  "${KEY2_ID}" \
-<<'PY'
-import json
-import sys
-
-key1 = sys.argv[1]
-key2 = sys.argv[2]
-
-payload=json.load(
-    open(
-        "/tmp/terrascope-step34-key1-retired.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["keyId"] == key1
-assert payload["status"] == "RETIRED"
-assert payload["supersededByKeyId"] == key2
-
-print(
-    "[PASS] CHECKPOINT_KEY1_RETIRED"
-)
-PY
-
-echo
-echo "===== HISTORICAL CHECKPOINT STILL VERIFIES ====="
-
-curl \
-  --fail \
-  --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
-  >/tmp/terrascope-step34-retired-checkpoint-verify.json
-
-python3 - <<'PY'
-import json
-
-payload=json.load(
-    open(
-        "/tmp/terrascope-step34-retired-checkpoint-verify.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["valid"] is True
-assert payload["verifiedCheckpointCount"] == 1
-
-print(
-    "[PASS] RETIRED_KEY_HISTORICAL_CHECKPOINT_VALID"
-)
-PY
-
-echo
-echo "===== RESTART WITH KEY 2 ====="
+echo "===== RESTART WITH KEY2 ====="
 
 stop_backend
 
@@ -954,9 +831,6 @@ start_with_key \
 
 echo "[PASS] KEY2_RUNTIME_READY"
 
-echo
-echo "===== EXTEND RECEIPT LEDGER ====="
-
 curl \
   --fail \
   --silent \
@@ -964,103 +838,177 @@ curl \
   --header 'Content-Type: application/json' \
   --data-binary @"${ENVELOPE}" \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/verification-receipts" \
-  >/tmp/terrascope-step34-third-receipt.json
+  >/tmp/terrascope-step35-receipt2.json
 
-THIRD_RECEIPT_ID="$(
+RECEIPT2_ID="$(
   python3 - <<'PY'
 import json
-
-payload=json.load(
-    open(
-        "/tmp/terrascope-step34-third-receipt.json",
-        encoding="utf-8",
-    )
-)
-
-assert payload["receiptNumber"] == 3
-assert payload["verificationResult"] == "VALID"
-
+payload=json.load(open("/tmp/terrascope-step35-receipt2.json"))
+assert payload["receiptNumber"] == 2
 print(payload["id"])
 PY
 )"
-
-echo "[PASS] CHECKPOINT_LEDGER_EXTENDED"
-
-echo
-echo "===== SIGN CHECKPOINT #2 WITH KEY 2 ====="
 
 curl \
   --fail \
   --silent \
   --request POST \
   "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints" \
-  >/tmp/terrascope-step34-checkpoint2.json
+  >/tmp/terrascope-step35-checkpoint2.json
 
 CHECKPOINT2_ID="$(
   python3 \
     - "${KEY2_ID}" \
-    "${CHECKPOINT1_HASH}" \
+<<'PY'
+import json
+import sys
+
+key2 = sys.argv[1]
+
+payload=json.load(
+    open(
+        "/tmp/terrascope-step35-checkpoint2.json",
+        encoding="utf-8",
+    )
+)
+
+assert payload["checkpointNumber"] == 2
+assert payload["coveredLedgerNumber"] == 2
+assert payload["keyId"] == key2
+
+print(payload["id"])
+PY
+)"
+
+echo "[PASS] KEY2_LEDGER_CHECKPOINT"
+
+echo
+echo "===== SIGN TRANSITION #2 — KEY2 -> KEY3 ====="
+
+cat > /tmp/terrascope-step35-transition2-request.json <<JSON
+{
+  "replacementKeyId": "${KEY3_ID}",
+  "replacementPublicKeyX509Base64": "${KEY3_PUBLIC}",
+  "reason": "Step 35 cryptographic rotation from generation two to generation three."
+}
+JSON
+
+TRANSITION2_HTTP="$(
+  curl \
+    --silent \
+    --output /tmp/terrascope-step35-transition2.json \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data @/tmp/terrascope-step35-transition2-request.json \
+    "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/rotate"
+)"
+
+echo "TRANSITION2_HTTP=${TRANSITION2_HTTP}"
+
+if [[ "${TRANSITION2_HTTP}" != "200" ]]; then
+  echo "TRANSITION2_RESPONSE_BEGIN"
+
+  cat /tmp/terrascope-step35-transition2.json || true
+
+  echo
+  echo "TRANSITION2_RESPONSE_END"
+
+  exit 1
+fi
+
+TRANSITION2_ID="$(
+  python3 \
+    - "${KEY2_ID}" \
+    "${KEY3_ID}" \
+    "${TRANSITION1_HASH}" \
 <<'PY'
 import json
 import re
 import sys
 
 key2 = sys.argv[1]
-first_hash = sys.argv[2]
+key3 = sys.argv[2]
+first_hash = sys.argv[3]
 
-payload=json.load(
+payload = json.load(
     open(
-        "/tmp/terrascope-step34-checkpoint2.json",
+        "/tmp/terrascope-step35-transition2.json",
         encoding="utf-8",
     )
 )
 
-assert payload["checkpointNumber"] == 2
-assert payload["coveredLedgerNumber"] == 3
+assert payload["transitionNumber"] == 2
 
-assert payload["entryCount"] == 3
-assert payload["validReceiptCount"] == 2
-assert payload["invalidReceiptCount"] == 1
+assert payload["outgoingKeyId"] == key2
+assert payload["replacementKeyId"] == key3
 
-assert payload["keyId"] == key2
-
-assert payload["previousCheckpointHash"] == first_hash
+assert payload["previousTransitionHash"] == first_hash
 
 assert re.fullmatch(
     r"[0-9a-f]{64}",
-    payload["checkpointHash"],
+    payload["transitionHash"],
 )
 
 print(payload["id"])
 PY
 )"
 
-CHECKPOINT2_SIGNATURE="$(
+TRANSITION2_SIGNATURE="$(
   python3 - <<'PY'
 import json
-print(json.load(open("/tmp/terrascope-step34-checkpoint2.json"))["signatureBase64"])
+print(json.load(open("/tmp/terrascope-step35-transition2.json"))["signatureBase64"])
 PY
 )"
 
-echo "CHECKPOINT2_ID=${CHECKPOINT2_ID}"
+echo "TRANSITION2_ID=${TRANSITION2_ID}"
 
-echo "[PASS] KEY2_SIGNED_LEDGER_CHECKPOINT"
+echo "[PASS] KEY2_TO_KEY3_SIGNED_TRANSITION"
 
 echo
-echo "===== VERIFY DUAL-GENERATION CHECKPOINT CHAIN ====="
+echo "===== VERIFY TWO-GENERATION TRANSITION CHAIN ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
-  >/tmp/terrascope-step34-dual-checkpoint-verify.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/verify" \
+  >/tmp/terrascope-step35-transition-verify2.json
 
 python3 - <<'PY'
 import json
 
 payload=json.load(
     open(
-        "/tmp/terrascope-step34-dual-checkpoint-verify.json",
+        "/tmp/terrascope-step35-transition-verify2.json",
+        encoding="utf-8",
+    )
+)
+
+assert payload["valid"] is True
+
+assert payload["transitionCount"] == 2
+assert payload["verifiedTransitionCount"] == 2
+
+print(
+    "[PASS] MULTI_GENERATION_TRUST_LINEAGE_VERIFIED"
+)
+PY
+
+echo
+echo "===== VERIFY BOTH RETIRED-KEY CHECKPOINTS ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
+  >/tmp/terrascope-step35-checkpoint-after-rotation2.json
+
+python3 - <<'PY'
+import json
+
+payload=json.load(
+    open(
+        "/tmp/terrascope-step35-checkpoint-after-rotation2.json",
         encoding="utf-8",
     )
 )
@@ -1071,91 +1019,119 @@ assert payload["checkpointCount"] == 2
 assert payload["verifiedCheckpointCount"] == 2
 
 print(
-    "[PASS] DUAL_GENERATION_CHECKPOINT_VERIFICATION"
+    "[PASS] MULTI_GENERATION_HISTORICAL_CHECKPOINTS_VALID"
 )
 PY
 
 echo
-echo "===== RESTART WITHOUT PRIVATE KEY ====="
+echo "===== RESTART WITHOUT ANY PRIVATE KEY ====="
 
 stop_backend
-
 start_without_key
 
-echo "[PASS] CHECKPOINT_KEYLESS_RUNTIME_READY"
+echo "[PASS] KEYLESS_TRUST_LINEAGE_RUNTIME_READY"
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
-  >/tmp/terrascope-step34-keyless-checkpoint-verify.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/verify" \
+  >/tmp/terrascope-step35-keyless-transition-verify.json
 
 python3 - <<'PY'
 import json
 
 payload=json.load(
     open(
-        "/tmp/terrascope-step34-keyless-checkpoint-verify.json",
+        "/tmp/terrascope-step35-keyless-transition-verify.json",
         encoding="utf-8",
     )
 )
 
 assert payload["valid"] is True
-assert payload["checkpointCount"] == 2
-assert payload["verifiedCheckpointCount"] == 2
+assert payload["transitionCount"] == 2
+assert payload["verifiedTransitionCount"] == 2
 
 print(
-    "[PASS] PRIVATE_KEY_FREE_CHECKPOINT_VERIFICATION"
+    "[PASS] PRIVATE_KEY_FREE_TRUST_LINEAGE_VERIFICATION"
 )
 PY
-
-echo
-echo "===== CHECKPOINT HISTORY ====="
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints" \
-  >/tmp/terrascope-step34-checkpoint-history.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
+  >/tmp/terrascope-step35-keyless-checkpoint-verify.json
+
+python3 - <<'PY'
+import json
+
+payload=json.load(
+    open(
+        "/tmp/terrascope-step35-keyless-checkpoint-verify.json",
+        encoding="utf-8",
+    )
+)
+
+assert payload["valid"] is True
+assert payload["verifiedCheckpointCount"] == 2
+
+print(
+    "[PASS] PRIVATE_KEY_FREE_HISTORICAL_CHECKPOINT_VERIFICATION"
+)
+PY
+
+echo
+echo "===== TRANSITION HISTORY ====="
+
+curl \
+  --fail \
+  --silent \
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions" \
+  >/tmp/terrascope-step35-transition-history.json
 
 python3 \
-  - "${CHECKPOINT1_ID}" \
-  "${CHECKPOINT2_ID}" \
+  - "${TRANSITION1_ID}" \
+  "${TRANSITION2_ID}" \
   "${KEY1_ID}" \
   "${KEY2_ID}" \
+  "${KEY3_ID}" \
 <<'PY'
 import json
 import sys
 
-checkpoint1 = sys.argv[1]
-checkpoint2 = sys.argv[2]
+transition1 = sys.argv[1]
+transition2 = sys.argv[2]
+
 key1 = sys.argv[3]
 key2 = sys.argv[4]
+key3 = sys.argv[5]
 
 payload=json.load(
     open(
-        "/tmp/terrascope-step34-checkpoint-history.json",
+        "/tmp/terrascope-step35-transition-history.json",
         encoding="utf-8",
     )
 )
 
-entries=payload["checkpoints"]
+transitions = payload["transitions"]
 
-assert len(entries) == 2
+assert len(transitions) == 2
 
-assert entries[0]["id"] == checkpoint2
-assert entries[0]["keyId"] == key2
+assert transitions[0]["id"] == transition2
+assert transitions[0]["outgoingKeyId"] == key2
+assert transitions[0]["replacementKeyId"] == key3
 
-assert entries[1]["id"] == checkpoint1
-assert entries[1]["keyId"] == key1
+assert transitions[1]["id"] == transition1
+assert transitions[1]["outgoingKeyId"] == key1
+assert transitions[1]["replacementKeyId"] == key2
 
 print(
-    "[PASS] CHECKPOINT_HISTORY"
+    "[PASS] SIGNED_TRUST_TRANSITION_HISTORY"
 )
 PY
 
 echo
-echo "===== TAMPER CHECKPOINT #2 SIGNATURE ====="
+echo "===== TAMPER TRANSITION #2 SIGNATURE ====="
 
 ZERO_SIGNATURE="$(
   python3 - <<'PY'
@@ -1169,44 +1145,50 @@ docker compose exec -T postgres \
     -U terrascope \
     -d terrascope \
     -c "
-      UPDATE resilience_governance_assurance_receipt_checkpoints
+      UPDATE resilience_governance_trust_anchor_transitions
 
       SET signature_base64 =
           '${ZERO_SIGNATURE}'
 
       WHERE id =
-            '${CHECKPOINT2_ID}'::uuid;
+            '${TRANSITION2_ID}'::uuid;
     " \
   >/dev/null
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
-  >/tmp/terrascope-step34-checkpoint-tamper.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/verify" \
+  >/tmp/terrascope-step35-transition-tamper.json
 
 python3 \
-  - "${CHECKPOINT2_ID}" \
+  - "${TRANSITION2_ID}" \
+  "${KEY2_ID}" \
+  "${KEY3_ID}" \
 <<'PY'
 import json
 import sys
 
-checkpoint_id = sys.argv[1]
+transition_id = sys.argv[1]
+key2 = sys.argv[2]
+key3 = sys.argv[3]
 
 payload=json.load(
     open(
-        "/tmp/terrascope-step34-checkpoint-tamper.json",
+        "/tmp/terrascope-step35-transition-tamper.json",
         encoding="utf-8",
     )
 )
 
 assert payload["valid"] is False
 
-assert payload["verifiedCheckpointCount"] == 1
+assert payload["verifiedTransitionCount"] == 1
 
-assert payload["brokenCheckpointId"] == checkpoint_id
-assert payload["brokenCheckpointNumber"] == 2
-assert payload["brokenLedgerNumber"] == 3
+assert payload["brokenTransitionId"] == transition_id
+assert payload["brokenTransitionNumber"] == 2
+
+assert payload["brokenOutgoingKeyId"] == key2
+assert payload["brokenReplacementKeyId"] == key3
 
 assert (
     "signature verification failed"
@@ -1214,56 +1196,56 @@ assert (
 )
 
 print(
-    "[PASS] CHECKPOINT_SIGNATURE_TAMPER_DETECTION"
+    "[PASS] TRUST_TRANSITION_SIGNATURE_TAMPER_DETECTION"
 )
 PY
 
 echo
-echo "===== RESTORE CHECKPOINT #2 ====="
+echo "===== RESTORE TRANSITION #2 ====="
 
 docker compose exec -T postgres \
   psql \
     -U terrascope \
     -d terrascope \
     -c "
-      UPDATE resilience_governance_assurance_receipt_checkpoints
+      UPDATE resilience_governance_trust_anchor_transitions
 
       SET signature_base64 =
-          '${CHECKPOINT2_SIGNATURE}'
+          '${TRANSITION2_SIGNATURE}'
 
       WHERE id =
-            '${CHECKPOINT2_ID}'::uuid;
+            '${TRANSITION2_ID}'::uuid;
     " \
   >/dev/null
 
 curl \
   --fail \
   --silent \
-  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/airgap/receipt-ledger/checkpoints/verify" \
-  >/tmp/terrascope-step34-checkpoint-restored.json
+  "http://localhost:8087/api/v1/resilience-portfolio/governance-closure/trust-transitions/verify" \
+  >/tmp/terrascope-step35-transition-restored.json
 
 python3 - <<'PY'
 import json
 
 payload=json.load(
     open(
-        "/tmp/terrascope-step34-checkpoint-restored.json",
+        "/tmp/terrascope-step35-transition-restored.json",
         encoding="utf-8",
     )
 )
 
 assert payload["valid"] is True
-assert payload["verifiedCheckpointCount"] == 2
+assert payload["verifiedTransitionCount"] == 2
 
 print(
-    "[PASS] CHECKPOINT_SIGNATURE_RESTORATION"
+    "[PASS] TRUST_TRANSITION_SIGNATURE_RESTORATION"
 )
 PY
 
 echo
 echo "===== DATABASE CONTRACT ====="
 
-CHECKPOINT_COLUMNS="$(
+TRANSITION_COLUMNS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1274,12 +1256,12 @@ CHECKPOINT_COLUMNS="$(
       FROM information_schema.columns
       WHERE table_schema='public'
         AND table_name=
-            'resilience_governance_assurance_receipt_checkpoints';
+            'resilience_governance_trust_anchor_transitions';
       " \
     | tr -d '[:space:]'
 )"
 
-CHECKPOINT_ROWS="$(
+TRANSITION_ROWS="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1287,16 +1269,34 @@ CHECKPOINT_ROWS="$(
       -tAc \
       "
       SELECT COUNT(*)
-      FROM resilience_governance_assurance_receipt_checkpoints
+      FROM resilience_governance_trust_anchor_transitions
       WHERE id IN (
-          '${CHECKPOINT1_ID}'::uuid,
-          '${CHECKPOINT2_ID}'::uuid
+          '${TRANSITION1_ID}'::uuid,
+          '${TRANSITION2_ID}'::uuid
       );
       " \
     | tr -d '[:space:]'
 )"
 
-LEDGER_FK="$(
+ANCHOR_FKS="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM pg_constraint
+      WHERE conrelid=
+            'resilience_governance_trust_anchor_transitions'::regclass
+        AND contype='f'
+        AND pg_get_constraintdef(oid)
+            LIKE '%resilience_governance_trust_anchors%';
+      " \
+    | tr -d '[:space:]'
+)"
+
+NUMBER_UNIQUE="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1306,12 +1306,12 @@ LEDGER_FK="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conname=
-            'fk_receipt_checkpoint_ledger';
+            'uq_governance_trust_transition_number';
       " \
     | tr -d '[:space:]'
 )"
 
-CHECKPOINT_UNIQUE="$(
+OUTGOING_UNIQUE="$(
   docker compose exec -T postgres \
     psql \
       -U terrascope \
@@ -1321,48 +1321,40 @@ CHECKPOINT_UNIQUE="$(
       SELECT COUNT(*)
       FROM pg_constraint
       WHERE conname=
-            'uq_receipt_checkpoint_number';
+            'uq_governance_trust_transition_outgoing_key';
       " \
     | tr -d '[:space:]'
 )"
 
-LEDGER_KEY_UNIQUE="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM pg_constraint
-      WHERE conname=
-            'uq_receipt_checkpoint_ledger_key';
-      " \
-    | tr -d '[:space:]'
-)"
+echo "TRUST_TRANSITION_COLUMN_COUNT=${TRANSITION_COLUMNS}"
+echo "TRUST_TRANSITION_ROW_COUNT=${TRANSITION_ROWS}"
+echo "TRUST_TRANSITION_ANCHOR_FK_COUNT=${ANCHOR_FKS}"
+echo "TRUST_TRANSITION_NUMBER_UNIQUE_COUNT=${NUMBER_UNIQUE}"
+echo "TRUST_TRANSITION_OUTGOING_UNIQUE_COUNT=${OUTGOING_UNIQUE}"
 
-echo "CHECKPOINT_COLUMN_COUNT=${CHECKPOINT_COLUMNS}"
-echo "CHECKPOINT_ROW_COUNT=${CHECKPOINT_ROWS}"
-echo "CHECKPOINT_LEDGER_FK_COUNT=${LEDGER_FK}"
-echo "CHECKPOINT_NUMBER_UNIQUE_COUNT=${CHECKPOINT_UNIQUE}"
-echo "CHECKPOINT_LEDGER_KEY_UNIQUE_COUNT=${LEDGER_KEY_UNIQUE}"
+[[ "${TRANSITION_COLUMNS}" == "13" ]]
+[[ "${TRANSITION_ROWS}" == "2" ]]
+[[ "${ANCHOR_FKS}" == "2" ]]
+[[ "${NUMBER_UNIQUE}" == "1" ]]
+[[ "${OUTGOING_UNIQUE}" == "1" ]]
 
-[[ "${CHECKPOINT_COLUMNS}" == "15" ]]
-[[ "${CHECKPOINT_ROWS}" == "2" ]]
-[[ "${LEDGER_FK}" == "1" ]]
-[[ "${CHECKPOINT_UNIQUE}" == "1" ]]
-[[ "${LEDGER_KEY_UNIQUE}" == "1" ]]
-
-echo "[PASS] CHECKPOINT_DATABASE_CONTRACT"
+echo "[PASS] TRUST_TRANSITION_DATABASE_CONTRACT"
 
 echo
-echo "===== CLEAN STEP 34 FIXTURES ====="
+echo "===== CLEAN STEP 35 FIXTURES ====="
 
 docker compose exec -T postgres \
   psql \
     -U terrascope \
     -d terrascope \
     -c "
+      DELETE
+      FROM resilience_governance_trust_anchor_transitions
+      WHERE id IN (
+          '${TRANSITION1_ID}'::uuid,
+          '${TRANSITION2_ID}'::uuid
+      );
+
       DELETE
       FROM resilience_governance_assurance_receipt_checkpoints
       WHERE id IN (
@@ -1376,9 +1368,8 @@ docker compose exec -T postgres \
       DELETE
       FROM resilience_governance_assurance_verification_receipts
       WHERE id IN (
-          '${VALID_RECEIPT_ID}'::uuid,
-          '${INVALID_RECEIPT_ID}'::uuid,
-          '${THIRD_RECEIPT_ID}'::uuid
+          '${RECEIPT1_ID}'::uuid,
+          '${RECEIPT2_ID}'::uuid
       );
 
       DELETE
@@ -1390,11 +1381,13 @@ docker compose exec -T postgres \
       FROM resilience_governance_trust_anchor_events
       WHERE key_id IN (
           '${KEY1_ID}',
-          '${KEY2_ID}'
+          '${KEY2_ID}',
+          '${KEY3_ID}'
       )
          OR replacement_key_id IN (
           '${KEY1_ID}',
-          '${KEY2_ID}'
+          '${KEY2_ID}',
+          '${KEY3_ID}'
       );
 
       DELETE
@@ -1407,11 +1400,23 @@ docker compose exec -T postgres \
       WHERE id =
             '${CERTIFICATE_ID}'::uuid;
 
+      UPDATE resilience_governance_trust_anchors
+
+      SET superseded_by_key_id =
+          NULL
+
+      WHERE key_id IN (
+          '${KEY1_ID}',
+          '${KEY2_ID}',
+          '${KEY3_ID}'
+      );
+
       DELETE
       FROM resilience_governance_trust_anchors
       WHERE key_id IN (
           '${KEY1_ID}',
-          '${KEY2_ID}'
+          '${KEY2_ID}',
+          '${KEY3_ID}'
       );
 
       DELETE
@@ -1422,7 +1427,7 @@ docker compose exec -T postgres \
       DELETE
       FROM incident_cases
       WHERE source_event_id =
-            'verification-step34-realized';
+            'verification-step35-realized';
 
       DELETE
       FROM resilience_portfolio_reviews
@@ -1438,6 +1443,19 @@ docker compose exec -T postgres \
     " \
   >/dev/null
 
+FINAL_TRANSITION_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_governance_trust_anchor_transitions;
+      " \
+    | tr -d '[:space:]'
+)"
+
 FINAL_CHECKPOINT_COUNT="$(
   docker compose exec -T postgres \
     psql \
@@ -1447,19 +1465,6 @@ FINAL_CHECKPOINT_COUNT="$(
       "
       SELECT COUNT(*)
       FROM resilience_governance_assurance_receipt_checkpoints;
-      " \
-    | tr -d '[:space:]'
-)"
-
-FINAL_LEDGER_COUNT="$(
-  docker compose exec -T postgres \
-    psql \
-      -U terrascope \
-      -d terrascope \
-      -tAc \
-      "
-      SELECT COUNT(*)
-      FROM resilience_governance_assurance_receipt_ledger;
       " \
     | tr -d '[:space:]'
 )"
@@ -1477,17 +1482,37 @@ FINAL_RECEIPT_COUNT="$(
     | tr -d '[:space:]'
 )"
 
+FINAL_ANCHOR_COUNT="$(
+  docker compose exec -T postgres \
+    psql \
+      -U terrascope \
+      -d terrascope \
+      -tAc \
+      "
+      SELECT COUNT(*)
+      FROM resilience_governance_trust_anchors
+      WHERE key_id IN (
+          '${KEY1_ID}',
+          '${KEY2_ID}',
+          '${KEY3_ID}'
+      );
+      " \
+    | tr -d '[:space:]'
+)"
+
+echo "FINAL_TRANSITION_COUNT=${FINAL_TRANSITION_COUNT}"
 echo "FINAL_CHECKPOINT_COUNT=${FINAL_CHECKPOINT_COUNT}"
-echo "FINAL_RECEIPT_LEDGER_COUNT=${FINAL_LEDGER_COUNT}"
 echo "FINAL_RECEIPT_COUNT=${FINAL_RECEIPT_COUNT}"
+echo "FINAL_TRUST_ANCHOR_COUNT=${FINAL_ANCHOR_COUNT}"
 
+[[ "${FINAL_TRANSITION_COUNT}" == "0" ]]
 [[ "${FINAL_CHECKPOINT_COUNT}" == "0" ]]
-[[ "${FINAL_LEDGER_COUNT}" == "0" ]]
 [[ "${FINAL_RECEIPT_COUNT}" == "0" ]]
+[[ "${FINAL_ANCHOR_COUNT}" == "0" ]]
 
-echo "[PASS] STEP34_CLEANUP"
+echo "[PASS] STEP35_CLEANUP"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 34 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 35 VERIFICATION PASSED"
 echo "========================================================================"

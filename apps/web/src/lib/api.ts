@@ -215,6 +215,13 @@ import type {
   GovernanceAssuranceReceiptCheckpointVerificationResponse,
 } from "@/types/resilience-governance-receipt-checkpoints";
 
+import type {
+  CreateGovernanceTrustAnchorTransitionRequest,
+  GovernanceTrustAnchorTransition,
+  GovernanceTrustAnchorTransitionHistoryResponse,
+  GovernanceTrustAnchorTransitionVerificationResponse,
+} from "@/types/resilience-governance-trust-transitions";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -3920,4 +3927,73 @@ export async function verifyGovernanceAssuranceReceiptCheckpoints(): Promise<Gov
   }
 
   return response.json() as Promise<GovernanceAssuranceReceiptCheckpointVerificationResponse>;
+}
+
+export async function fetchGovernanceTrustAnchorTransitions(
+  signal?: AbortSignal,
+): Promise<GovernanceTrustAnchorTransitionHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-transitions`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Trust-anchor transition history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustAnchorTransitionHistoryResponse>;
+}
+
+export async function rotateGovernanceTrustAnchor(
+  request: CreateGovernanceTrustAnchorTransitionRequest,
+): Promise<GovernanceTrustAnchorTransition> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-transitions/rotate`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Trust-anchor transition failed with HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustAnchorTransition>;
+}
+
+export async function verifyGovernanceTrustAnchorTransitions(): Promise<GovernanceTrustAnchorTransitionVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-transitions/verify`,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Trust-anchor transition verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustAnchorTransitionVerificationResponse>;
 }
