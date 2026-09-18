@@ -17,7 +17,7 @@ public class SystemStatusController {
         return new SystemStatusResponse(
                 "TerraScope",
                 "operational",
-                "0.48.0",
+                "0.49.0",
                 Instant.now(),
                 List.of(
                         new SystemStatusResponse.DataSourceStatus(
