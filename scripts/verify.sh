@@ -261,7 +261,7 @@ payload = json.load(
     )
 )
 
-assert payload["version"] == "0.51.0"
+assert payload["version"] == "0.52.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
