@@ -18,6 +18,8 @@ AUTHORITY_SOURCE="${ROOT_DIR}/src/com/terrascope/tools/TerraScopeVerifierRelease
 
 TRUST_STATE_SOURCE="${ROOT_DIR}/src/com/terrascope/tools/TerraScopeVerifierReleaseTrustState.java"
 
+CAPSULE_SOURCE="${ROOT_DIR}/src/com/terrascope/tools/TerraScopeVerifierReleaseCapsule.java"
+
 BUILD_DIR="$(
   mktemp -d \
     "${TMPDIR:-/tmp}/terrascope-verifier-release-integrity.XXXXXX"
@@ -35,7 +37,8 @@ mkdir -p \
   "${BUILD_DIR}/verifier" \
   "${BUILD_DIR}/transparency" \
   "${BUILD_DIR}/authority" \
-  "${BUILD_DIR}/trust-state"
+  "${BUILD_DIR}/trust-state" \
+  "${BUILD_DIR}/capsule"
 
 javac \
   --release 21 \
@@ -72,6 +75,13 @@ javac \
   -d "${BUILD_DIR}/trust-state" \
   "${TRUST_STATE_SOURCE}"
 
+javac \
+  --release 21 \
+  -encoding UTF-8 \
+  -g:none \
+  -d "${BUILD_DIR}/capsule" \
+  "${CAPSULE_SOURCE}"
+
 cat > "${BUILD_DIR}/SIGNER.MF" <<'MANIFEST'
 Manifest-Version: 1.0
 Main-Class: com.terrascope.tools.TerraScopeVerifierReleaseSigner
@@ -107,6 +117,13 @@ Implementation-Version: TS-VERIFIER-RELEASE-TRUST-STATE-TOOL-V1
 
 MANIFEST
 
+cat > "${BUILD_DIR}/CAPSULE.MF" <<'MANIFEST'
+Manifest-Version: 1.0
+Main-Class: com.terrascope.tools.TerraScopeVerifierReleaseCapsule
+Implementation-Version: TS-VERIFIER-RELEASE-CAPSULE-TOOL-V1
+
+MANIFEST
+
 SIGNER_JAR="${OUTPUT_DIR}/terrascope-verifier-release-signer.jar"
 
 VERIFIER_JAR="${OUTPUT_DIR}/terrascope-verifier-release-verifier.jar"
@@ -116,6 +133,8 @@ TRANSPARENCY_JAR="${OUTPUT_DIR}/terrascope-verifier-release-transparency.jar"
 AUTHORITY_JAR="${OUTPUT_DIR}/terrascope-verifier-release-authority-lineage.jar"
 
 TRUST_STATE_JAR="${OUTPUT_DIR}/terrascope-verifier-release-trust-state.jar"
+
+CAPSULE_JAR="${OUTPUT_DIR}/terrascope-verifier-release-capsule.jar"
 
 jar \
   --create \
@@ -157,16 +176,26 @@ jar \
   -C "${BUILD_DIR}/trust-state" \
   .
 
+jar \
+  --create \
+  --file "${CAPSULE_JAR}" \
+  --manifest "${BUILD_DIR}/CAPSULE.MF" \
+  --date=2000-01-01T00:00:00Z \
+  -C "${BUILD_DIR}/capsule" \
+  .
+
 [[ -s "${SIGNER_JAR}" ]]
 [[ -s "${VERIFIER_JAR}" ]]
 [[ -s "${TRANSPARENCY_JAR}" ]]
 [[ -s "${AUTHORITY_JAR}" ]]
 [[ -s "${TRUST_STATE_JAR}" ]]
+[[ -s "${CAPSULE_JAR}" ]]
 
 echo "RELEASE_SIGNER_JAR=${SIGNER_JAR}"
 echo "RELEASE_VERIFIER_JAR=${VERIFIER_JAR}"
 echo "RELEASE_TRANSPARENCY_JAR=${TRANSPARENCY_JAR}"
 echo "RELEASE_AUTHORITY_LINEAGE_JAR=${AUTHORITY_JAR}"
 echo "RELEASE_TRUST_STATE_JAR=${TRUST_STATE_JAR}"
+echo "RELEASE_CAPSULE_JAR=${CAPSULE_JAR}"
 
 echo "[PASS] VERIFIER_RELEASE_INTEGRITY_BUILD"

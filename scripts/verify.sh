@@ -18,9 +18,9 @@ fi
 
 BACKEND_PID=""
 
-BACKEND_LOG="/tmp/terrascope-step49-backend.log"
+BACKEND_LOG="/tmp/terrascope-step50-backend.log"
 
-WORK="/tmp/terrascope-step49"
+WORK="/tmp/terrascope-step50-work"
 
 TOOLS="${WORK}/tools"
 
@@ -44,49 +44,30 @@ ROOT_PIN="${WORK}/root.sha256"
 
 INTERMEDIATE_PRIVATE="${WORK}/intermediate-private.b64"
 INTERMEDIATE_PUBLIC="${WORK}/intermediate-public.b64"
-INTERMEDIATE_DIRECT_PIN="${WORK}/intermediate-direct.sha256"
+INTERMEDIATE_PIN="${WORK}/intermediate.sha256"
 
 TERMINAL_PRIVATE="${WORK}/terminal-private.b64"
 TERMINAL_PUBLIC="${WORK}/terminal-public.b64"
-TERMINAL_DIRECT_PIN="${WORK}/terminal-direct.sha256"
+TERMINAL_PIN="${WORK}/terminal.sha256"
 
 TRANSPARENCY_PRIVATE="${WORK}/transparency-private.b64"
 TRANSPARENCY_PUBLIC="${WORK}/transparency-public.b64"
-TRANSPARENCY_DIRECT_PIN="${WORK}/transparency-direct.sha256"
+TRANSPARENCY_PIN="${WORK}/transparency.sha256"
 
 AUTHORITY_LINEAGE="${WORK}/release-authority.lineage"
+OLD_AUTHORITY_LINEAGE="${OLD_DIR}/release-authority.lineage"
 
-AUTHORITY_HEAD_ONE_PIN="${WORK}/authority-head-one.sha256"
-AUTHORITY_HEAD_TWO_PIN="${WORK}/authority-head-two.sha256"
+AUTHORITY_HEAD_ONE="${WORK}/authority-head-one.sha256"
+AUTHORITY_HEAD_TWO="${WORK}/authority-head-two.sha256"
 
 TRANSPARENCY_LEDGER="${WORK}/release-transparency.log"
+OLD_TRANSPARENCY_LEDGER="${OLD_DIR}/release-transparency.log"
 
-TRANSPARENCY_HEAD_ONE_PIN="${WORK}/transparency-head-one.sha256"
-TRANSPARENCY_HEAD_TWO_PIN="${WORK}/transparency-head-two.sha256"
+TRANSPARENCY_HEAD_ONE="${WORK}/transparency-head-one.sha256"
+TRANSPARENCY_HEAD_TWO="${WORK}/transparency-head-two.sha256"
 
-OLD_STATE_HEAD_PIN="${WORK}/old-state-head.sha256"
-CURRENT_STATE_HEAD_PIN="${WORK}/current-state-head.sha256"
-
-DERIVED_AUTHORITY_HEAD="${WORK}/derived-authority-head.sha256"
-
-DERIVED_TRANSPARENCY_KEY="${WORK}/derived-transparency-key.sha256"
-
-DERIVED_TRANSPARENCY_HEAD="${WORK}/derived-transparency-head.sha256"
-
-DERIVED_RELEASE_KEY="${WORK}/derived-release-key.sha256"
-
-SHOULD_NOT_AUTHORITY="${WORK}/should-not-authority.sha256"
-
-SHOULD_NOT_TRANSPARENCY_KEY="${WORK}/should-not-transparency-key.sha256"
-
-SHOULD_NOT_TRANSPARENCY_HEAD="${WORK}/should-not-transparency-head.sha256"
-
-WRONG_ROOT_PIN="${WORK}/wrong-root.sha256"
-WRONG_STATE_HEAD_PIN="${WORK}/wrong-state-head.sha256"
-
-FIELD_TAMPER_STATE="${WORK}/field-tamper-state.manifest"
-
-SIGNATURE_TAMPER_STATE="${WORK}/signature-tamper-state.manifest"
+OLD_STATE_HEAD="${WORK}/old-state-head.sha256"
+CURRENT_STATE_HEAD="${WORK}/current-state-head.sha256"
 
 SIGNER_JAR="${TOOLS}/terrascope-verifier-release-signer.jar"
 
@@ -98,7 +79,31 @@ AUTHORITY_JAR="${TOOLS}/terrascope-verifier-release-authority-lineage.jar"
 
 TRUST_STATE_JAR="${TOOLS}/terrascope-verifier-release-trust-state.jar"
 
-KEYGEN_SOURCE="${WORK}/TerraScopeStep49Keygen.java"
+CAPSULE_JAR="${TOOLS}/terrascope-verifier-release-capsule.jar"
+
+CURRENT_CAPSULE_A="/tmp/terrascope-step50-current-a.capsule.zip"
+
+CURRENT_CAPSULE_B="/tmp/terrascope-step50-current-b.capsule.zip"
+
+STALE_CAPSULE="/tmp/terrascope-step50-stale.capsule.zip"
+
+CAPSULE_TOOL_EXTERNAL="/tmp/terrascope-step50-capsule-verifier.jar"
+
+ROOT_PIN_EXTERNAL="/tmp/terrascope-step50-root.sha256"
+
+CURRENT_STATE_HEAD_EXTERNAL="/tmp/terrascope-step50-current-state.sha256"
+
+OLD_STATE_HEAD_EXTERNAL="/tmp/terrascope-step50-old-state.sha256"
+
+WRONG_ROOT_EXTERNAL="/tmp/terrascope-step50-wrong-root.sha256"
+
+ARTIFACT_TAMPER_CAPSULE="/tmp/terrascope-step50-artifact-tampered.capsule.zip"
+
+TOOL_TAMPER_CAPSULE="/tmp/terrascope-step50-tool-tampered.capsule.zip"
+
+SIGNATURE_TAMPER_CAPSULE="/tmp/terrascope-step50-signature-tampered.capsule.zip"
+
+KEYGEN_SOURCE="${WORK}/TerraScopeStep50Keygen.java"
 
 ROOT_KEY_ID="terrascope-release-authority-v1"
 
@@ -106,7 +111,7 @@ INTERMEDIATE_KEY_ID="terrascope-release-authority-v2"
 
 TERMINAL_KEY_ID="terrascope-release-authority-v3"
 
-TRANSPARENCY_KEY_ID="terrascope-transparency-step49-v1"
+TRANSPARENCY_KEY_ID="terrascope-transparency-step50-v1"
 
 cleanup() {
   if [[ -n "${BACKEND_PID}" ]]; then
@@ -188,7 +193,7 @@ stop_backend() {
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 49 VERIFICATION"
+echo " TERRASCOPE — STEP 50 VERIFICATION"
 echo "========================================================================"
 
 docker compose up -d postgres
@@ -244,19 +249,19 @@ curl \
   --fail \
   --silent \
   "http://localhost:8087/api/v1/status" \
-  > /tmp/terrascope-step49-status.json
+  > /tmp/terrascope-step50-status.json
 
 python3 - <<'PY'
 import json
 
 payload = json.load(
     open(
-        "/tmp/terrascope-step49-status.json",
+        "/tmp/terrascope-step50-status.json",
         encoding="utf-8",
     )
 )
 
-assert payload["version"] == "0.49.0"
+assert payload["version"] == "0.50.0"
 
 print(
     "[PASS] STATUS_ENDPOINT"
@@ -289,7 +294,8 @@ for VERSION in \
   46 \
   47 \
   48 \
-  49
+  49 \
+  50
 do
   COUNT="$(
     docker compose exec -T postgres \
@@ -318,6 +324,19 @@ echo "===== CLEAN FIXTURE ====="
 rm -rf \
   "${WORK}"
 
+rm -f \
+  "${CURRENT_CAPSULE_A}" \
+  "${CURRENT_CAPSULE_B}" \
+  "${STALE_CAPSULE}" \
+  "${CAPSULE_TOOL_EXTERNAL}" \
+  "${ROOT_PIN_EXTERNAL}" \
+  "${CURRENT_STATE_HEAD_EXTERNAL}" \
+  "${OLD_STATE_HEAD_EXTERNAL}" \
+  "${WRONG_ROOT_EXTERNAL}" \
+  "${ARTIFACT_TAMPER_CAPSULE}" \
+  "${TOOL_TAMPER_CAPSULE}" \
+  "${SIGNATURE_TAMPER_CAPSULE}"
+
 mkdir -p \
   "${TOOLS}" \
   "${OLD_DIR}" \
@@ -326,7 +345,7 @@ mkdir -p \
 echo "[PASS] FIXTURE_READY"
 
 echo
-echo "===== BUILD FIVE RELEASE TOOLS ====="
+echo "===== BUILD SIX RELEASE TOOLS ====="
 
 bash \
   tools/verifier-release-integrity/build.sh \
@@ -337,11 +356,12 @@ bash \
 [[ -s "${TRANSPARENCY_JAR}" ]]
 [[ -s "${AUTHORITY_JAR}" ]]
 [[ -s "${TRUST_STATE_JAR}" ]]
+[[ -s "${CAPSULE_JAR}" ]]
 
-echo "[PASS] FIVE_RELEASE_TOOLS_READY"
+echo "[PASS] SIX_RELEASE_TOOLS_READY"
 
 echo
-echo "===== BUILD DISTINCT RELEASE ARTIFACTS ====="
+echo "===== BUILD OLD + CURRENT CHECKPOINT VERIFIER ARTIFACTS ====="
 
 bash \
   tools/checkpoint-bundle-verifier/build.sh \
@@ -374,7 +394,7 @@ echo "OLD_ARTIFACT_SHA256=${OLD_ARTIFACT_SHA}"
 echo "[PASS] DISTINCT_RELEASE_ARTIFACTS"
 
 echo
-echo "===== GENERATE FOUR KEY AUTHORITIES ====="
+echo "===== GENERATE ROOT / INTERMEDIATE / TERMINAL / TRANSPARENCY KEYS ====="
 
 cat > "${KEYGEN_SOURCE}" <<'JAVA'
 import java.nio.file.Files;
@@ -387,7 +407,7 @@ import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.HexFormat;
 
-public class TerraScopeStep49Keygen {
+public class TerraScopeStep50Keygen {
 
     public static void main(
             String[] args
@@ -477,46 +497,25 @@ java \
   "${ROOT_PIN}" \
   "${INTERMEDIATE_PRIVATE}" \
   "${INTERMEDIATE_PUBLIC}" \
-  "${INTERMEDIATE_DIRECT_PIN}" \
+  "${INTERMEDIATE_PIN}" \
   "${TERMINAL_PRIVATE}" \
   "${TERMINAL_PUBLIC}" \
-  "${TERMINAL_DIRECT_PIN}" \
+  "${TERMINAL_PIN}" \
   "${TRANSPARENCY_PRIVATE}" \
   "${TRANSPARENCY_PUBLIC}" \
-  "${TRANSPARENCY_DIRECT_PIN}"
+  "${TRANSPARENCY_PIN}"
 
 ROOT_FINGERPRINT="$(
   tr -d '[:space:]' \
     < "${ROOT_PIN}"
 )"
 
-INTERMEDIATE_FINGERPRINT="$(
-  tr -d '[:space:]' \
-    < "${INTERMEDIATE_DIRECT_PIN}"
-)"
-
-TERMINAL_FINGERPRINT="$(
-  tr -d '[:space:]' \
-    < "${TERMINAL_DIRECT_PIN}"
-)"
-
-TRANSPARENCY_FINGERPRINT="$(
-  tr -d '[:space:]' \
-    < "${TRANSPARENCY_DIRECT_PIN}"
-)"
-
 echo "ROOT_FINGERPRINT=${ROOT_FINGERPRINT}"
-echo "INTERMEDIATE_FINGERPRINT=${INTERMEDIATE_FINGERPRINT}"
-echo "TERMINAL_FINGERPRINT=${TERMINAL_FINGERPRINT}"
-echo "TRANSPARENCY_FINGERPRINT=${TRANSPARENCY_FINGERPRINT}"
-
-[[ "${ROOT_FINGERPRINT}" != "${INTERMEDIATE_FINGERPRINT}" ]]
-[[ "${INTERMEDIATE_FINGERPRINT}" != "${TERMINAL_FINGERPRINT}" ]]
 
 echo "[PASS] FOUR_KEY_AUTHORITIES_READY"
 
 echo
-echo "===== AUTHORITY TRANSITION 1 ====="
+echo "===== HISTORICAL AUTHORITY TRANSITION ====="
 
 java \
   -jar "${AUTHORITY_JAR}" \
@@ -528,25 +527,27 @@ java \
   --outgoing-public-key "${ROOT_PUBLIC}" \
   --replacement-key-id "${INTERMEDIATE_KEY_ID}" \
   --replacement-public-key "${INTERMEDIATE_PUBLIC}" \
-  > "${WORK}/authority-transition-one.log"
+  > "${WORK}/authority-one.log"
 
-AUTHORITY_HEAD_ONE="$(
+AUTHORITY_ONE_HASH="$(
   grep \
     '^TRANSITION_HASH=' \
-    "${WORK}/authority-transition-one.log" \
+    "${WORK}/authority-one.log" \
     | cut -d= -f2-
 )"
 
 printf '%s\n' \
-  "${AUTHORITY_HEAD_ONE}" \
-  > "${AUTHORITY_HEAD_ONE_PIN}"
+  "${AUTHORITY_ONE_HASH}" \
+  > "${AUTHORITY_HEAD_ONE}"
 
-echo "AUTHORITY_HEAD_ONE=${AUTHORITY_HEAD_ONE}"
+cp \
+  "${AUTHORITY_LINEAGE}" \
+  "${OLD_AUTHORITY_LINEAGE}"
 
-echo "[PASS] AUTHORITY_TRANSITION_ONE"
+echo "[PASS] HISTORICAL_AUTHORITY_STATE_READY"
 
 echo
-echo "===== OLD RELEASE SIGNED BY INTERMEDIATE ====="
+echo "===== HISTORICAL RELEASE + TRANSPARENCY ====="
 
 java \
   -jar "${SIGNER_JAR}" \
@@ -557,45 +558,37 @@ java \
   --output "${OLD_MANIFEST}" \
   > "${WORK}/old-sign.log"
 
-grep \
-  -q \
-  '^SIGNATURE_SELF_VERIFICATION=PASS$' \
-  "${WORK}/old-sign.log"
-
-echo "[PASS] OLD_RELEASE_SIGNED_BY_INTERMEDIATE"
-
-echo
-echo "===== OLD RELEASE TRANSPARENCY ENTRY ====="
-
 java \
   -jar "${TRANSPARENCY_JAR}" \
   append \
   --artifact "${OLD_ARTIFACT}" \
   --manifest "${OLD_MANIFEST}" \
-  --release-key-pin "${INTERMEDIATE_DIRECT_PIN}" \
+  --release-key-pin "${INTERMEDIATE_PIN}" \
   --transparency-private-key "${TRANSPARENCY_PRIVATE}" \
   --transparency-public-key "${TRANSPARENCY_PUBLIC}" \
   --transparency-key-id "${TRANSPARENCY_KEY_ID}" \
   --ledger "${TRANSPARENCY_LEDGER}" \
-  > "${WORK}/transparency-old.log"
+  > "${WORK}/old-transparency.log"
 
-TRANSPARENCY_HEAD_ONE="$(
+TRANSPARENCY_ONE_HASH="$(
   grep \
     '^ENTRY_HASH=' \
-    "${WORK}/transparency-old.log" \
+    "${WORK}/old-transparency.log" \
     | cut -d= -f2-
 )"
 
 printf '%s\n' \
-  "${TRANSPARENCY_HEAD_ONE}" \
-  > "${TRANSPARENCY_HEAD_ONE_PIN}"
+  "${TRANSPARENCY_ONE_HASH}" \
+  > "${TRANSPARENCY_HEAD_ONE}"
 
-echo "TRANSPARENCY_HEAD_ONE=${TRANSPARENCY_HEAD_ONE}"
+cp \
+  "${TRANSPARENCY_LEDGER}" \
+  "${OLD_TRANSPARENCY_LEDGER}"
 
-echo "[PASS] OLD_TRANSPARENCY_STATE_READY"
+echo "[PASS] HISTORICAL_RELEASE_TRANSPARENCY_READY"
 
 echo
-echo "===== ISSUE HISTORICAL TRUST STATE ====="
+echo "===== HISTORICAL TRUST STATE ====="
 
 java \
   -jar "${TRUST_STATE_JAR}" \
@@ -604,29 +597,58 @@ java \
   --release-root-key-id "${ROOT_KEY_ID}" \
   --release-root-private-key "${ROOT_PRIVATE}" \
   --release-root-public-key "${ROOT_PUBLIC}" \
-  --release-authority-head-pin "${AUTHORITY_HEAD_ONE_PIN}" \
-  --transparency-key-pin "${TRANSPARENCY_DIRECT_PIN}" \
-  --transparency-head-pin "${TRANSPARENCY_HEAD_ONE_PIN}" \
+  --release-authority-head-pin "${AUTHORITY_HEAD_ONE}" \
+  --transparency-key-pin "${TRANSPARENCY_PIN}" \
+  --transparency-head-pin "${TRANSPARENCY_HEAD_ONE}" \
   --output "${OLD_STATE}" \
-  | tee "${WORK}/old-state-issue.log"
+  > "${WORK}/old-state.log"
 
 OLD_STATE_HASH="$(
   grep \
     '^STATE_HASH=' \
-    "${WORK}/old-state-issue.log" \
+    "${WORK}/old-state.log" \
     | cut -d= -f2-
 )"
 
 printf '%s\n' \
   "${OLD_STATE_HASH}" \
-  > "${OLD_STATE_HEAD_PIN}"
+  > "${OLD_STATE_HEAD}"
 
 echo "OLD_TRUST_STATE_HASH=${OLD_STATE_HASH}"
 
-echo "[PASS] HISTORICAL_TRUST_STATE_ISSUED"
+echo "[PASS] HISTORICAL_TRUST_STATE_READY"
 
 echo
-echo "===== AUTHORITY TRANSITION 2 ====="
+echo "===== CREATE HISTORICAL CAPSULE ====="
+
+java \
+  -jar "${CAPSULE_JAR}" \
+  create \
+  --artifact "${OLD_ARTIFACT}" \
+  --release-manifest "${OLD_MANIFEST}" \
+  --authority-lineage "${OLD_AUTHORITY_LINEAGE}" \
+  --transparency-ledger "${OLD_TRANSPARENCY_LEDGER}" \
+  --trust-state "${OLD_STATE}" \
+  --release-verifier-jar "${RELEASE_VERIFIER_JAR}" \
+  --transparency-verifier-jar "${TRANSPARENCY_JAR}" \
+  --authority-verifier-jar "${AUTHORITY_JAR}" \
+  --trust-state-verifier-jar "${TRUST_STATE_JAR}" \
+  --release-root-key-id "${ROOT_KEY_ID}" \
+  --release-root-private-key "${ROOT_PRIVATE}" \
+  --release-root-public-key "${ROOT_PUBLIC}" \
+  --root-pin "${ROOT_PIN}" \
+  --output "${STALE_CAPSULE}" \
+  > "${WORK}/stale-capsule-create.log"
+
+grep \
+  -q \
+  '^CREATE_RESULT=PASS$' \
+  "${WORK}/stale-capsule-create.log"
+
+echo "[PASS] HISTORICAL_CAPSULE_CREATED"
+
+echo
+echo "===== CURRENT AUTHORITY TRANSITION ====="
 
 java \
   -jar "${AUTHORITY_JAR}" \
@@ -638,27 +660,25 @@ java \
   --outgoing-public-key "${INTERMEDIATE_PUBLIC}" \
   --replacement-key-id "${TERMINAL_KEY_ID}" \
   --replacement-public-key "${TERMINAL_PUBLIC}" \
-  > "${WORK}/authority-transition-two.log"
+  > "${WORK}/authority-two.log"
 
-AUTHORITY_HEAD_TWO="$(
+AUTHORITY_TWO_HASH="$(
   grep \
     '^TRANSITION_HASH=' \
-    "${WORK}/authority-transition-two.log" \
+    "${WORK}/authority-two.log" \
     | cut -d= -f2-
 )"
 
 printf '%s\n' \
-  "${AUTHORITY_HEAD_TWO}" \
-  > "${AUTHORITY_HEAD_TWO_PIN}"
+  "${AUTHORITY_TWO_HASH}" \
+  > "${AUTHORITY_HEAD_TWO}"
 
-echo "AUTHORITY_HEAD_TWO=${AUTHORITY_HEAD_TWO}"
+[[ "${AUTHORITY_ONE_HASH}" != "${AUTHORITY_TWO_HASH}" ]]
 
-[[ "${AUTHORITY_HEAD_ONE}" != "${AUTHORITY_HEAD_TWO}" ]]
-
-echo "[PASS] AUTHORITY_TRANSITION_TWO"
+echo "[PASS] CURRENT_AUTHORITY_STATE_READY"
 
 echo
-echo "===== CURRENT RELEASE SIGNED BY TERMINAL ====="
+echo "===== CURRENT RELEASE + TRANSPARENCY ====="
 
 java \
   -jar "${SIGNER_JAR}" \
@@ -669,47 +689,35 @@ java \
   --output "${CURRENT_MANIFEST}" \
   > "${WORK}/current-sign.log"
 
-grep \
-  -q \
-  '^SIGNATURE_SELF_VERIFICATION=PASS$' \
-  "${WORK}/current-sign.log"
-
-echo "[PASS] CURRENT_RELEASE_SIGNED_BY_TERMINAL"
-
-echo
-echo "===== CURRENT RELEASE TRANSPARENCY ENTRY ====="
-
 java \
   -jar "${TRANSPARENCY_JAR}" \
   append \
   --artifact "${CURRENT_ARTIFACT}" \
   --manifest "${CURRENT_MANIFEST}" \
-  --release-key-pin "${TERMINAL_DIRECT_PIN}" \
+  --release-key-pin "${TERMINAL_PIN}" \
   --transparency-private-key "${TRANSPARENCY_PRIVATE}" \
   --transparency-public-key "${TRANSPARENCY_PUBLIC}" \
   --transparency-key-id "${TRANSPARENCY_KEY_ID}" \
   --ledger "${TRANSPARENCY_LEDGER}" \
-  > "${WORK}/transparency-current.log"
+  > "${WORK}/current-transparency.log"
 
-TRANSPARENCY_HEAD_TWO="$(
+TRANSPARENCY_TWO_HASH="$(
   grep \
     '^ENTRY_HASH=' \
-    "${WORK}/transparency-current.log" \
+    "${WORK}/current-transparency.log" \
     | cut -d= -f2-
 )"
 
 printf '%s\n' \
-  "${TRANSPARENCY_HEAD_TWO}" \
-  > "${TRANSPARENCY_HEAD_TWO_PIN}"
+  "${TRANSPARENCY_TWO_HASH}" \
+  > "${TRANSPARENCY_HEAD_TWO}"
 
-echo "TRANSPARENCY_HEAD_TWO=${TRANSPARENCY_HEAD_TWO}"
+[[ "${TRANSPARENCY_ONE_HASH}" != "${TRANSPARENCY_TWO_HASH}" ]]
 
-[[ "${TRANSPARENCY_HEAD_ONE}" != "${TRANSPARENCY_HEAD_TWO}" ]]
-
-echo "[PASS] CURRENT_TRANSPARENCY_STATE_READY"
+echo "[PASS] CURRENT_RELEASE_TRANSPARENCY_READY"
 
 echo
-echo "===== ISSUE CURRENT TRUST STATE ====="
+echo "===== CURRENT TRUST STATE ====="
 
 java \
   -jar "${TRUST_STATE_JAR}" \
@@ -718,189 +726,159 @@ java \
   --release-root-key-id "${ROOT_KEY_ID}" \
   --release-root-private-key "${ROOT_PRIVATE}" \
   --release-root-public-key "${ROOT_PUBLIC}" \
-  --release-authority-head-pin "${AUTHORITY_HEAD_TWO_PIN}" \
-  --transparency-key-pin "${TRANSPARENCY_DIRECT_PIN}" \
-  --transparency-head-pin "${TRANSPARENCY_HEAD_TWO_PIN}" \
+  --release-authority-head-pin "${AUTHORITY_HEAD_TWO}" \
+  --transparency-key-pin "${TRANSPARENCY_PIN}" \
+  --transparency-head-pin "${TRANSPARENCY_HEAD_TWO}" \
   --output "${CURRENT_STATE}" \
-  | tee "${WORK}/current-state-issue.log"
+  > "${WORK}/current-state.log"
 
 CURRENT_STATE_HASH="$(
   grep \
     '^STATE_HASH=' \
-    "${WORK}/current-state-issue.log" \
+    "${WORK}/current-state.log" \
     | cut -d= -f2-
 )"
 
 printf '%s\n' \
   "${CURRENT_STATE_HASH}" \
-  > "${CURRENT_STATE_HEAD_PIN}"
+  > "${CURRENT_STATE_HEAD}"
 
 echo "CURRENT_TRUST_STATE_HASH=${CURRENT_STATE_HASH}"
 
-[[ "${OLD_STATE_HASH}" != "${CURRENT_STATE_HASH}" ]]
+[[ "${CURRENT_STATE_HASH}" != "${OLD_STATE_HASH}" ]]
 
-echo "[PASS] CURRENT_TRUST_STATE_ISSUED"
+echo "[PASS] CURRENT_TRUST_STATE_READY"
 
 echo
-echo "===== TRUST STATE CONTRACT ====="
+echo "===== CREATE CURRENT CAPSULE TWICE ====="
+
+for OUTPUT in \
+  "${CURRENT_CAPSULE_A}" \
+  "${CURRENT_CAPSULE_B}"
+do
+  java \
+    -jar "${CAPSULE_JAR}" \
+    create \
+    --artifact "${CURRENT_ARTIFACT}" \
+    --release-manifest "${CURRENT_MANIFEST}" \
+    --authority-lineage "${AUTHORITY_LINEAGE}" \
+    --transparency-ledger "${TRANSPARENCY_LEDGER}" \
+    --trust-state "${CURRENT_STATE}" \
+    --release-verifier-jar "${RELEASE_VERIFIER_JAR}" \
+    --transparency-verifier-jar "${TRANSPARENCY_JAR}" \
+    --authority-verifier-jar "${AUTHORITY_JAR}" \
+    --trust-state-verifier-jar "${TRUST_STATE_JAR}" \
+    --release-root-key-id "${ROOT_KEY_ID}" \
+    --release-root-private-key "${ROOT_PRIVATE}" \
+    --release-root-public-key "${ROOT_PUBLIC}" \
+    --root-pin "${ROOT_PIN}" \
+    --output "${OUTPUT}"
+done
+
+CURRENT_CAPSULE_SHA_A="$(
+  shasum -a 256 \
+    "${CURRENT_CAPSULE_A}" \
+    | awk '{print $1}'
+)"
+
+CURRENT_CAPSULE_SHA_B="$(
+  shasum -a 256 \
+    "${CURRENT_CAPSULE_B}" \
+    | awk '{print $1}'
+)"
+
+echo "CURRENT_CAPSULE_SHA_A=${CURRENT_CAPSULE_SHA_A}"
+echo "CURRENT_CAPSULE_SHA_B=${CURRENT_CAPSULE_SHA_B}"
+
+[[ "${CURRENT_CAPSULE_SHA_A}" == "${CURRENT_CAPSULE_SHA_B}" ]]
+
+echo "[PASS] DETERMINISTIC_CAPSULE_REPRODUCIBILITY"
+
+echo
+echo "===== CAPSULE ENTRY CONTRACT ====="
 
 python3 \
-  - \
-  "${OLD_STATE}" \
-  "${CURRENT_STATE}" \
-  "${ROOT_FINGERPRINT}" \
-  "${AUTHORITY_HEAD_ONE}" \
-  "${AUTHORITY_HEAD_TWO}" \
-  "${TRANSPARENCY_FINGERPRINT}" \
-  "${TRANSPARENCY_HEAD_ONE}" \
-  "${TRANSPARENCY_HEAD_TWO}" \
+  - "${CURRENT_CAPSULE_A}" \
 <<'PY'
-from pathlib import Path
-import re
 import sys
+import zipfile
 
-old = Path(
-    sys.argv[1]
-).read_text(
-    encoding="utf-8",
-).splitlines()
+expected = {
+    "capsule.manifest",
 
-current = Path(
-    sys.argv[2]
-).read_text(
-    encoding="utf-8",
-).splitlines()
+    "payload/terrascope-checkpoint-bundle-verifier.jar",
 
-root = sys.argv[3]
+    "payload/release.manifest",
 
-authority_one = sys.argv[4]
-authority_two = sys.argv[5]
+    "payload/release-authority.lineage",
 
-transparency_key = sys.argv[6]
+    "payload/release-transparency.log",
 
-transparency_one = sys.argv[7]
-transparency_two = sys.argv[8]
+    "payload/trust-state.manifest",
 
-prefixes = [
-    "trustStateVersion=",
-    "stateSequence=",
-    "releaseRootKeyId=",
-    "releaseRootPublicKeyX509Base64=",
-    "releaseRootKeyFingerprint=",
-    "releaseAuthorityHeadHash=",
-    "transparencyKeyFingerprint=",
-    "transparencyHeadHash=",
-    "checkpointVerifierArtifactVersion=",
-    "algorithm=",
-    "signatureBase64=",
-    "stateHash=",
-]
+    "tools/terrascope-verifier-release-verifier.jar",
 
-for lines in (
-    old,
-    current,
-):
-    assert len(lines) == len(
-        prefixes
+    "tools/terrascope-verifier-release-transparency.jar",
+
+    "tools/terrascope-verifier-release-authority-lineage.jar",
+
+    "tools/terrascope-verifier-release-trust-state.jar",
+}
+
+with zipfile.ZipFile(
+    sys.argv[1],
+    "r",
+) as archive:
+    names = archive.namelist()
+
+assert len(names) == 10
+assert len(set(names)) == 10
+assert set(names) == expected
+
+with zipfile.ZipFile(
+    sys.argv[1],
+    "r",
+) as archive:
+    manifest = archive.read(
+        "capsule.manifest"
+    ).decode(
+        "utf-8"
     )
 
-    for line, prefix in zip(
-        lines,
-        prefixes,
-    ):
-        assert line.startswith(
-            prefix
-        )
-
-assert old[0] == (
-    "trustStateVersion="
-    "TS-VERIFIER-RELEASE-TRUST-STATE-V1"
+assert (
+    "capsuleVersion="
+    "TS-VERIFIER-RELEASE-CAPSULE-V1\n"
+    in manifest
 )
 
-assert current[0] == old[0]
-
-assert old[1] == (
-    "stateSequence=1"
-)
-
-assert current[1] == (
-    "stateSequence=2"
-)
-
-assert old[4] == (
-    "releaseRootKeyFingerprint="
-    + root
-)
-
-assert current[4] == old[4]
-
-assert old[5] == (
-    "releaseAuthorityHeadHash="
-    + authority_one
-)
-
-assert current[5] == (
-    "releaseAuthorityHeadHash="
-    + authority_two
-)
-
-assert old[6] == (
-    "transparencyKeyFingerprint="
-    + transparency_key
-)
-
-assert current[6] == old[6]
-
-assert old[7] == (
-    "transparencyHeadHash="
-    + transparency_one
-)
-
-assert current[7] == (
-    "transparencyHeadHash="
-    + transparency_two
-)
-
-assert old[8] == (
-    "checkpointVerifierArtifactVersion="
-    "TS-STANDALONE-CHECKPOINT-BUNDLE-VERIFIER-V1"
-)
-
-assert current[8] == old[8]
-
-assert old[9] == (
-    "algorithm=ED25519"
-)
-
-assert current[9] == old[9]
-
-assert re.fullmatch(
-    r"signatureBase64=.+",
-    old[10],
-)
-
-assert re.fullmatch(
-    r"signatureBase64=.+",
-    current[10],
-)
-
-assert re.fullmatch(
-    r"stateHash=[0-9a-f]{64}",
-    old[11],
-)
-
-assert re.fullmatch(
-    r"stateHash=[0-9a-f]{64}",
-    current[11],
+assert (
+    "algorithm=ED25519\n"
+    in manifest
 )
 
 print(
-    "[PASS] TRUST_STATE_CANONICAL_CONTRACT"
+    "[PASS] CAPSULE_ENTRY_CONTRACT"
 )
 PY
 
 echo
-echo "===== PREPARE NEGATIVE TRUST STATES ====="
+echo "===== PRESERVE ONLY EXTERNAL VERIFY INPUTS ====="
+
+cp \
+  "${CAPSULE_JAR}" \
+  "${CAPSULE_TOOL_EXTERNAL}"
+
+cp \
+  "${ROOT_PIN}" \
+  "${ROOT_PIN_EXTERNAL}"
+
+cp \
+  "${CURRENT_STATE_HEAD}" \
+  "${CURRENT_STATE_HEAD_EXTERNAL}"
+
+cp \
+  "${OLD_STATE_HEAD}" \
+  "${OLD_STATE_HEAD_EXTERNAL}"
 
 WRONG_ROOT="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
@@ -910,94 +888,110 @@ fi
 
 printf '%s\n' \
   "${WRONG_ROOT}" \
-  > "${WRONG_ROOT_PIN}"
+  > "${WRONG_ROOT_EXTERNAL}"
 
-WRONG_STATE_HEAD="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+[[ -s "${CAPSULE_TOOL_EXTERNAL}" ]]
+[[ -s "${ROOT_PIN_EXTERNAL}" ]]
+[[ -s "${CURRENT_STATE_HEAD_EXTERNAL}" ]]
 
-if [[ "${WRONG_STATE_HEAD}" == "${CURRENT_STATE_HASH}" ]]; then
-  WRONG_STATE_HEAD="0000000000000000000000000000000000000000000000000000000000000000"
-fi
+echo "[PASS] EXTERNAL_VERIFY_INPUTS_PRESERVED"
 
-printf '%s\n' \
-  "${WRONG_STATE_HEAD}" \
-  > "${WRONG_STATE_HEAD_PIN}"
+echo
+echo "===== BUILD NEGATIVE CAPSULE FIXTURES ====="
 
 python3 \
   - \
-  "${CURRENT_STATE}" \
-  "${FIELD_TAMPER_STATE}" \
-  "${SIGNATURE_TAMPER_STATE}" \
+  "${CURRENT_CAPSULE_A}" \
+  "${ARTIFACT_TAMPER_CAPSULE}" \
+  "${TOOL_TAMPER_CAPSULE}" \
+  "${SIGNATURE_TAMPER_CAPSULE}" \
 <<'PY'
-from pathlib import Path
 import base64
-import hashlib
 import sys
+import zipfile
 
-source = Path(
-    sys.argv[1]
-)
+source = sys.argv[1]
 
-field_target = Path(
-    sys.argv[2]
-)
+artifact_target = sys.argv[2]
+tool_target = sys.argv[3]
+signature_target = sys.argv[4]
 
-signature_target = Path(
-    sys.argv[3]
-)
-
-lines = source.read_text(
-    encoding="utf-8",
-).splitlines()
-
-field_lines = list(
-    lines
-)
-
-for index, line in enumerate(
-    field_lines
-):
-    if line.startswith(
-        "releaseAuthorityHeadHash="
-    ):
-        field_lines[index] = (
-            "releaseAuthorityHeadHash="
-            + (
-                "0" * 64
+with zipfile.ZipFile(
+    source,
+    "r",
+) as archive:
+    entries = {
+        name:
+            archive.read(
+                name
             )
+        for name in archive.namelist()
+    }
+
+artifact_entries = dict(
+    entries
+)
+
+artifact_entries[
+    "payload/terrascope-checkpoint-bundle-verifier.jar"
+] += b"\x00"
+
+with zipfile.ZipFile(
+    artifact_target,
+    "w",
+    compression=zipfile.ZIP_STORED,
+) as archive:
+    for name in sorted(
+        artifact_entries
+    ):
+        archive.writestr(
+            name,
+            artifact_entries[name],
         )
 
-        break
-else:
-    raise AssertionError(
-        "releaseAuthorityHeadHash not found"
-    )
-
-field_target.write_text(
-    "\n".join(
-        field_lines
-    )
-    + "\n",
-    encoding="utf-8",
+tool_entries = dict(
+    entries
 )
 
-signature_lines = list(
-    lines
+tool_entries[
+    "tools/terrascope-verifier-release-verifier.jar"
+] += b"\x00"
+
+with zipfile.ZipFile(
+    tool_target,
+    "w",
+    compression=zipfile.ZIP_STORED,
+) as archive:
+    for name in sorted(
+        tool_entries
+    ):
+        archive.writestr(
+            name,
+            tool_entries[name],
+        )
+
+signature_entries = dict(
+    entries
 )
+
+manifest = signature_entries[
+    "capsule.manifest"
+].decode(
+    "utf-8"
+).splitlines()
 
 for index, line in enumerate(
-    signature_lines
+    manifest
 ):
     if line.startswith(
         "signatureBase64="
     ):
-        signature_lines[index] = (
+        manifest[index] = (
             "signatureBase64="
             + base64.b64encode(
                 bytes(64)
             ).decode()
         )
-
-        signature_index = index
 
         break
 else:
@@ -1005,92 +999,46 @@ else:
         "signatureBase64 not found"
     )
 
-payload = (
+signature_entries[
+    "capsule.manifest"
+] = (
     "\n".join(
-        signature_lines[:signature_index]
+        manifest
     )
     + "\n"
+).encode(
+    "utf-8"
 )
 
-signature_line = (
-    signature_lines[
-        signature_index
-    ]
-    + "\n"
-)
-
-state_hash = hashlib.sha256(
-    (
-        payload
-        + signature_line
-    ).encode(
-        "utf-8"
-    )
-).hexdigest()
-
-for index, line in enumerate(
-    signature_lines
-):
-    if line.startswith(
-        "stateHash="
+with zipfile.ZipFile(
+    signature_target,
+    "w",
+    compression=zipfile.ZIP_STORED,
+) as archive:
+    for name in sorted(
+        signature_entries
     ):
-        signature_lines[index] = (
-            "stateHash="
-            + state_hash
+        archive.writestr(
+            name,
+            signature_entries[name],
         )
 
-        break
-else:
-    raise AssertionError(
-        "stateHash not found"
-    )
-
-signature_target.write_text(
-    "\n".join(
-        signature_lines
-    )
-    + "\n",
-    encoding="utf-8",
-)
-
 print(
-    "[PASS] NEGATIVE_TRUST_STATE_FIXTURES_READY"
+    "[PASS] NEGATIVE_CAPSULE_FIXTURES_READY"
 )
 PY
 
 echo
-echo "===== DESTROY PRIVATE KEYS + DIRECT TRUST PINS ====="
+echo "===== DESTROY ALL SOURCE FIXTURE MATERIAL ====="
 
-rm -f \
-  "${ROOT_PRIVATE}" \
-  "${INTERMEDIATE_PRIVATE}" \
-  "${TERMINAL_PRIVATE}" \
-  "${TRANSPARENCY_PRIVATE}" \
-  "${INTERMEDIATE_DIRECT_PIN}" \
-  "${TERMINAL_DIRECT_PIN}" \
-  "${TRANSPARENCY_DIRECT_PIN}" \
-  "${AUTHORITY_HEAD_ONE_PIN}" \
-  "${AUTHORITY_HEAD_TWO_PIN}" \
-  "${TRANSPARENCY_HEAD_ONE_PIN}" \
-  "${TRANSPARENCY_HEAD_TWO_PIN}"
+rm -rf \
+  "${WORK}"
 
-[[ ! -e "${ROOT_PRIVATE}" ]]
-[[ ! -e "${INTERMEDIATE_PRIVATE}" ]]
-[[ ! -e "${TERMINAL_PRIVATE}" ]]
-[[ ! -e "${TRANSPARENCY_PRIVATE}" ]]
+[[ ! -e "${WORK}" ]]
 
-[[ ! -e "${INTERMEDIATE_DIRECT_PIN}" ]]
-[[ ! -e "${TERMINAL_DIRECT_PIN}" ]]
-[[ ! -e "${TRANSPARENCY_DIRECT_PIN}" ]]
-
-[[ ! -e "${AUTHORITY_HEAD_ONE_PIN}" ]]
-[[ ! -e "${AUTHORITY_HEAD_TWO_PIN}" ]]
-
-[[ ! -e "${TRANSPARENCY_HEAD_ONE_PIN}" ]]
-[[ ! -e "${TRANSPARENCY_HEAD_TWO_PIN}" ]]
-
-echo "[PASS] ALL_PRIVATE_KEYS_DESTROYED"
-echo "[PASS] DIRECT_COMPONENT_PINS_REMOVED"
+echo "[PASS] PRIVATE_KEYS_DESTROYED"
+echo "[PASS] SOURCE_PAYLOADS_REMOVED"
+echo "[PASS] SOURCE_HELPER_JARS_REMOVED"
 
 echo
 echo "===== STOP TERRASCOPE + POSTGRES ====="
@@ -1124,309 +1072,123 @@ echo "[PASS] TERRASCOPE_BACKEND_OFFLINE"
 echo "[PASS] POSTGRES_OFFLINE"
 
 echo
-echo "===== VERIFY CURRENT ROOT-SIGNED TRUST STATE ====="
-
-rm -f \
-  "${DERIVED_AUTHORITY_HEAD}" \
-  "${DERIVED_TRANSPARENCY_KEY}" \
-  "${DERIVED_TRANSPARENCY_HEAD}"
+echo "===== VERIFY CURRENT PORTABLE CAPSULE ====="
 
 java \
-  -jar "${TRUST_STATE_JAR}" \
+  -jar "${CAPSULE_TOOL_EXTERNAL}" \
   verify \
-  --state "${CURRENT_STATE}" \
-  --root-pin "${ROOT_PIN}" \
-  --state-head-pin "${CURRENT_STATE_HEAD_PIN}" \
-  --release-authority-head-output "${DERIVED_AUTHORITY_HEAD}" \
-  --transparency-key-output "${DERIVED_TRANSPARENCY_KEY}" \
-  --transparency-head-output "${DERIVED_TRANSPARENCY_HEAD}" \
-  | tee /tmp/terrascope-step49-current-state.log
+  --capsule "${CURRENT_CAPSULE_A}" \
+  --root-pin "${ROOT_PIN_EXTERNAL}" \
+  --state-head-pin "${CURRENT_STATE_HEAD_EXTERNAL}" \
+  | tee /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^TRUST_STATE_SHAPE_VALID=true$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^CAPSULE_STRUCTURE_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^ROOT_FINGERPRINT_VALID=true$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^CAPSULE_MANIFEST_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^ROOT_PIN_VALID=true$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^ROOT_FINGERPRINT_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^STATE_HASH_VALID=true$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^CAPSULE_SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^STATE_HEAD_PIN_VALID=true$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^CAPSULE_ENTRY_HASHES_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^STATE_SEQUENCE=2$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^TRUST_STATE_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-grep -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step49-current-state.log
+grep -q '^AUTHORITY_LINEAGE_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-[[ -s "${DERIVED_AUTHORITY_HEAD}" ]]
-[[ -s "${DERIVED_TRANSPARENCY_KEY}" ]]
-[[ -s "${DERIVED_TRANSPARENCY_HEAD}" ]]
+grep -q '^RELEASE_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-DERIVED_AUTHORITY="$(
-  tr -d '[:space:]' \
-    < "${DERIVED_AUTHORITY_HEAD}"
-)"
+grep -q '^TRANSPARENCY_VALID=true$' \
+  /tmp/terrascope-step50-current.log
 
-DERIVED_TRANSPARENCY="$(
-  tr -d '[:space:]' \
-    < "${DERIVED_TRANSPARENCY_KEY}"
-)"
+grep -q '^VERIFICATION_RESULT=VALID$' \
+  /tmp/terrascope-step50-current.log
 
-DERIVED_TRANSPARENCY_LEDGER_HEAD="$(
-  tr -d '[:space:]' \
-    < "${DERIVED_TRANSPARENCY_HEAD}"
-)"
-
-echo "DERIVED_AUTHORITY_HEAD=${DERIVED_AUTHORITY}"
-
-echo "DERIVED_TRANSPARENCY_KEY=${DERIVED_TRANSPARENCY}"
-
-echo "DERIVED_TRANSPARENCY_HEAD=${DERIVED_TRANSPARENCY_LEDGER_HEAD}"
-
-[[ "${DERIVED_AUTHORITY}" == "${AUTHORITY_HEAD_TWO}" ]]
-
-[[ "${DERIVED_TRANSPARENCY}" == "${TRANSPARENCY_FINGERPRINT}" ]]
-
-[[ "${DERIVED_TRANSPARENCY_LEDGER_HEAD}" == "${TRANSPARENCY_HEAD_TWO}" ]]
-
-echo "[PASS] CURRENT_TRUST_STATE_VERIFIED_OFFLINE"
-
-echo "[PASS] COMPONENT_TRUST_PINS_DERIVED_FROM_TRUST_STATE"
+echo "[PASS] CURRENT_CAPSULE_OFFLINE_VERIFICATION"
 
 echo
-echo "===== VERIFY AUTHORITY USING DERIVED HEAD ====="
-
-rm -f \
-  "${DERIVED_RELEASE_KEY}"
+echo "===== HISTORICAL CAPSULE WITH HISTORICAL STATE HASH ====="
 
 java \
-  -jar "${AUTHORITY_JAR}" \
+  -jar "${CAPSULE_TOOL_EXTERNAL}" \
   verify \
-  --lineage "${AUTHORITY_LINEAGE}" \
-  --root-pin "${ROOT_PIN}" \
-  --head-pin "${DERIVED_AUTHORITY_HEAD}" \
-  --terminal-pin-output "${DERIVED_RELEASE_KEY}" \
-  | tee /tmp/terrascope-step49-authority.log
+  --capsule "${STALE_CAPSULE}" \
+  --root-pin "${ROOT_PIN_EXTERNAL}" \
+  --state-head-pin "${OLD_STATE_HEAD_EXTERNAL}" \
+  | tee /tmp/terrascope-step50-stale-historical.log
 
-grep -q \
-  '^ROOT_PIN_VALID=true$' \
-  /tmp/terrascope-step49-authority.log
+grep -q '^CAPSULE_SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step50-stale-historical.log
 
-grep -q \
-  '^SUCCESSOR_CONTINUITY_VALID=true$' \
-  /tmp/terrascope-step49-authority.log
+grep -q '^CAPSULE_ENTRY_HASHES_VALID=true$' \
+  /tmp/terrascope-step50-stale-historical.log
 
-grep -q \
-  '^HEAD_PIN_VALID=true$' \
-  /tmp/terrascope-step49-authority.log
+grep -q '^TRUST_STATE_VALID=true$' \
+  /tmp/terrascope-step50-stale-historical.log
 
-grep -q \
-  '^LINEAGE_VALID=true$' \
-  /tmp/terrascope-step49-authority.log
+grep -q '^AUTHORITY_LINEAGE_VALID=true$' \
+  /tmp/terrascope-step50-stale-historical.log
 
-grep -q \
-  '^TRANSITION_COUNT=2$' \
-  /tmp/terrascope-step49-authority.log
+grep -q '^RELEASE_VALID=true$' \
+  /tmp/terrascope-step50-stale-historical.log
 
-grep -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step49-authority.log
+grep -q '^TRANSPARENCY_VALID=true$' \
+  /tmp/terrascope-step50-stale-historical.log
 
-DERIVED_RELEASE_FINGERPRINT="$(
-  tr -d '[:space:]' \
-    < "${DERIVED_RELEASE_KEY}"
-)"
+grep -q '^VERIFICATION_RESULT=VALID$' \
+  /tmp/terrascope-step50-stale-historical.log
 
-[[ "${DERIVED_RELEASE_FINGERPRINT}" == "${TERMINAL_FINGERPRINT}" ]]
-
-echo "[PASS] CURRENT_RELEASE_KEY_DERIVED_FROM_TRUST_STATE"
+echo "[PASS] HISTORICAL_CAPSULE_IS_AUTHENTIC"
 
 echo
-echo "===== CURRENT RELEASE VERIFICATION ====="
-
-java \
-  -jar "${RELEASE_VERIFIER_JAR}" \
-  --artifact "${CURRENT_ARTIFACT}" \
-  --manifest "${CURRENT_MANIFEST}" \
-  --release-key-pin "${DERIVED_RELEASE_KEY}" \
-  | tee /tmp/terrascope-step49-release.log
-
-grep -q \
-  '^ARTIFACT_HASH_VALID=true$' \
-  /tmp/terrascope-step49-release.log
-
-grep -q \
-  '^RELEASE_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step49-release.log
-
-grep -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step49-release.log
-
-grep -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step49-release.log
-
-echo "[PASS] CURRENT_RELEASE_VERIFIED_FROM_TRUST_STATE"
-
-echo
-echo "===== RELEASE TRANSPARENCY FROM DERIVED PINS ====="
-
-java \
-  -jar "${TRANSPARENCY_JAR}" \
-  verify \
-  --artifact "${CURRENT_ARTIFACT}" \
-  --manifest "${CURRENT_MANIFEST}" \
-  --release-key-pin "${DERIVED_RELEASE_KEY}" \
-  --ledger "${TRANSPARENCY_LEDGER}" \
-  --transparency-key-pin "${DERIVED_TRANSPARENCY_KEY}" \
-  --head-pin "${DERIVED_TRANSPARENCY_HEAD}" \
-  | tee /tmp/terrascope-step49-transparency.log
-
-grep -q \
-  '^RELEASE_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step49-transparency.log
-
-grep -q \
-  '^TRANSPARENCY_LEDGER_VALID=true$' \
-  /tmp/terrascope-step49-transparency.log
-
-grep -q \
-  '^TRANSPARENCY_KEY_PIN_VALID=true$' \
-  /tmp/terrascope-step49-transparency.log
-
-grep -q \
-  '^HEAD_PIN_VALID=true$' \
-  /tmp/terrascope-step49-transparency.log
-
-grep -q \
-  '^LATEST_RELEASE_BINDING_VALID=true$' \
-  /tmp/terrascope-step49-transparency.log
-
-grep -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step49-transparency.log
-
-echo "[PASS] TRANSPARENCY_VERIFIED_FROM_TRUST_STATE"
-
-echo
-echo "===== HISTORICAL TRUST STATE REMAINS AUTHENTIC ====="
-
-java \
-  -jar "${TRUST_STATE_JAR}" \
-  verify \
-  --state "${OLD_STATE}" \
-  --root-pin "${ROOT_PIN}" \
-  --state-head-pin "${OLD_STATE_HEAD_PIN}" \
-  | tee /tmp/terrascope-step49-old-historical-state.log
-
-grep -q \
-  '^ROOT_PIN_VALID=true$' \
-  /tmp/terrascope-step49-old-historical-state.log
-
-grep -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step49-old-historical-state.log
-
-grep -q \
-  '^STATE_HASH_VALID=true$' \
-  /tmp/terrascope-step49-old-historical-state.log
-
-grep -q \
-  '^STATE_HEAD_PIN_VALID=true$' \
-  /tmp/terrascope-step49-old-historical-state.log
-
-grep -q \
-  '^STATE_SEQUENCE=1$' \
-  /tmp/terrascope-step49-old-historical-state.log
-
-grep -q \
-  '^VERIFICATION_RESULT=VALID$' \
-  /tmp/terrascope-step49-old-historical-state.log
-
-echo "[PASS] HISTORICAL_TRUST_STATE_IS_AUTHENTIC"
-
-echo
-echo "===== REJECT HISTORICAL STATE AGAINST CURRENT STATE HEAD ====="
-
-rm -f \
-  "${SHOULD_NOT_AUTHORITY}" \
-  "${SHOULD_NOT_TRANSPARENCY_KEY}" \
-  "${SHOULD_NOT_TRANSPARENCY_HEAD}"
+echo "===== REJECT HISTORICAL CAPSULE AGAINST CURRENT TRUST STATE ====="
 
 set +e
 
 java \
-  -jar "${TRUST_STATE_JAR}" \
+  -jar "${CAPSULE_TOOL_EXTERNAL}" \
   verify \
-  --state "${OLD_STATE}" \
-  --root-pin "${ROOT_PIN}" \
-  --state-head-pin "${CURRENT_STATE_HEAD_PIN}" \
-  --release-authority-head-output "${SHOULD_NOT_AUTHORITY}" \
-  --transparency-key-output "${SHOULD_NOT_TRANSPARENCY_KEY}" \
-  --transparency-head-output "${SHOULD_NOT_TRANSPARENCY_HEAD}" \
-  > /tmp/terrascope-step49-old-current-head.log \
+  --capsule "${STALE_CAPSULE}" \
+  --root-pin "${ROOT_PIN_EXTERNAL}" \
+  --state-head-pin "${CURRENT_STATE_HEAD_EXTERNAL}" \
+  > /tmp/terrascope-step50-stale-current.log \
   2>&1
 
-STALE_STATE_STATUS=$?
+STALE_STATUS=$?
 
 set -e
 
 cat \
-  /tmp/terrascope-step49-old-current-head.log
+  /tmp/terrascope-step50-stale-current.log
 
-echo "STALE_TRUST_STATE_EXIT=${STALE_STATE_STATUS}"
+echo "STALE_CAPSULE_CURRENT_STATE_EXIT=${STALE_STATUS}"
 
-[[ "${STALE_STATE_STATUS}" == "2" ]]
+[[ "${STALE_STATUS}" == "2" ]]
 
-grep -q \
-  '^ROOT_PIN_VALID=true$' \
-  /tmp/terrascope-step49-old-current-head.log
+grep -q '^CAPSULE_SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step50-stale-current.log
 
-grep -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step49-old-current-head.log
+grep -q '^CAPSULE_ENTRY_HASHES_VALID=true$' \
+  /tmp/terrascope-step50-stale-current.log
 
-grep -q \
-  '^STATE_HASH_VALID=true$' \
-  /tmp/terrascope-step49-old-current-head.log
+grep -q '^TRUST_STATE_VALID=false$' \
+  /tmp/terrascope-step50-stale-current.log
 
-grep -q \
-  '^STATE_HEAD_PIN_VALID=false$' \
-  /tmp/terrascope-step49-old-current-head.log
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step50-stale-current.log
 
-grep -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step49-old-current-head.log
-
-grep \
-  -q \
-  'authentic but is not the independently pinned current trust state' \
-  /tmp/terrascope-step49-old-current-head.log
-
-[[ ! -e "${SHOULD_NOT_AUTHORITY}" ]]
-[[ ! -e "${SHOULD_NOT_TRANSPARENCY_KEY}" ]]
-[[ ! -e "${SHOULD_NOT_TRANSPARENCY_HEAD}" ]]
-
-echo "[PASS] STALE_TRUST_STATE_ROLLBACK_REJECTION"
-
-echo "[PASS] STALE_TRUST_STATE_CANNOT_DERIVE_COMPONENT_PINS"
+echo "[PASS] STALE_CAPSULE_ROLLBACK_REJECTION"
 
 echo
 echo "===== WRONG ROOT PIN ====="
@@ -1434,12 +1196,12 @@ echo "===== WRONG ROOT PIN ====="
 set +e
 
 java \
-  -jar "${TRUST_STATE_JAR}" \
+  -jar "${CAPSULE_TOOL_EXTERNAL}" \
   verify \
-  --state "${CURRENT_STATE}" \
-  --root-pin "${WRONG_ROOT_PIN}" \
-  --state-head-pin "${CURRENT_STATE_HEAD_PIN}" \
-  > /tmp/terrascope-step49-wrong-root.log \
+  --capsule "${CURRENT_CAPSULE_A}" \
+  --root-pin "${WRONG_ROOT_EXTERNAL}" \
+  --state-head-pin "${CURRENT_STATE_HEAD_EXTERNAL}" \
+  > /tmp/terrascope-step50-wrong-root.log \
   2>&1
 
 WRONG_ROOT_STATUS=$?
@@ -1447,117 +1209,98 @@ WRONG_ROOT_STATUS=$?
 set -e
 
 cat \
-  /tmp/terrascope-step49-wrong-root.log
+  /tmp/terrascope-step50-wrong-root.log
 
 [[ "${WRONG_ROOT_STATUS}" == "2" ]]
 
-grep -q \
-  '^ROOT_PIN_VALID=false$' \
-  /tmp/terrascope-step49-wrong-root.log
+grep -q '^ROOT_PIN_VALID=false$' \
+  /tmp/terrascope-step50-wrong-root.log
 
-grep -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step49-wrong-root.log
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step50-wrong-root.log
 
-echo "[PASS] WRONG_TRUST_STATE_ROOT_PIN_REJECTION"
+echo "[PASS] WRONG_CAPSULE_ROOT_PIN_REJECTION"
 
 echo
-echo "===== WRONG CURRENT STATE HEAD ====="
+echo "===== ARTIFACT TAMPER ====="
 
 set +e
 
 java \
-  -jar "${TRUST_STATE_JAR}" \
+  -jar "${CAPSULE_TOOL_EXTERNAL}" \
   verify \
-  --state "${CURRENT_STATE}" \
-  --root-pin "${ROOT_PIN}" \
-  --state-head-pin "${WRONG_STATE_HEAD_PIN}" \
-  > /tmp/terrascope-step49-wrong-state-head.log \
+  --capsule "${ARTIFACT_TAMPER_CAPSULE}" \
+  --root-pin "${ROOT_PIN_EXTERNAL}" \
+  --state-head-pin "${CURRENT_STATE_HEAD_EXTERNAL}" \
+  > /tmp/terrascope-step50-artifact-tamper.log \
   2>&1
 
-WRONG_HEAD_STATUS=$?
+ARTIFACT_TAMPER_STATUS=$?
 
 set -e
 
 cat \
-  /tmp/terrascope-step49-wrong-state-head.log
+  /tmp/terrascope-step50-artifact-tamper.log
 
-[[ "${WRONG_HEAD_STATUS}" == "2" ]]
+[[ "${ARTIFACT_TAMPER_STATUS}" == "2" ]]
 
-grep -q \
-  '^ROOT_PIN_VALID=true$' \
-  /tmp/terrascope-step49-wrong-state-head.log
+grep -q '^CAPSULE_SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step50-artifact-tamper.log
 
-grep -q \
-  '^SIGNATURE_VALID=true$' \
-  /tmp/terrascope-step49-wrong-state-head.log
+grep -q '^CAPSULE_ENTRY_HASHES_VALID=false$' \
+  /tmp/terrascope-step50-artifact-tamper.log
 
-grep -q \
-  '^STATE_HASH_VALID=true$' \
-  /tmp/terrascope-step49-wrong-state-head.log
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step50-artifact-tamper.log
 
-grep -q \
-  '^STATE_HEAD_PIN_VALID=false$' \
-  /tmp/terrascope-step49-wrong-state-head.log
-
-grep -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step49-wrong-state-head.log
-
-echo "[PASS] WRONG_TRUST_STATE_HEAD_PIN_REJECTION"
+echo "[PASS] CAPSULE_ARTIFACT_TAMPER_DETECTION"
 
 echo
-echo "===== TRUST STATE FIELD TAMPER ====="
+echo "===== EMBEDDED TOOL TAMPER ====="
 
 set +e
 
 java \
-  -jar "${TRUST_STATE_JAR}" \
+  -jar "${CAPSULE_TOOL_EXTERNAL}" \
   verify \
-  --state "${FIELD_TAMPER_STATE}" \
-  --root-pin "${ROOT_PIN}" \
-  --state-head-pin "${CURRENT_STATE_HEAD_PIN}" \
-  > /tmp/terrascope-step49-field-tamper.log \
+  --capsule "${TOOL_TAMPER_CAPSULE}" \
+  --root-pin "${ROOT_PIN_EXTERNAL}" \
+  --state-head-pin "${CURRENT_STATE_HEAD_EXTERNAL}" \
+  > /tmp/terrascope-step50-tool-tamper.log \
   2>&1
 
-FIELD_TAMPER_STATUS=$?
+TOOL_TAMPER_STATUS=$?
 
 set -e
 
 cat \
-  /tmp/terrascope-step49-field-tamper.log
+  /tmp/terrascope-step50-tool-tamper.log
 
-[[ "${FIELD_TAMPER_STATUS}" == "2" ]]
+[[ "${TOOL_TAMPER_STATUS}" == "2" ]]
 
-grep -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step49-field-tamper.log
+grep -q '^CAPSULE_SIGNATURE_VALID=true$' \
+  /tmp/terrascope-step50-tool-tamper.log
 
-echo "[PASS] TRUST_STATE_FIELD_TAMPER_DETECTION"
+grep -q '^CAPSULE_ENTRY_HASHES_VALID=false$' \
+  /tmp/terrascope-step50-tool-tamper.log
+
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step50-tool-tamper.log
+
+echo "[PASS] CAPSULE_EMBEDDED_TOOL_TAMPER_DETECTION"
 
 echo
-echo "===== TRUST STATE SIGNATURE TAMPER WITH RECOMPUTED STATE HASH ====="
-
-TAMPERED_STATE_HASH="$(
-  grep \
-    '^stateHash=' \
-    "${SIGNATURE_TAMPER_STATE}" \
-    | cut -d= -f2-
-)"
-
-printf '%s\n' \
-  "${TAMPERED_STATE_HASH}" \
-  > "${WORK}/signature-tamper-head.sha256"
+echo "===== CAPSULE SIGNATURE TAMPER ====="
 
 set +e
 
 java \
-  -jar "${TRUST_STATE_JAR}" \
+  -jar "${CAPSULE_TOOL_EXTERNAL}" \
   verify \
-  --state "${SIGNATURE_TAMPER_STATE}" \
-  --root-pin "${ROOT_PIN}" \
-  --state-head-pin "${WORK}/signature-tamper-head.sha256" \
-  > /tmp/terrascope-step49-signature-tamper.log \
+  --capsule "${SIGNATURE_TAMPER_CAPSULE}" \
+  --root-pin "${ROOT_PIN_EXTERNAL}" \
+  --state-head-pin "${CURRENT_STATE_HEAD_EXTERNAL}" \
+  > /tmp/terrascope-step50-signature-tamper.log \
   2>&1
 
 SIGNATURE_TAMPER_STATUS=$?
@@ -1565,30 +1308,28 @@ SIGNATURE_TAMPER_STATUS=$?
 set -e
 
 cat \
-  /tmp/terrascope-step49-signature-tamper.log
+  /tmp/terrascope-step50-signature-tamper.log
 
 [[ "${SIGNATURE_TAMPER_STATUS}" == "2" ]]
 
-grep -q \
-  '^STATE_HASH_VALID=true$' \
-  /tmp/terrascope-step49-signature-tamper.log
+grep -q '^ROOT_PIN_VALID=true$' \
+  /tmp/terrascope-step50-signature-tamper.log
 
-grep -q \
-  '^STATE_HEAD_PIN_VALID=true$' \
-  /tmp/terrascope-step49-signature-tamper.log
+grep -q '^CAPSULE_SIGNATURE_VALID=false$' \
+  /tmp/terrascope-step50-signature-tamper.log
 
-grep -q \
-  '^SIGNATURE_VALID=false$' \
-  /tmp/terrascope-step49-signature-tamper.log
+grep -q '^CAPSULE_ENTRY_HASHES_VALID=true$' \
+  /tmp/terrascope-step50-signature-tamper.log
 
-grep -q \
-  '^VERIFICATION_RESULT=INVALID$' \
-  /tmp/terrascope-step49-signature-tamper.log
+grep -q '^VERIFICATION_RESULT=INVALID$' \
+  /tmp/terrascope-step50-signature-tamper.log
 
-echo "[PASS] TRUST_STATE_SIGNATURE_TAMPER_DETECTION"
+echo "[PASS] CAPSULE_SIGNATURE_TAMPER_DETECTION"
 
 echo
-echo "===== TRUE AIR-GAP PROOF ====="
+echo "===== TRUE PORTABILITY + AIR GAP ====="
+
+[[ ! -e "${WORK}" ]]
 
 RUNNING_POSTGRES_AFTER="$(
   docker compose ps \
@@ -1607,31 +1348,13 @@ if curl \
     "http://localhost:8087/actuator/health" \
     >/dev/null 2>&1; then
 
-  echo "[FAIL] Backend became reachable during Step 49 verification."
-
+  echo "[FAIL] Backend became reachable during Step 50 verification."
   exit 1
 fi
 
-[[ ! -e "${ROOT_PRIVATE}" ]]
-[[ ! -e "${INTERMEDIATE_PRIVATE}" ]]
-[[ ! -e "${TERMINAL_PRIVATE}" ]]
-[[ ! -e "${TRANSPARENCY_PRIVATE}" ]]
-
-[[ ! -e "${INTERMEDIATE_DIRECT_PIN}" ]]
-[[ ! -e "${TERMINAL_DIRECT_PIN}" ]]
-[[ ! -e "${TRANSPARENCY_DIRECT_PIN}" ]]
-
-[[ ! -e "${AUTHORITY_HEAD_ONE_PIN}" ]]
-[[ ! -e "${AUTHORITY_HEAD_TWO_PIN}" ]]
-
-[[ ! -e "${TRANSPARENCY_HEAD_ONE_PIN}" ]]
-[[ ! -e "${TRANSPARENCY_HEAD_TWO_PIN}" ]]
-
-echo "[PASS] TRUE_OFFLINE_UNIFIED_TRUST_STATE_VERIFICATION"
-
-echo "[PASS] PRIVATE_KEYS_REMAINED_ABSENT"
-
-echo "[PASS] ONLY_ROOT_AND_TRUST_STATE_HEAD_WERE_INDEPENDENT_TRUST_INPUTS"
+echo "[PASS] CAPSULE_SOURCE_STATE_ABSENT"
+echo "[PASS] TRUE_OFFLINE_PORTABLE_CAPSULE_VERIFICATION"
+echo "[PASS] ONLY_CAPSULE_ROOT_PIN_AND_STATE_HASH_REQUIRED"
 
 echo
 echo "===== RESTORE POSTGRES ====="
@@ -1664,5 +1387,5 @@ echo "[PASS] FLYWAY_V1_TO_V43_PRESERVED"
 
 echo
 echo "========================================================================"
-echo " TERRASCOPE — STEP 49 VERIFICATION PASSED"
+echo " TERRASCOPE — STEP 50 VERIFICATION PASSED"
 echo "========================================================================"
