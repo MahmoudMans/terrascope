@@ -148,6 +148,10 @@ import {
   ResilienceGovernanceTrustLineage,
 } from "@/components/resilience-governance-trust-lineage";
 
+import {
+  ResilienceGovernanceTrustRootPin,
+} from "@/components/resilience-governance-trust-root-pin";
+
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -1302,6 +1306,8 @@ export function SituationRoomPanel({
                     <ResilienceGovernanceTrustTransitions />
 
                     <ResilienceGovernanceTrustLineage />
+
+                    <ResilienceGovernanceTrustRootPin />
 
                     <IncidentResilienceAuditLedger
                       key={

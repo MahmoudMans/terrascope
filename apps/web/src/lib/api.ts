@@ -228,6 +228,13 @@ import type {
   GovernanceTrustLineageVerificationResponse,
 } from "@/types/resilience-governance-trust-lineage";
 
+import type {
+  GovernanceTrustLineagePinReceipt,
+  GovernanceTrustLineagePinReceiptHistoryResponse,
+  GovernanceTrustLineagePinnedVerificationRequest,
+  GovernanceTrustLineagePinnedVerificationResponse,
+} from "@/types/resilience-governance-trust-root-pin";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8087/api/v1";
@@ -4093,4 +4100,78 @@ export async function verifyGovernanceTrustLineageEnvelope(
   }
 
   return response.json() as Promise<GovernanceTrustLineageVerificationResponse>;
+}
+
+export async function verifyGovernanceTrustLineagePinned(
+  request: GovernanceTrustLineagePinnedVerificationRequest,
+): Promise<GovernanceTrustLineagePinnedVerificationResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/pinning/verify`,
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Pinned trust-lineage verification returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustLineagePinnedVerificationResponse>;
+}
+
+export async function createGovernanceTrustLineagePinReceipt(
+  request: GovernanceTrustLineagePinnedVerificationRequest,
+): Promise<GovernanceTrustLineagePinReceipt> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/pinning/receipts`,
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Pinned trust-lineage verification receipt returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustLineagePinReceipt>;
+}
+
+export async function fetchGovernanceTrustLineagePinReceipts(
+  signal?: AbortSignal,
+): Promise<GovernanceTrustLineagePinReceiptHistoryResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/resilience-portfolio/governance-closure/trust-lineage/pinning/receipts`,
+    {
+      method: "GET",
+      signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Pinned trust-lineage receipt history returned HTTP ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<GovernanceTrustLineagePinReceiptHistoryResponse>;
 }
