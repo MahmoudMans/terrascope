@@ -13,3 +13,4 @@ apps/web/out/
 coverage/
 dist/
 tmp/
+tools/screenshots/node_modules/
