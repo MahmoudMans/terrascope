@@ -13,8 +13,17 @@ import {
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
+
+import { ExportButtons } from "@/components/export-buttons";
+
+import { exportWatchlist } from "@/lib/export-sets";
+
+import {
+  useDialogBehavior,
+} from "@/lib/use-dialog-behavior";
 
 import {
   deleteWatchlistEntry,
@@ -254,6 +263,10 @@ export function WatchlistPanel({
       });
   };
 
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  useDialogBehavior({ open, onClose, containerRef: dialogRef });
+
   if (!open) {
     return null;
   }
@@ -264,29 +277,48 @@ export function WatchlistPanel({
         className="watchlist-backdrop"
         type="button"
         aria-label="Close saved events"
+        tabIndex={-1}
         onClick={onClose}
       />
 
-      <aside className="watchlist-panel">
+      <aside
+        ref={dialogRef}
+        className="watchlist-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="watchlist-title"
+        tabIndex={-1}
+      >
         <header className="watchlist-panel__header">
           <div>
             <span className="panel-kicker">
               EVENT WATCHLIST
             </span>
 
-            <h2>
+            <h2 id="watchlist-title">
               Saved events
             </h2>
           </div>
 
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Close saved events"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
+          <div className="export-actions">
+            <ExportButtons
+              noun="saved event"
+              subject="saved events"
+              count={data?.entries.length ?? 0}
+              onBuild={(format) => ({
+                file: exportWatchlist(data?.entries ?? [], format),
+              })}
+            />
+
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="Close saved events"
+              onClick={onClose}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </header>
 
         {data !== null && (

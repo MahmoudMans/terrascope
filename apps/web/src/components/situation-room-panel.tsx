@@ -1,23 +1,33 @@
 "use client";
 
 import {
-  Activity,
-  BadgeAlert,
-  CheckCircle2,
-  Clock3,
-  MessageSquarePlus,
+  Building2,
+  ChevronRight,
   RefreshCw,
-  Shield,
+  Search,
   Siren,
   UserRound,
   X,
 } from "lucide-react";
 
 import {
-  FormEvent,
   useEffect,
+  useMemo,
+  useRef,
   useState,
+  type FormEvent,
 } from "react";
+
+import { ExportButtons } from "@/components/export-buttons";
+
+import {
+  IncidentWorkspace,
+  type IncidentWorkspaceTabId,
+} from "@/components/incident-workspace";
+
+import {
+  PortfolioGovernanceWorkspace,
+} from "@/components/portfolio-governance-workspace";
 
 import {
   addIncidentNote,
@@ -28,6 +38,14 @@ import {
   updateIncidentStatus,
 } from "@/lib/api";
 
+import { exportIncidents } from "@/lib/export-sets";
+
+import { formatRelativeTime } from "@/lib/format";
+
+import {
+  useDialogBehavior,
+} from "@/lib/use-dialog-behavior";
+
 import type {
   IncidentCase,
   IncidentDashboardResponse,
@@ -36,323 +54,183 @@ import type {
   IncidentStatus,
 } from "@/types/incidents";
 
-import {
-  IncidentActionBoard,
-} from "@/components/incident-action-board";
-
-import {
-  IncidentResourceBoard,
-} from "@/components/incident-resource-board";
-
-import {
-  IncidentEvacuationBoard,
-} from "@/components/incident-evacuation-board";
-
-import {
-  IncidentLifelineBoard,
-} from "@/components/incident-lifeline-board";
-
-import {
-  IncidentDamageRecoveryBoard,
-} from "@/components/incident-damage-recovery-board";
-
-import {
-  IncidentCommandPulse,
-} from "@/components/incident-command-pulse";
-
-import {
-  IncidentSitrepCenter,
-} from "@/components/incident-sitrep-center";
-
-import {
-  IncidentClosureReview,
-} from "@/components/incident-closure-review";
-
-import {
-  IncidentImprovementBoard,
-} from "@/components/incident-improvement-board";
-
-import {
-  IncidentPreparednessExercises,
-} from "@/components/incident-preparedness-exercises";
-
-import {
-  IncidentResilienceValidation,
-} from "@/components/incident-resilience-validation";
-
-import {
-  IncidentResilienceCertification,
-} from "@/components/incident-resilience-certification";
-
-import {
-  IncidentResilienceEvidence,
-} from "@/components/incident-resilience-evidence";
-
-import {
-  IncidentResilienceAuditLedger,
-} from "@/components/incident-resilience-audit-ledger";
-
-import {
-  ResiliencePortfolioScorecard,
-} from "@/components/resilience-portfolio-scorecard";
-
-import {
-  ResiliencePortfolioReview,
-} from "@/components/resilience-portfolio-review";
-
-import {
-  ResilienceStrategicObjectives,
-} from "@/components/resilience-strategic-objectives";
-
-import {
-  ResilienceObjectiveOutcomes,
-} from "@/components/resilience-objective-outcomes";
-
-import {
-  ResilienceBenefitRealization,
-} from "@/components/resilience-benefit-realization";
-
-import {
-  ResilienceGovernanceClosure,
-} from "@/components/resilience-governance-closure";
-
-import {
-  ResilienceGovernanceSignatures,
-} from "@/components/resilience-governance-signatures";
-
-import {
-  ResilienceGovernanceTrustLifecycle,
-} from "@/components/resilience-governance-trust-lifecycle";
-
-import {
-  ResilienceGovernanceAssuranceBundles,
-} from "@/components/resilience-governance-assurance-bundles";
-
-import {
-  ResilienceGovernanceAirgap,
-} from "@/components/resilience-governance-airgap";
-
-import {
-  ResilienceGovernanceReceiptLedger,
-} from "@/components/resilience-governance-receipt-ledger";
-
-import {
-  ResilienceGovernanceReceiptCheckpoints,
-} from "@/components/resilience-governance-receipt-checkpoints";
-
-import {
-  ResilienceGovernanceTrustTransitions,
-} from "@/components/resilience-governance-trust-transitions";
-
-import {
-  ResilienceGovernanceTrustLineage,
-} from "@/components/resilience-governance-trust-lineage";
-
-import {
-  ResilienceGovernanceTrustRootPin,
-} from "@/components/resilience-governance-trust-root-pin";
-
-import {
-  ResilienceGovernanceOfflineVerifier,
-} from "@/components/resilience-governance-offline-verifier";
-
-import {
-  ResilienceGovernanceOfflineTrustLedger,
-} from "@/components/resilience-governance-offline-trust-ledger";
-
-import {
-  ResilienceGovernanceOfflineTrustCheckpoints,
-} from "@/components/resilience-governance-offline-trust-checkpoints";
-
-import {
-  ResilienceGovernanceOfflineTrustBundles,
-} from "@/components/resilience-governance-offline-trust-bundles";
-
 type SituationRoomPanelProps = {
   open: boolean;
   onClose: () => void;
+  onOpenAlertCenter?: () => void;
 };
 
-function severityClass(
-  severity: IncidentSeverity,
-): string {
-  return (
-    `incident-severity incident-severity--${severity.toLowerCase()}`
-  );
+type WorkspaceView = "incidents" | "portfolio";
+
+type QueueFilter =
+  | "all"
+  | "active"
+  | "responding"
+  | "critical"
+  | "closed";
+
+const HAZARD_LABELS: Record<IncidentCase["hazardType"], string> = {
+  earthquakes: "Earthquake",
+  volcanoes: "Volcano",
+  wildfires: "Wildfire",
+  "severe-storms": "Severe storm",
+};
+
+const dateTimeFormat = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function severityClass(severity: IncidentSeverity): string {
+  return `incident-severity incident-severity--${severity.toLowerCase()}`;
 }
 
-function statusClass(
-  status: IncidentStatus,
-): string {
-  return (
-    `incident-status incident-status--${status.toLowerCase()}`
-  );
+function statusClass(status: IncidentStatus): string {
+  return `incident-status incident-status--${status.toLowerCase()}`;
 }
 
-function formatTime(
-  value: string,
-): string {
-  return new Intl.DateTimeFormat(
-    "en",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    },
-  ).format(
-    new Date(value),
-  );
+function formatTime(value: string): string {
+  return dateTimeFormat.format(new Date(value));
+}
+
+function matchesFilter(
+  incident: IncidentCase,
+  filter: QueueFilter,
+): boolean {
+  switch (filter) {
+    case "active":
+      return incident.status !== "CLOSED";
+    case "responding":
+      return incident.status === "RESPONDING";
+    case "critical":
+      return (
+        incident.severity === "CRITICAL" && incident.status !== "CLOSED"
+      );
+    case "closed":
+      return incident.status === "CLOSED";
+    default:
+      return true;
+  }
+}
+
+function errorMessage(caught: unknown, fallback: string): string {
+  return caught instanceof Error ? caught.message : fallback;
+}
+
+function isAbort(caught: unknown): boolean {
+  return caught instanceof DOMException && caught.name === "AbortError";
 }
 
 export function SituationRoomPanel({
   open,
   onClose,
+  onOpenAlertCenter,
 }: SituationRoomPanelProps) {
-  const [
-    dashboard,
-    setDashboard,
-  ] =
-    useState<
-      IncidentDashboardResponse | null
-    >(null);
+  const [dashboard, setDashboard] =
+    useState<IncidentDashboardResponse | null>(null);
 
-  const [
-    selectedIncidentId,
-    setSelectedIncidentId,
-  ] =
-    useState<string | null>(
-      null,
+  const [selectedIncidentId, setSelectedIncidentId] =
+    useState<string | null>(null);
+
+  const [detail, setDetail] = useState<IncidentDetail | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [ownerDraft, setOwnerDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const [view, setView] = useState<WorkspaceView>("incidents");
+
+  const [incidentTab, setIncidentTab] =
+    useState<IncidentWorkspaceTabId>("overview");
+  const [filter, setFilter] = useState<QueueFilter>("all");
+  const [search, setSearch] = useState("");
+  const [queueOpen, setQueueOpen] = useState(true);
+
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  const detailRequestRef = useRef(0);
+
+  useDialogBehavior({ open, onClose, containerRef: dialogRef });
+
+  const ownerBaselineRef =
+    useRef<{ id: string; owner: string } | null>(null);
+
+  const applyDetail = (response: IncidentDetail) => {
+    const baseline = ownerBaselineRef.current;
+    const keepDraft =
+      baseline !== null && baseline.id === response.incident.id;
+
+    ownerBaselineRef.current = {
+      id: response.incident.id,
+      owner: response.incident.owner,
+    };
+
+    setDetail(response);
+    setOwnerDraft((draft) =>
+      keepDraft && draft !== baseline.owner
+        ? draft
+        : response.incident.owner,
     );
-
-  const [
-    detail,
-    setDetail,
-  ] =
-    useState<
-      IncidentDetail | null
-    >(null);
-
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true);
-
-  const [
-    detailLoading,
-    setDetailLoading,
-  ] =
-    useState(false);
-
-  const [
-    busy,
-    setBusy,
-  ] =
-    useState(false);
-
-  const [
-    ownerDraft,
-    setOwnerDraft,
-  ] =
-    useState("");
-
-  const [
-    noteDraft,
-    setNoteDraft,
-  ] =
-    useState("");
-
-  const [
-    error,
-    setError,
-  ] =
-    useState<string | null>(
-      null,
-    );
+  };
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    const controller =
-      new AbortController();
+    const controller = new AbortController();
+    const requestId = ++detailRequestRef.current;
 
-    void fetchIncidentDashboard(
-      controller.signal,
-    )
+    void fetchIncidentDashboard(controller.signal)
       .then((response) => {
-        if (
-          controller.signal.aborted
-        ) {
+        if (controller.signal.aborted) {
           return null;
         }
 
         setDashboard(response);
         setError(null);
 
-        const first =
-          response.incidents[0];
+        const first = response.incidents[0];
 
         if (first === undefined) {
-          setSelectedIncidentId(
-            null,
-          );
-
+          setSelectedIncidentId(null);
           setDetail(null);
-
           return null;
         }
 
-        setSelectedIncidentId(
-          first.id,
-        );
+        setSelectedIncidentId(first.id);
 
-        return fetchIncidentDetail(
-          first.id,
-          controller.signal,
-        );
+        return fetchIncidentDetail(first.id, controller.signal);
       })
       .then((response) => {
         if (
           response === null
           || response === undefined
           || controller.signal.aborted
+          || requestId !== detailRequestRef.current
         ) {
           return;
         }
 
+        ownerBaselineRef.current = {
+          id: response.incident.id,
+          owner: response.incident.owner,
+        };
         setDetail(response);
-
-        setOwnerDraft(
-          response.incident.owner,
-        );
+        setOwnerDraft(response.incident.owner);
+        setQueueOpen(false);
       })
-      .catch(
-        (caughtError: unknown) => {
-          if (
-            controller.signal.aborted
-            || (
-              caughtError
-                instanceof DOMException
-              && caughtError.name
-                === "AbortError"
-            )
-          ) {
-            return;
-          }
+      .catch((caught: unknown) => {
+        if (controller.signal.aborted || isAbort(caught)) {
+          return;
+        }
 
-          setError(
-            caughtError
-              instanceof Error
-              ? caughtError.message
-              : "Unable to load Situation Room.",
-          );
-        },
-      )
+        setError(errorMessage(caught, "Unable to load Situation Room."));
+      })
       .finally(() => {
-        if (
-          !controller.signal.aborted
-        ) {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
       });
@@ -360,177 +238,168 @@ export function SituationRoomPanel({
     return () => {
       controller.abort();
     };
-  }, [
-    open,
-  ]);
+  }, [open]);
 
-  const refreshDashboard = (
-    preferredId?: string,
-  ) => {
-    return fetchIncidentDashboard()
+  const refreshDashboard = (preferredId?: string) =>
+    fetchIncidentDashboard()
       .then((response) => {
         setDashboard(response);
 
         const targetId =
           preferredId
           ?? selectedIncidentId
-          ?? response.incidents[0]
-            ?.id
+          ?? response.incidents[0]?.id
           ?? null;
 
         if (targetId === null) {
-          setSelectedIncidentId(
-            null,
-          );
-
+          setSelectedIncidentId(null);
           setDetail(null);
-
           return null;
         }
 
-        setSelectedIncidentId(
-          targetId,
-        );
+        setSelectedIncidentId(targetId);
 
-        return fetchIncidentDetail(
-          targetId,
-        );
+        return fetchIncidentDetail(targetId);
       })
       .then((response) => {
-        if (
-          response === null
-          || response === undefined
-        ) {
+        if (response === null || response === undefined) {
           return;
         }
 
-        setDetail(response);
-
-        setOwnerDraft(
-          response.incident.owner,
-        );
+        applyDetail(response);
       });
-  };
 
-  const selectIncident = (
-    incident: IncidentCase,
-  ) => {
-    setSelectedIncidentId(
-      incident.id,
-    );
+  const selectIncident = (incident: IncidentCase) => {
+    const requestId = ++detailRequestRef.current;
 
+    setSelectedIncidentId(incident.id);
     setDetailLoading(true);
     setError(null);
+    setQueueOpen(false);
 
-    void fetchIncidentDetail(
-      incident.id,
-    )
+    void fetchIncidentDetail(incident.id)
       .then((response) => {
-        setDetail(response);
-
-        setOwnerDraft(
-          response.incident.owner,
-        );
+        if (requestId === detailRequestRef.current) {
+          applyDetail(response);
+        }
       })
-      .catch(
-        (caughtError: unknown) => {
-          setError(
-            caughtError
-              instanceof Error
-              ? caughtError.message
-              : "Unable to load incident.",
-          );
-        },
-      )
+      .catch((caught: unknown) => {
+        if (requestId === detailRequestRef.current) {
+          setError(errorMessage(caught, "Unable to load incident."));
+        }
+      })
       .finally(() => {
-        setDetailLoading(false);
+        if (requestId === detailRequestRef.current) {
+          setDetailLoading(false);
+        }
       });
   };
 
-  const mutate = (
-    operation:
-      Promise<IncidentDetail>,
-  ) => {
+  const mutate = (operation: Promise<IncidentDetail>) => {
     setBusy(true);
     setError(null);
 
     void operation
       .then((response) => {
-        setDetail(response);
+        applyDetail(response);
 
-        setOwnerDraft(
-          response.incident.owner,
-        );
-
-        return refreshDashboard(
-          response.incident.id,
-        );
+        return refreshDashboard(response.incident.id);
       })
-      .catch(
-        (caughtError: unknown) => {
-          setError(
-            caughtError
-              instanceof Error
-              ? caughtError.message
-              : "Unable to update incident.",
-          );
-        },
-      )
+      .catch((caught: unknown) => {
+        setError(errorMessage(caught, "Unable to update incident."));
+      })
       .finally(() => {
         setBusy(false);
       });
   };
 
-  const handleOwnerSave = (
-    event:
-      FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-
-    if (
-      detail === null
-      || ownerDraft.trim() === ""
-    ) {
+  const handleTimelineChanged = (label: string) => {
+    if (detail === null) {
       return;
     }
 
-    mutate(
-      updateIncidentOwner(
-        detail.incident.id,
-        ownerDraft.trim(),
-      ),
-    );
+    const incidentId = detail.incident.id;
+
+    void fetchIncidentDetail(incidentId)
+      .then((response) => {
+        if (response.incident.id === selectedIncidentId) {
+          applyDetail(response);
+        }
+      })
+      .catch((caught: unknown) => {
+        setError(errorMessage(caught, `Unable to refresh ${label} timeline.`));
+      });
+
+    void fetchIncidentDashboard()
+      .then(setDashboard)
+      .catch(() => undefined);
   };
 
-  const handleNote = (
-    event:
-      FormEvent<HTMLFormElement>,
-  ) => {
+  const handleOwnerSave = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (
-      detail === null
-      || noteDraft.trim() === ""
-    ) {
+    if (detail === null || ownerDraft.trim() === "") {
       return;
     }
 
-    const message =
-      noteDraft.trim();
-
-    setNoteDraft("");
-
-    mutate(
-      addIncidentNote(
-        detail.incident.id,
-        message,
-      ),
-    );
+    mutate(updateIncidentOwner(detail.incident.id, ownerDraft.trim()));
   };
+
+  const handleRefresh = () => {
+    setLoading(true);
+
+    void refreshDashboard()
+      .catch((caught: unknown) => {
+        setError(errorMessage(caught, "Unable to refresh incidents."));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const visibleIncidents = useMemo(() => {
+    const incidents = dashboard?.incidents ?? [];
+    const needle = search.trim().toLowerCase();
+
+    return incidents.filter(
+      (incident) =>
+        matchesFilter(incident, filter)
+        && (needle === ""
+          || incident.title.toLowerCase().includes(needle)
+          || incident.owner.toLowerCase().includes(needle)
+          || HAZARD_LABELS[incident.hazardType]
+            .toLowerCase()
+            .includes(needle)),
+    );
+  }, [dashboard, filter, search]);
 
   if (!open) {
     return null;
   }
+
+  const summaryTiles: Array<{
+    id: QueueFilter;
+    label: string;
+    value: number;
+  }> = [
+    { id: "all", label: "Incidents", value: dashboard?.totalCount ?? 0 },
+    { id: "active", label: "Active", value: dashboard?.activeCount ?? 0 },
+    {
+      id: "responding",
+      label: "Responding",
+      value: dashboard?.respondingCount ?? 0,
+    },
+    {
+      id: "critical",
+      label: "Critical",
+      value: dashboard?.criticalCount ?? 0,
+    },
+    { id: "closed", label: "Closed", value: dashboard?.closedCount ?? 0 },
+  ];
+
+  const selectedSummary = dashboard?.incidents.find(
+    (incident) => incident.id === selectedIncidentId,
+  );
 
   return (
     <div className="situation-overlay">
@@ -538,1125 +407,453 @@ export function SituationRoomPanel({
         type="button"
         className="situation-backdrop"
         aria-label="Close Situation Room"
+        tabIndex={-1}
         onClick={onClose}
       />
 
-      <section className="situation-workspace">
+      <section
+        ref={dialogRef}
+        className="situation-workspace"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="situation-room-title"
+        tabIndex={-1}
+      >
         <header className="situation-header">
-          <div>
-            <span className="panel-kicker">
-              INCIDENT OPERATIONS
+          <div className="situation-header__title">
+            <span className="situation-header__icon" aria-hidden="true">
+              <Siren size={20} />
             </span>
 
-            <h2>
-              Situation Room
-            </h2>
+            <div>
+              <span className="panel-kicker">
+                {view === "incidents"
+                  ? "INCIDENT OPERATIONS"
+                  : "RESILIENCE GOVERNANCE"}
+              </span>
 
-            <p>
-              Promote hazard notifications
-              into operational incidents and
-              maintain an auditable response
-              timeline.
-            </p>
+              <h2 id="situation-room-title">Situation Room</h2>
+
+              <p>
+                {view === "incidents"
+                  ? "Promote hazard notifications into operational incidents and keep an auditable response timeline."
+                  : "Portfolio-wide governance, trust and assurance - shared by every incident."}
+              </p>
+            </div>
           </div>
 
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Close Situation Room"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-        </header>
-
-        <div className="situation-summary">
-          <div>
-            <span>
-              Incidents
-            </span>
-
-            <strong>
-              {dashboard?.totalCount
-                ?? 0}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              Active
-            </span>
-
-            <strong>
-              {dashboard?.activeCount
-                ?? 0}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              Responding
-            </span>
-
-            <strong>
-              {dashboard?.respondingCount
-                ?? 0}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              Critical
-            </span>
-
-            <strong>
-              {dashboard?.criticalCount
-                ?? 0}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              Closed
-            </span>
-
-            <strong>
-              {dashboard?.closedCount
-                ?? 0}
-            </strong>
-          </div>
-        </div>
-
-        <div className="situation-body">
-          <aside className="situation-list-column">
-            <div className="situation-list-heading">
-              <div>
-                <span className="panel-kicker">
-                  INCIDENT QUEUE
-                </span>
-
-                <strong>
-                  Operational cases
-                </strong>
-              </div>
+          <div className="situation-header__actions">
+            <div
+              className="segmented-control"
+              role="group"
+              aria-label="Workspace view"
+            >
+              <button
+                type="button"
+                aria-pressed={view === "incidents"}
+                className={
+                  view === "incidents"
+                    ? "segmented-control__item segmented-control__item--active"
+                    : "segmented-control__item"
+                }
+                onClick={() => setView("incidents")}
+              >
+                <Siren size={14} aria-hidden="true" />
+                Incidents
+              </button>
 
               <button
                 type="button"
-                disabled={loading || busy}
-                onClick={() => {
-                  setLoading(true);
-
-                  void refreshDashboard()
-                    .catch(
-                      (caughtError: unknown) => {
-                        setError(
-                          caughtError
-                            instanceof Error
-                            ? caughtError.message
-                            : "Unable to refresh incidents.",
-                        );
-                      },
-                    )
-                    .finally(() => {
-                      setLoading(false);
-                    });
-                }}
+                aria-pressed={view === "portfolio"}
+                className={
+                  view === "portfolio"
+                    ? "segmented-control__item segmented-control__item--active"
+                    : "segmented-control__item"
+                }
+                onClick={() => setView("portfolio")}
               >
-                <RefreshCw
-                  size={13}
-                />
-
-                Refresh
+                <Building2 size={14} aria-hidden="true" />
+                Portfolio governance
               </button>
             </div>
 
-            <div className="situation-incident-list">
-              {loading
-                && dashboard === null
-                ? (
-                  <div className="situation-empty">
-                    Loading incidents…
-                  </div>
-                )
-                : dashboard === null
-                  || dashboard.incidents.length === 0
-                  ? (
-                    <div className="situation-empty situation-empty--large">
-                      <Siren size={28} />
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Close Situation Room"
+              onClick={onClose}
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </header>
 
-                      <strong>
-                        No incidents
-                      </strong>
-
-                      <span>
-                        Open Alert Center and
-                        promote an alert into
-                        Situation Room.
-                      </span>
-                    </div>
-                  )
-                  : dashboard.incidents.map(
-                    (incident) => (
-                      <button
-                        type="button"
-                        key={incident.id}
-                        className={
-                          selectedIncidentId
-                            === incident.id
-                            ? "situation-incident-card situation-incident-card--selected"
-                            : "situation-incident-card"
-                        }
-                        onClick={() =>
-                          selectIncident(
-                            incident,
-                          )
-                        }
-                      >
-                        <div className="situation-incident-card__top">
-                          <span
-                            className={
-                              severityClass(
-                                incident.severity,
-                              )
-                            }
-                          >
-                            {incident.severity}
-                          </span>
-
-                          <span
-                            className={
-                              statusClass(
-                                incident.status,
-                              )
-                            }
-                          >
-                            {incident.status}
-                          </span>
-                        </div>
-
-                        <strong>
-                          {incident.title}
-                        </strong>
-
-                        <span>
-                          {incident.owner}
-                          {" · "}
-                          {incident.timelineEventCount}
-                          {" events"}
-                        </span>
-                      </button>
-                    ),
-                  )
-              }
+        {view === "portfolio" ? (
+          <div className="situation-portfolio">
+            <PortfolioGovernanceWorkspace />
+          </div>
+        ) : (
+          <>
+            <div
+              className="situation-summary"
+              role="group"
+              aria-label="Filter incidents"
+            >
+              {summaryTiles.map((tile) => (
+                <button
+                  key={tile.id}
+                  type="button"
+                  aria-pressed={filter === tile.id}
+                  className={
+                    filter === tile.id
+                      ? `situation-summary__tile situation-summary__tile--${tile.id} situation-summary__tile--selected`
+                      : `situation-summary__tile situation-summary__tile--${tile.id}`
+                  }
+                  onClick={() => setFilter(tile.id)}
+                >
+                  <span>{tile.label}</span>
+                  <strong>{tile.value}</strong>
+                </button>
+              ))}
             </div>
-          </aside>
 
-          <div className="situation-detail-column">
-            {error !== null && (
-              <div className="situation-error">
-                {error}
-              </div>
-            )}
-
-            {detailLoading
-              ? (
-                <div className="situation-empty situation-empty--large">
-                  Loading incident…
-                </div>
-              )
-              : detail === null
-                ? (
-                  <div className="situation-empty situation-empty--large">
-                    <Siren size={30} />
+            <div className="situation-body">
+              <aside
+                className={
+                  queueOpen
+                    ? "situation-list-column situation-list-column--open"
+                    : "situation-list-column"
+                }
+              >
+                <div className="situation-list-heading">
+                  <div className="situation-list-heading__label">
+                    <span className="panel-kicker">INCIDENT QUEUE</span>
 
                     <strong>
-                      Situation Room ready
+                      {visibleIncidents.length}
+                      {" of "}
+                      {dashboard?.totalCount ?? 0}
+                      {" cases"}
                     </strong>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="situation-queue-toggle"
+                    aria-expanded={queueOpen}
+                    onClick={() => setQueueOpen((current) => !current)}
+                  >
+                    <ChevronRight size={15} aria-hidden="true" />
 
                     <span>
-                      Operational incidents
-                      opened from alerts will
-                      appear here.
+                      <span className="panel-kicker">INCIDENT QUEUE</span>
+
+                      <strong>
+                        {selectedSummary !== undefined
+                          ? selectedSummary.title
+                          : "Operational cases"}
+                      </strong>
                     </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="situation-refresh"
+                    disabled={loading || busy}
+                    aria-label="Refresh incidents"
+                    onClick={handleRefresh}
+                  >
+                    <RefreshCw
+                      size={14}
+                      className={loading ? "spin" : ""}
+                      aria-hidden="true"
+                    />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+
+                <div className="situation-queue-body">
+                  <label className="situation-search">
+                    <Search size={14} aria-hidden="true" />
+
+                    <input
+                      type="search"
+                      value={search}
+                      placeholder="Search title, owner or hazard"
+                      aria-label="Search incidents"
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
+                  </label>
+
+                  <div className="export-row">
+                    <span>Download this list</span>
+
+                    <ExportButtons
+                      noun="incident"
+                      subject="incidents"
+                      count={visibleIncidents.length}
+                      onBuild={(format) => ({
+                        file: exportIncidents(visibleIncidents, format, {
+                          filter,
+                          search: search.trim(),
+                          totalCount: dashboard?.totalCount ?? 0,
+                        }),
+                      })}
+                    />
                   </div>
-                )
-                : (
-                  <>
-                    <div className="situation-detail-heading">
-                      <div>
-                        <span className="panel-kicker">
-                          INCIDENT
+
+                  <div
+                    className="situation-incident-list"
+                    aria-busy={loading}
+                  >
+                    {loading && dashboard === null ? (
+                      <div className="situation-empty">
+                        Loading incidents…
+                      </div>
+                    ) : dashboard === null
+                      || dashboard.incidents.length === 0 ? (
+                      <div className="situation-empty situation-empty--large">
+                        <Siren size={28} aria-hidden="true" />
+
+                        <strong>No incidents yet</strong>
+
+                        <span>
+                          Open the Alert Center and promote an alert into
+                          the Situation Room.
                         </span>
 
-                        <h3>
-                          {detail.incident
-                            .title}
-                        </h3>
+                        {onOpenAlertCenter !== undefined && (
+                          <button
+                            type="button"
+                            className="situation-empty__action"
+                            onClick={onOpenAlertCenter}
+                          >
+                            Open Alert Center
+                          </button>
+                        )}
+                      </div>
+                    ) : visibleIncidents.length === 0 ? (
+                      <div className="situation-empty">
+                        No incidents match this filter.
+                      </div>
+                    ) : (
+                      visibleIncidents.map((incident) => (
+                        <button
+                          type="button"
+                          key={incident.id}
+                          data-severity={incident.severity.toLowerCase()}
+                          aria-current={
+                            selectedIncidentId === incident.id
+                              ? "true"
+                              : undefined
+                          }
+                          className={
+                            selectedIncidentId === incident.id
+                              ? "situation-incident-card situation-incident-card--selected"
+                              : "situation-incident-card"
+                          }
+                          onClick={() => selectIncident(incident)}
+                        >
+                          <div className="situation-incident-card__top">
+                            <span className={severityClass(incident.severity)}>
+                              {incident.severity}
+                            </span>
 
-                        <p>
-                          {detail.incident
-                            .description}
-                        </p>
+                            <span className={statusClass(incident.status)}>
+                              {incident.status}
+                            </span>
+                          </div>
+
+                          <strong>{incident.title}</strong>
+
+                          <span>
+                            {HAZARD_LABELS[incident.hazardType]}
+                            {" · "}
+                            {incident.owner}
+                          </span>
+
+                          <small>
+                            {incident.timelineEventCount} events
+                            {" · updated "}
+                            {formatRelativeTime(incident.updatedAt)}
+                          </small>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </aside>
+
+              <div className="situation-detail-column">
+                {error !== null && (
+                  <div className="situation-error" role="alert">
+                    {error}
+                  </div>
+                )}
+
+                {detailLoading ? (
+                  <div className="situation-empty situation-empty--large">
+                    Loading incident…
+                  </div>
+                ) : detail === null ? (
+                  <div className="situation-empty situation-empty--large">
+                    <Siren size={30} aria-hidden="true" />
+
+                    <strong>Situation Room ready</strong>
+
+                    <span>
+                      Operational incidents opened from alerts will appear
+                      here.
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="incident-command-bar">
+                      <div className="incident-command-bar__title">
+                        <span className="panel-kicker">
+                          INCIDENT
+                          {" · "}
+                          {HAZARD_LABELS[detail.incident.hazardType]
+                            .toUpperCase()}
+                        </span>
+
+                        <h3>{detail.incident.title}</h3>
+
+                        <p>{detail.incident.description}</p>
                       </div>
 
                       <div className="situation-detail-badges">
                         <span
-                          className={
-                            severityClass(
-                              detail.incident
-                                .severity,
-                            )
-                          }
+                          className={severityClass(detail.incident.severity)}
                         >
-                          {detail.incident
-                            .severity}
+                          {detail.incident.severity}
                         </span>
 
-                        <span
-                          className={
-                            statusClass(
-                              detail.incident
-                                .status,
-                            )
-                          }
-                        >
-                          {detail.incident
-                            .status}
+                        <span className={statusClass(detail.incident.status)}>
+                          {detail.incident.status}
                         </span>
                       </div>
                     </div>
 
-                    <div className="situation-controls">
+                    <dl className="incident-meta">
+                      <div>
+                        <dt>Opened</dt>
+                        <dd>{formatTime(detail.incident.openedAt)}</dd>
+                      </div>
+
+                      <div>
+                        <dt>Updated</dt>
+                        <dd>{formatRelativeTime(detail.incident.updatedAt)}</dd>
+                      </div>
+
+                      <div>
+                        <dt>Location</dt>
+                        <dd>
+                          {detail.incident.latitude.toFixed(2)}°,{" "}
+                          {detail.incident.longitude.toFixed(2)}°
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Events</dt>
+                        <dd>{detail.incident.timelineEventCount}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="incident-controls">
                       <label>
-                        <span>
-                          Status
-                        </span>
+                        <span>Status</span>
 
                         <select
-                          value={
-                            detail.incident
-                              .status
-                          }
+                          value={detail.incident.status}
                           disabled={busy}
                           onChange={(event) =>
                             mutate(
                               updateIncidentStatus(
-                                detail.incident
-                                  .id,
+                                detail.incident.id,
                                 event.target.value as IncidentStatus,
                               ),
                             )
                           }
                         >
-                          <option value="OPEN">
-                            Open
-                          </option>
-
-                          <option value="MONITORING">
-                            Monitoring
-                          </option>
-
-                          <option value="RESPONDING">
-                            Responding
-                          </option>
-
-                          <option value="STABILIZED">
-                            Stabilized
-                          </option>
-
-                          <option value="CLOSED">
-                            Closed
-                          </option>
+                          <option value="OPEN">Open</option>
+                          <option value="MONITORING">Monitoring</option>
+                          <option value="RESPONDING">Responding</option>
+                          <option value="STABILIZED">Stabilized</option>
+                          <option value="CLOSED">Closed</option>
                         </select>
                       </label>
 
                       <label>
-                        <span>
-                          Severity
-                        </span>
+                        <span>Severity</span>
 
                         <select
-                          value={
-                            detail.incident
-                              .severity
-                          }
+                          value={detail.incident.severity}
                           disabled={busy}
                           onChange={(event) =>
                             mutate(
                               updateIncidentSeverity(
-                                detail.incident
-                                  .id,
+                                detail.incident.id,
                                 event.target.value as IncidentSeverity,
                               ),
                             )
                           }
                         >
-                          <option value="LOW">
-                            Low
-                          </option>
-
-                          <option value="MODERATE">
-                            Moderate
-                          </option>
-
-                          <option value="HIGH">
-                            High
-                          </option>
-
-                          <option value="SEVERE">
-                            Severe
-                          </option>
-
-                          <option value="CRITICAL">
-                            Critical
-                          </option>
+                          <option value="LOW">Low</option>
+                          <option value="MODERATE">Moderate</option>
+                          <option value="HIGH">High</option>
+                          <option value="SEVERE">Severe</option>
+                          <option value="CRITICAL">Critical</option>
                         </select>
                       </label>
-                    </div>
 
-                    <div className="situation-metrics">
-                      <div>
-                        <Shield size={15} />
-
-                        <span>
-                          Hazard
-                        </span>
-
-                        <strong>
-                          {detail.incident
-                            .hazardType}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <UserRound
-                          size={15}
-                        />
-
-                        <span>
-                          Owner
-                        </span>
-
-                        <strong>
-                          {detail.incident
-                            .owner}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <Clock3 size={15} />
-
-                        <span>
-                          Opened
-                        </span>
-
-                        <strong>
-                          {formatTime(
-                            detail.incident
-                              .openedAt,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <Activity size={15} />
-
-                        <span>
-                          Timeline
-                        </span>
-
-                        <strong>
-                          {detail.incident
-                            .timelineEventCount}
-                        </strong>
-                      </div>
-                    </div>
-
-                    <form
-                      className="situation-owner-form"
-                      onSubmit={handleOwnerSave}
-                    >
-                      <label>
-                        <span>
-                          Response owner
-                        </span>
-
-                        <input
-                          required
-                          maxLength={120}
-                          value={ownerDraft}
-                          onChange={(event) =>
-                            setOwnerDraft(
-                              event.target.value,
-                            )
-                          }
-                        />
-                      </label>
-
-                      <button
-                        type="submit"
-                        disabled={busy}
+                      <form
+                        className="incident-controls__owner"
+                        onSubmit={handleOwnerSave}
                       >
-                        <UserRound
-                          size={13}
-                        />
+                        <label>
+                          <span>Response owner</span>
 
-                        Assign
-                      </button>
-                    </form>
+                          <input
+                            required
+                            maxLength={120}
+                            value={ownerDraft}
+                            onChange={(event) =>
+                              setOwnerDraft(event.target.value)
+                            }
+                          />
+                        </label>
 
-                    <form
-                      className="situation-note-form"
-                      onSubmit={handleNote}
-                    >
-                      <label>
-                        <span>
-                          Operational note
-                        </span>
-
-                        <textarea
-                          maxLength={2000}
-                          value={noteDraft}
-                          placeholder="Add an operational update, decision or observation…"
-                          onChange={(event) =>
-                            setNoteDraft(
-                              event.target.value,
-                            )
+                        <button
+                          type="submit"
+                          disabled={
+                            busy
+                            || ownerDraft.trim() === ""
+                            || ownerDraft.trim() === detail.incident.owner
                           }
-                        />
-                      </label>
-
-                      <button
-                        type="submit"
-                        disabled={
-                          busy
-                          || noteDraft.trim()
-                            === ""
-                        }
-                      >
-                        <MessageSquarePlus
-                          size={13}
-                        />
-
-                        Add note
-                      </button>
-                    </form>
-
-                    <IncidentCommandPulse
-                      key={
-                        `command-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh command timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentClosureReview
-                      key={
-                        `closure-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh after-action timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentImprovementBoard
-                      key={
-                        `improvements-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh improvement timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentPreparednessExercises
-                      key={
-                        `preparedness-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh preparedness timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentResilienceValidation
-                      key={
-                        `resilience-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh resilience timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentResilienceCertification
-                      key={
-                        `certification-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh certification timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentResilienceEvidence
-                      key={
-                        `evidence-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh evidence timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <ResiliencePortfolioScorecard />
-
-                    <ResiliencePortfolioReview />
-
-                    <ResilienceStrategicObjectives />
-
-                    <ResilienceObjectiveOutcomes />
-
-                    <ResilienceBenefitRealization />
-
-                    <ResilienceGovernanceClosure />
-
-                    <ResilienceGovernanceSignatures />
-
-                    <ResilienceGovernanceTrustLifecycle />
-
-                    <ResilienceGovernanceAssuranceBundles />
-
-                    <ResilienceGovernanceAirgap />
-
-                    <ResilienceGovernanceReceiptLedger />
-
-                    <ResilienceGovernanceReceiptCheckpoints />
-
-                    <ResilienceGovernanceTrustTransitions />
-
-                    <ResilienceGovernanceTrustLineage />
-
-                    <ResilienceGovernanceTrustRootPin />
-
-                    <ResilienceGovernanceOfflineVerifier />
-
-                    <ResilienceGovernanceOfflineTrustLedger />
-
-                    <ResilienceGovernanceOfflineTrustCheckpoints />
-
-                    <ResilienceGovernanceOfflineTrustBundles />
-
-                    <IncidentResilienceAuditLedger
-                      key={
-                        `audit-ledger-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh audit-ledger timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentSitrepCenter
-                      key={
-                        `sitrep-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh SITREP timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentDamageRecoveryBoard
-                      key={
-                        `damage-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh damage recovery timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentLifelineBoard
-                      key={
-                        `lifelines-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh lifeline timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentEvacuationBoard
-                      key={
-                        `evacuation-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh evacuation timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentResourceBoard
-                      key={
-                        `resources-${detail.incident.id}`
-                      }
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh resource timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <IncidentActionBoard
-                      incidentId={
-                        detail.incident.id
-                      }
-                      incidentStatus={
-                        detail.incident.status
-                      }
-                      onTimelineChanged={() => {
-                        void fetchIncidentDetail(
-                          detail.incident.id,
-                        )
-                          .then(
-                            (response) => {
-                              setDetail(
-                                response,
-                              );
-                            },
-                          )
-                          .catch(
-                            (
-                              caughtError:
-                                unknown,
-                            ) => {
-                              setError(
-                                caughtError
-                                  instanceof Error
-                                  ? caughtError.message
-                                  : "Unable to refresh incident timeline.",
-                              );
-                            },
-                          );
-                      }}
-                    />
-
-                    <div className="situation-timeline-heading">
-                      <BadgeAlert
-                        size={15}
-                      />
-
-                      <span>
-                        Response timeline
-                      </span>
+                        >
+                          <UserRound size={14} aria-hidden="true" />
+                          Assign
+                        </button>
+                      </form>
                     </div>
 
-                    <div className="situation-timeline">
-                      {detail.timeline.length === 0
-                        ? (
-                          <div className="situation-empty">
-                            No timeline events.
-                          </div>
-                        )
-                        : detail.timeline.map(
-                          (event) => (
-                            <article
-                              key={event.id}
-                            >
-                              <span className="situation-timeline__marker">
-                                {event.eventType
-                                  === "NOTE_ADDED"
-                                  ? (
-                                    <MessageSquarePlus
-                                      size={12}
-                                    />
-                                  )
-                                  : event.eventType
-                                    === "STATUS_CHANGED"
-                                    ? (
-                                      <CheckCircle2
-                                        size={12}
-                                      />
-                                    )
-                                    : (
-                                      <Activity
-                                        size={12}
-                                      />
-                                    )
-                                }
-                              </span>
-
-                              <div>
-                                <span>
-                                  {event.eventType
-                                    .replaceAll(
-                                      "_",
-                                      " ",
-                                    )}
-                                </span>
-
-                                <strong>
-                                  {event.message}
-                                </strong>
-
-                                <small>
-                                  {formatTime(
-                                    event.createdAt,
-                                  )}
-                                </small>
-                              </div>
-                            </article>
-                          ),
-                        )
+                    <IncidentWorkspace
+                      detail={detail}
+                      busy={busy}
+                      activeTab={incidentTab}
+                      onTabChange={setIncidentTab}
+                      onAddNote={(message) =>
+                        mutate(addIncidentNote(detail.incident.id, message))
                       }
-                    </div>
+                      onTimelineChanged={handleTimelineChanged}
+                    />
                   </>
-                )
-            }
-          </div>
-        </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

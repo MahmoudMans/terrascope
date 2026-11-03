@@ -1,7 +1,15 @@
 import {
+  AuthGate,
+} from "@/components/auth-gate";
+
+import {
   DisasterDashboard,
 } from "@/components/disaster-dashboard";
 
 export default function Home() {
-  return <DisasterDashboard />;
+  return (
+    <AuthGate>
+      <DisasterDashboard />
+    </AuthGate>
+  );
 }

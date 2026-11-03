@@ -17,8 +17,13 @@ import {
 import {
   FormEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
+
+import {
+  useDialogBehavior,
+} from "@/lib/use-dialog-behavior";
 
 import {
   fetchSimulationHistory,
@@ -267,6 +272,10 @@ export function SimulationPanel({
       });
   };
 
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  useDialogBehavior({ open, onClose, containerRef: dialogRef });
+
   if (!open) {
     return null;
   }
@@ -277,17 +286,25 @@ export function SimulationPanel({
         type="button"
         className="simulation-backdrop"
         aria-label="Close simulations"
+        tabIndex={-1}
         onClick={onClose}
       />
 
-      <section className="simulation-workspace">
+      <section
+        ref={dialogRef}
+        className="simulation-workspace"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="simulation-title"
+        tabIndex={-1}
+      >
         <header className="simulation-header">
           <div>
             <span className="panel-kicker">
               IMPACT LAB
             </span>
 
-            <h2>
+            <h2 id="simulation-title">
               Disaster simulation
             </h2>
 

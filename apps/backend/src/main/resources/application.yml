@@ -6,6 +6,16 @@ spring:
   application:
     name: terrascope-backend
 
+  task:
+    scheduling:
+      pool:
+        size: 2
+
+  http:
+    clients:
+      connect-timeout: 5s
+      read-timeout: 30s
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:55433}/${DB_NAME:terrascope}
     username: ${DB_USER:terrascope}
@@ -41,3 +51,10 @@ terrascope:
 
   eonet:
     base-url: https://eonet.gsfc.nasa.gov/api/v3
+
+  automation:
+    ingestion:
+      enabled: ${INGESTION_ENABLED:true}
+      evaluate-alerts: ${INGESTION_EVALUATE_ALERTS:true}
+      interval: ${INGESTION_INTERVAL:PT2M}
+      initial-delay: PT20S

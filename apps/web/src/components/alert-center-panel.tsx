@@ -19,8 +19,13 @@ import {
 import {
   FormEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
+
+import {
+  useDialogBehavior,
+} from "@/lib/use-dialog-behavior";
 
 import {
   createAlertRule,
@@ -52,6 +57,7 @@ import type {
 
 type AlertCenterPanelProps = {
   open: boolean;
+  refreshToken?: number;
   onClose: () => void;
 };
 
@@ -168,6 +174,7 @@ function HazardIcon({
 
 export function AlertCenterPanel({
   open,
+  refreshToken = 0,
   onClose,
 }: AlertCenterPanelProps) {
   const [
@@ -272,6 +279,7 @@ export function AlertCenterPanel({
     };
   }, [
     open,
+    refreshToken,
   ]);
 
   const refreshDashboard = () => {
@@ -619,6 +627,10 @@ export function AlertCenterPanel({
       });
   };
 
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  useDialogBehavior({ open, onClose, containerRef: dialogRef });
+
   if (!open) {
     return null;
   }
@@ -629,17 +641,25 @@ export function AlertCenterPanel({
         className="alert-center-backdrop"
         type="button"
         aria-label="Close alert center"
+        tabIndex={-1}
         onClick={onClose}
       />
 
-      <section className="alert-center-workspace">
+      <section
+        ref={dialogRef}
+        className="alert-center-workspace"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="alert-center-title"
+        tabIndex={-1}
+      >
         <header className="alert-center-header">
           <div>
             <span className="panel-kicker">
               LOCAL NOTIFICATION CENTER
             </span>
 
-            <h2>
+            <h2 id="alert-center-title">
               Hazard alert rules
             </h2>
 

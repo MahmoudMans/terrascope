@@ -3,10 +3,12 @@ package com.terrascope.platform.infrastructure.usgs;
 import com.terrascope.platform.api.model.EarthquakeEvent;
 import com.terrascope.platform.config.UsgsProperties;
 import com.terrascope.platform.domain.EarthquakePeriod;
+import com.terrascope.platform.infrastructure.FeedCache;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -15,6 +17,12 @@ import java.util.Objects;
 public class UsgsEarthquakeClient {
 
     private final RestClient restClient;
+
+    private final FeedCache<String, List<EarthquakeEvent>> cache =
+            new FeedCache<>(
+                    Duration.ofSeconds(90),
+                    Duration.ofMinutes(10)
+            );
 
     public UsgsEarthquakeClient(
             RestClient.Builder restClientBuilder,
@@ -34,6 +42,15 @@ public class UsgsEarthquakeClient {
                 + period.feedSuffix()
                 + ".geojson";
 
+        return cache.get(
+                feedName,
+                () -> download(feedName)
+        );
+    }
+
+    private List<EarthquakeEvent> download(
+            String feedName
+    ) {
         try {
             UsgsFeatureCollection payload = restClient
                     .get()

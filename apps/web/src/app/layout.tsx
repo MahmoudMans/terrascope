@@ -4,6 +4,9 @@ import type {
 
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
+import "./light-theme.generated.css";
+
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title:
@@ -18,7 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+
       <body>{children}</body>
     </html>
   );

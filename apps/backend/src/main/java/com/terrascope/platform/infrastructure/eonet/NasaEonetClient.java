@@ -3,11 +3,13 @@ package com.terrascope.platform.infrastructure.eonet;
 import com.terrascope.platform.api.model.NaturalHazardEvent;
 import com.terrascope.platform.api.model.VolcanoEvent;
 import com.terrascope.platform.domain.HazardType;
+import com.terrascope.platform.infrastructure.FeedCache;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
@@ -20,6 +22,12 @@ public class NasaEonetClient {
     private static final int SOURCE_FETCH_LIMIT = 500;
 
     private final RestClient restClient;
+
+    private final FeedCache<String, List<EonetEventCollection.Event>> cache =
+            new FeedCache<>(
+                    Duration.ofSeconds(90),
+                    Duration.ofMinutes(10)
+            );
 
     public NasaEonetClient(
             RestClient.Builder restClientBuilder,
@@ -80,6 +88,21 @@ public class NasaEonetClient {
     }
 
     private List<EonetEventCollection.Event> fetchCategoryEvents(
+            HazardType hazardType,
+            String status,
+            int days
+    ) {
+        return cache.get(
+                hazardType.name() + "|" + status + "|" + days,
+                () -> downloadCategoryEvents(
+                        hazardType,
+                        status,
+                        days
+                )
+        );
+    }
+
+    private List<EonetEventCollection.Event> downloadCategoryEvents(
             HazardType hazardType,
             String status,
             int days

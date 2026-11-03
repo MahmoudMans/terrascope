@@ -3,7 +3,6 @@
 import {
   Activity,
   AlertTriangle,
-  Bell,
   Bookmark,
   BookmarkPlus,
   CircleDot,
@@ -60,6 +59,7 @@ import {
 
 import {
   RegionalIntelligencePanel,
+  type RegionalPreset,
 } from "@/components/regional-intelligence-panel";
 
 import {
@@ -79,6 +79,74 @@ import {
 } from "@/components/watchlist-panel";
 
 import {
+  EventTimelinePanel,
+} from "@/components/event-timeline-panel";
+
+import {
+  NotificationBell,
+} from "@/components/notification-bell";
+
+import {
+  RegionsPanel,
+} from "@/components/regions-panel";
+
+import {
+  SettingsPanel,
+} from "@/components/settings-panel";
+
+import {
+  LiveToast,
+  type LiveToastMessage,
+} from "@/components/live-toast";
+
+import {
+  fetchAutomationStatus,
+  type AutomationStatus,
+} from "@/lib/live-stream";
+
+import {
+  useLiveStream,
+} from "@/lib/use-live-stream";
+
+import {
+  UserMenu,
+} from "@/components/user-menu";
+
+import {
+  ActivityButton,
+} from "@/components/activity-button";
+
+import {
+  ExportButtons,
+  ExportToast,
+  type ExportResult,
+} from "@/components/export-buttons";
+
+import {
+  describeExport,
+  downloadFile,
+  type ExportFormat,
+} from "@/lib/export";
+
+import {
+  FEED_NOUNS,
+  exportFeed,
+} from "@/lib/export-sets";
+
+import {
+  CommandCenter,
+  type CommandRunners,
+} from "@/components/command-center";
+
+import {
+  applyTheme,
+  oppositeTheme,
+  resolveTheme,
+  watchPrintTheme,
+  watchSystemTheme,
+} from "@/lib/theme";
+
+import {
   fetchEarthquakes,
   fetchNaturalHazards,
   fetchVolcanoes,
@@ -92,6 +160,22 @@ import {
   severityClass,
   severityLabel,
 } from "@/lib/format";
+
+import {
+  buildUnifiedEvents,
+  type HazardRegion,
+  type UnifiedHazardEvent,
+} from "@/lib/hazard-events";
+
+import {
+  applyDisplayPreferences,
+  createDefaultPreferences,
+  mergePreferences,
+  readPreferences,
+  writePreferences,
+  type Preferences,
+  type PreferencesPatch,
+} from "@/lib/preferences";
 
 import type {
   EarthquakeEvent,
@@ -145,12 +229,12 @@ const navItems = [
   {
     label: "Timeline",
     icon: Clock3,
-    active: false,
+    active: true,
   },
   {
     label: "Regions",
     icon: Globe2,
-    active: false,
+    active: true,
   },
   {
     label: "Simulations",
@@ -371,6 +455,194 @@ export function DisasterDashboard() {
     useState(false);
 
   const [
+    timelineOpen,
+    setTimelineOpen,
+  ] =
+    useState(false);
+
+  const [
+    regionsOpen,
+    setRegionsOpen,
+  ] =
+    useState(false);
+
+  const [
+    settingsOpen,
+    setSettingsOpen,
+  ] =
+    useState(false);
+
+  const [
+    regionalPreset,
+    setRegionalPreset,
+  ] =
+    useState<RegionalPreset | null>(
+      null,
+    );
+
+  const [
+    preferences,
+    setPreferences,
+  ] =
+    useState<Preferences>(
+      createDefaultPreferences,
+    );
+
+  const [
+    preferencesReady,
+    setPreferencesReady,
+  ] =
+    useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void Promise.resolve().then(() => {
+      if (cancelled) {
+        return;
+      }
+
+      const stored = readPreferences();
+
+      applyDisplayPreferences(stored);
+      setPreferences(stored);
+      setPeriod(stored.period);
+      setMinMagnitude(stored.minMagnitude);
+      setMaxDepth(stored.maxDepth);
+      setEarthquakesVisible(stored.layers.earthquakes);
+      setVolcanoesVisible(stored.layers.volcanoes);
+      setWildfiresVisible(stored.layers.wildfires);
+      setStormsVisible(stored.layers.storms);
+      setPreferencesReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const themeChoice = preferences.theme;
+
+  useEffect(() => {
+    if (themeChoice !== "system") {
+      return;
+    }
+
+    return watchSystemTheme(() => applyTheme("system"));
+  }, [themeChoice]);
+
+  useEffect(() => watchPrintTheme(), []);
+
+  const autoRefreshMinutes =
+    preferences.autoRefreshMinutes;
+
+  useEffect(() => {
+    if (autoRefreshMinutes === 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      if (!document.hidden) {
+        setRefreshCounter((value) => value + 1);
+      }
+    }, autoRefreshMinutes * 60000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [autoRefreshMinutes]);
+
+  const [
+    liveTick,
+    setLiveTick,
+  ] =
+    useState(0);
+
+  const [
+    liveToast,
+    setLiveToast,
+  ] =
+    useState<LiveToastMessage | null>(
+      null,
+    );
+
+  const [
+    automation,
+    setAutomation,
+  ] =
+    useState<AutomationStatus | null>(
+      null,
+    );
+
+  const [
+    automationFailed,
+    setAutomationFailed,
+  ] =
+    useState(false);
+
+  const liveState = useLiveStream(
+    preferencesReady && preferences.liveUpdates,
+    {
+      onAlerts: (update) => {
+        setLiveTick((value) => value + 1);
+
+        if (!alertCenterOpen) {
+          setLiveToast({
+            id: Date.now(),
+            count: update.newlyTriggeredCount,
+          });
+        }
+      },
+      onFeeds: () => {
+        if (
+          autoRefreshMinutes > 0
+          && !document.hidden
+        ) {
+          setRefreshCounter((value) => value + 1);
+        }
+      },
+    },
+  );
+
+  useEffect(() => {
+    if (!settingsOpen) {
+      return;
+    }
+
+    const controller =
+      new AbortController();
+
+    const load = () => {
+      void fetchAutomationStatus(
+        controller.signal,
+      )
+        .then((status) => {
+          if (!controller.signal.aborted) {
+            setAutomation(status);
+            setAutomationFailed(false);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setAutomationFailed(true);
+          }
+        });
+    };
+
+    load();
+
+    const timer = window.setInterval(
+      load,
+      30000,
+    );
+
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [settingsOpen]);
+
+  const [
     watchlistRefreshCounter,
     setWatchlistRefreshCounter,
   ] =
@@ -390,7 +662,19 @@ export function DisasterDashboard() {
       null,
     );
 
+  const [
+    exportMessage,
+    setExportMessage,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
   useEffect(() => {
+    if (!preferencesReady) {
+      return;
+    }
+
     const controller =
       new AbortController();
 
@@ -587,6 +871,7 @@ export function DisasterDashboard() {
     appliedSearch,
     sort,
     refreshCounter,
+    preferencesReady,
   ]);
 
   const handleRefresh = () => {
@@ -825,6 +1110,109 @@ export function DisasterDashboard() {
     }
   };
 
+  const unifiedEvents =
+    useMemo(
+      () =>
+        buildUnifiedEvents(
+          earthquakeData?.events ?? [],
+          volcanoData?.events ?? [],
+          wildfireData?.events ?? [],
+          stormData?.events ?? [],
+        ),
+      [
+        earthquakeData?.events,
+        volcanoData?.events,
+        wildfireData?.events,
+        stormData?.events,
+      ],
+    );
+
+  const handleSelectUnified = (
+    event: UnifiedHazardEvent,
+  ) => {
+    if (event.kind === "earthquakes") {
+      handleSelectEarthquake(event.source);
+    } else if (event.kind === "volcanoes") {
+      handleSelectVolcano(event.source);
+    } else {
+      handleSelectNaturalHazard(event.source);
+    }
+
+    setTimelineOpen(false);
+    setRegionsOpen(false);
+  };
+
+  const handleAnalyzeRegion = (
+    region: HazardRegion,
+  ) => {
+    setRegionalPreset({
+      regionName: region.name,
+      latitude: region.latitude,
+      longitude: region.longitude,
+      radiusKm: region.radiusKm,
+      nonce: Date.now(),
+    });
+
+    setRegionsOpen(false);
+    setRegionalOpen(true);
+  };
+
+  const handlePreferencesChange = (
+    patch: PreferencesPatch,
+  ) => {
+    const next = mergePreferences(
+      preferences,
+      patch,
+    );
+
+    setPreferences(next);
+    writePreferences(next);
+    applyDisplayPreferences(next);
+
+    if (patch.period !== undefined) {
+      setPeriod(next.period);
+    }
+
+    if (patch.minMagnitude !== undefined) {
+      setMinMagnitude(next.minMagnitude);
+    }
+
+    if (patch.maxDepth !== undefined) {
+      setMaxDepth(next.maxDepth);
+    }
+
+    if (patch.layers?.earthquakes !== undefined) {
+      setEarthquakesVisible(next.layers.earthquakes);
+    }
+
+    if (patch.layers?.volcanoes !== undefined) {
+      setVolcanoesVisible(next.layers.volcanoes);
+    }
+
+    if (patch.layers?.wildfires !== undefined) {
+      setWildfiresVisible(next.layers.wildfires);
+    }
+
+    if (patch.layers?.storms !== undefined) {
+      setStormsVisible(next.layers.storms);
+    }
+  };
+
+  const handlePreferencesReset = () => {
+    const next = createDefaultPreferences();
+
+    setPreferences(next);
+    writePreferences(next);
+    applyDisplayPreferences(next);
+    setPeriod(next.period);
+    setMinMagnitude(next.minMagnitude);
+    setMaxDepth(next.maxDepth);
+    setEarthquakesVisible(next.layers.earthquakes);
+    setVolcanoesVisible(next.layers.volcanoes);
+    setWildfiresVisible(next.layers.wildfires);
+    setStormsVisible(next.layers.storms);
+  };
+
   const liveSourceCount =
     [
       earthquakeData?.live,
@@ -912,6 +1300,71 @@ export function DisasterDashboard() {
           ? wildfireData?.returnedEventCount ?? 0
           : stormData?.returnedEventCount ?? 0;
 
+  const exportCurrentFeed = (
+    format: ExportFormat,
+  ): ExportResult | null => {
+    const file = exportFeed(
+      feedMode,
+      {
+        earthquakes: earthquakeData,
+        volcanoes: volcanoData,
+        wildfires: wildfireData,
+        "severe-storms": stormData,
+      },
+      format,
+    );
+
+    return file === null ? null : { file };
+  };
+
+  const runFeedExport = (format: ExportFormat) => {
+    const result = exportCurrentFeed(format);
+
+    if (result === null || result.file.count === 0) {
+      setExportMessage("There is nothing in this feed to export yet.");
+
+      return;
+    }
+
+    downloadFile(result.file);
+
+    setExportMessage(describeExport(result.file, FEED_NOUNS[feedMode]));
+  };
+
+  const commandRunners: CommandRunners = {
+    "go-timeline": () => setTimelineOpen(true),
+    "go-regions": () => setRegionsOpen(true),
+    "go-simulations": () => setSimulationOpen(true),
+    "go-regional": () => setRegionalOpen(true),
+    "go-alerts": () => setAlertCenterOpen(true),
+    "go-situation": () => setSituationRoomOpen(true),
+    "go-saved": () => setWatchlistOpen(true),
+    refresh: () => {
+      if (!refreshing) {
+        handleRefresh();
+      }
+    },
+    search: () => {
+      const input = document.getElementById("hazard-search");
+
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+      }
+    },
+    "toggle-theme": () =>
+      handlePreferencesChange({
+        theme: oppositeTheme(resolveTheme(preferences.theme)),
+      }),
+    settings: () => setSettingsOpen(true),
+    "feed-earthquakes": () => setFeedMode("earthquakes"),
+    "feed-volcanoes": () => setFeedMode("volcanoes"),
+    "feed-wildfires": () => setFeedMode("wildfires"),
+    "feed-storms": () => setFeedMode("severe-storms"),
+    "export-feed-csv": () => runFeedExport("csv"),
+    "export-feed-json": () => runFeedExport("json"),
+  };
+
   return (
     <div className="application-shell">
       <aside className="sidebar">
@@ -993,6 +1446,14 @@ export function DisasterDashboard() {
                   if (label === "Saved") {
                     setWatchlistOpen(true);
                   }
+
+                  if (label === "Timeline") {
+                    setTimelineOpen(true);
+                  }
+
+                  if (label === "Regions") {
+                    setRegionsOpen(true);
+                  }
                 }}
               >
                 <Icon size={18} />
@@ -1032,10 +1493,15 @@ export function DisasterDashboard() {
             </div>
           </div>
 
+          <CommandCenter
+            runners={commandRunners}
+            shortcutsEnabled={preferences.shortcuts}
+          />
+
           <button
             className="sidebar-settings"
             type="button"
-            disabled
+            onClick={() => setSettingsOpen(true)}
           >
             <Settings size={17} />
 
@@ -1077,17 +1543,54 @@ export function DisasterDashboard() {
                   : `${liveSourceCount}/4 LIVE FEEDS`}
               </span>
             </div>
+
+            {liveState !== "off" && (
+              <span
+                className={`stream-badge stream-badge--${liveState}`}
+                role="img"
+                aria-label={`Live alert stream: ${
+                  liveState === "live"
+                    ? "connected"
+                    : liveState === "reconnecting"
+                      ? "reconnecting"
+                      : "connecting"
+                }`}
+              >
+                <span
+                  className="stream-badge__dot"
+                  aria-hidden="true"
+                />
+
+                {liveState === "live"
+                  ? "STREAMING"
+                  : liveState === "reconnecting"
+                    ? "RECONNECTING"
+                    : "CONNECTING"}
+              </span>
+            )}
           </div>
 
           <div className="topbar__actions">
-            <button
-              className="icon-button"
-              type="button"
-              title="Notifications"
-            >
-              <Bell size={18} />
+            <NotificationBell
+              refreshKey={alertCenterOpen}
+              liveTick={liveTick}
+              onOpenAlertCenter={() =>
+                setAlertCenterOpen(true)
+              }
+            />
 
-              <span className="notification-dot" />
+            <ActivityButton />
+
+            <UserMenu />
+
+            <button
+              className="icon-button topbar-settings"
+              type="button"
+              title="Settings"
+              aria-label="Open settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings size={18} aria-hidden="true" />
             </button>
 
             <button
@@ -1480,7 +1983,9 @@ export function DisasterDashboard() {
             <Search size={15} />
 
             <input
+              id="hazard-search"
               type="search"
+              aria-label="Search all hazards"
               placeholder="Search all hazards..."
               value={searchInput}
               onChange={(event) =>
@@ -2168,6 +2673,17 @@ export function DisasterDashboard() {
               </span>
             </div>
 
+            <div className="export-row">
+              <span>Download this feed</span>
+
+              <ExportButtons
+                noun={FEED_NOUNS[feedMode]}
+                subject={`${FEED_NOUNS[feedMode]}s`}
+                count={currentFeedCount}
+                onBuild={exportCurrentFeed}
+              />
+            </div>
+
             {loading
               && earthquakeData === null
               ? (
@@ -2348,6 +2864,7 @@ export function DisasterDashboard() {
 
         <RegionalIntelligencePanel
           open={regionalOpen}
+          preset={regionalPreset}
           onClose={() =>
             setRegionalOpen(false)
           }
@@ -2355,6 +2872,7 @@ export function DisasterDashboard() {
 
         <AlertCenterPanel
           open={alertCenterOpen}
+          refreshToken={liveTick}
           onClose={() =>
             setAlertCenterOpen(false)
           }
@@ -2365,6 +2883,10 @@ export function DisasterDashboard() {
           onClose={() =>
             setSituationRoomOpen(false)
           }
+          onOpenAlertCenter={() => {
+            setSituationRoomOpen(false);
+            setAlertCenterOpen(true);
+          }}
         />
 
         <WatchlistPanel
@@ -2374,6 +2896,95 @@ export function DisasterDashboard() {
           }
           onClose={() =>
             setWatchlistOpen(false)
+          }
+        />
+
+        <EventTimelinePanel
+          open={timelineOpen}
+          events={unifiedEvents}
+          periodLabel={
+            periodOptions.find(
+              (option) =>
+                option.value === period,
+            )?.label ?? period
+          }
+          onClose={() =>
+            setTimelineOpen(false)
+          }
+          onSelect={handleSelectUnified}
+        />
+
+        <RegionsPanel
+          open={regionsOpen}
+          events={unifiedEvents}
+          onClose={() =>
+            setRegionsOpen(false)
+          }
+          onSelect={handleSelectUnified}
+          onAnalyze={handleAnalyzeRegion}
+        />
+
+        <SettingsPanel
+          open={settingsOpen}
+          preferences={preferences}
+          feeds={[
+            {
+              id: "earthquakes",
+              label: "USGS earthquakes",
+              live: earthquakeData?.live ?? null,
+              generatedAt:
+                earthquakeData?.generatedAt ?? null,
+              count:
+                earthquakeData?.returnedEventCount ?? 0,
+            },
+            {
+              id: "volcanoes",
+              label: "NASA EONET volcanoes",
+              live: volcanoData?.live ?? null,
+              generatedAt:
+                volcanoData?.generatedAt ?? null,
+              count:
+                volcanoData?.returnedEventCount ?? 0,
+            },
+            {
+              id: "wildfires",
+              label: "NASA EONET wildfires",
+              live: wildfireData?.live ?? null,
+              generatedAt:
+                wildfireData?.generatedAt ?? null,
+              count:
+                wildfireData?.returnedEventCount ?? 0,
+            },
+            {
+              id: "severe-storms",
+              label: "NASA EONET severe storms",
+              live: stormData?.live ?? null,
+              generatedAt:
+                stormData?.generatedAt ?? null,
+              count:
+                stormData?.returnedEventCount ?? 0,
+            },
+          ]}
+          live={{
+            state: liveState,
+            automation,
+            automationFailed,
+          }}
+          onChange={handlePreferencesChange}
+          onReset={handlePreferencesReset}
+          onClose={() =>
+            setSettingsOpen(false)
+          }
+        />
+
+        <LiveToast
+          toast={liveToast}
+          onView={() => {
+            setLiveToast(null);
+            setAlertCenterOpen(true);
+          }}
+          onDismiss={() =>
+            setLiveToast(null)
           }
         />
 
@@ -2396,6 +3007,11 @@ export function DisasterDashboard() {
             </button>
           </div>
         )}
+
+        <ExportToast
+          message={exportMessage}
+          onDismiss={() => setExportMessage(null)}
+        />
 
         <footer className="application-footer">
           <div>

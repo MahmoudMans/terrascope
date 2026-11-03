@@ -16,8 +16,13 @@ import {
 import {
   FormEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
+
+import {
+  useDialogBehavior,
+} from "@/lib/use-dialog-behavior";
 
 import {
   analyzeRegionalIntelligence,
@@ -36,9 +41,18 @@ import type {
   RegionalHazardType,
 } from "@/types/regional-intelligence";
 
+export type RegionalPreset = {
+  regionName: string;
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+  nonce: number;
+};
+
 type RegionalIntelligencePanelProps = {
   open: boolean;
   onClose: () => void;
+  preset?: RegionalPreset | null;
 };
 
 type RegionalFormState =
@@ -104,6 +118,7 @@ function HazardIcon({
 export function RegionalIntelligencePanel({
   open,
   onClose,
+  preset = null,
 }: RegionalIntelligencePanelProps) {
   const [
     form,
@@ -148,6 +163,35 @@ export function RegionalIntelligencePanel({
     useState<string | null>(
       null,
     );
+
+  const [
+    appliedPresetNonce,
+    setAppliedPresetNonce,
+  ] =
+    useState<number | null>(
+      null,
+    );
+
+  if (
+    open
+    && preset !== null
+    && preset.nonce !== appliedPresetNonce
+  ) {
+    setAppliedPresetNonce(
+      preset.nonce,
+    );
+
+    setForm({
+      regionName:
+        preset.regionName,
+      latitude:
+        preset.latitude,
+      longitude:
+        preset.longitude,
+      radiusKm:
+        preset.radiusKm,
+    });
+  }
 
   useEffect(() => {
     if (!open) {
@@ -405,6 +449,10 @@ export function RegionalIntelligencePanel({
       });
   };
 
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  useDialogBehavior({ open, onClose, containerRef: dialogRef });
+
   if (!open) {
     return null;
   }
@@ -415,17 +463,25 @@ export function RegionalIntelligencePanel({
         type="button"
         className="regional-backdrop"
         aria-label="Close regional intelligence"
+        tabIndex={-1}
         onClick={onClose}
       />
 
-      <section className="regional-workspace">
+      <section
+        ref={dialogRef}
+        className="regional-workspace"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="regional-title"
+        tabIndex={-1}
+      >
         <header className="regional-header">
           <div>
             <span className="panel-kicker">
               SPATIAL INTELLIGENCE
             </span>
 
-            <h2>
+            <h2 id="regional-title">
               Regional hazard intelligence
             </h2>
 
